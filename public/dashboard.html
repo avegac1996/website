@@ -3,278 +3,200 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Dashboard - TURINGTECH Ecuador</title>
+  <title>Dashboard - TURINGTECH Ecuador</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/css/app.css">
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+      colors: { techDark: '#050C1F', accentOrange: '#FF6B00' },
+      boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)' }
+    }}}
+  </script>
 </head>
-<body>
+<body class="text-gray-200 antialiased relative">
+
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="fixed inset-0 overflow-hidden z-0">
+    <canvas id="bg-canvas"></canvas>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/20 to-[#050C1F]/40 pointer-events-none"></div>
+  </div>
+
+  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-3 cursor-pointer">
+        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+        <div>
+          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+        <a href="/catalogo.html" class="text-gray-300 hover:text-accentOrange transition-colors">Catálogo</a>
+        <a href="#" onclick="API.logout(); return false;" class="text-gray-300 hover:text-accentOrange transition-colors">Cerrar Sesión</a>
+      </nav>
+    </div>
+  </header>
+
   <div class="app-container">
-    <!-- Header -->
-    <div class="app-header">
-      <div class="app-header-logo">
-        <img src="logo-turingtech-nuevo.png" alt="TURINGTECH">
-        <h1>TURINGTECH</h1>
-      </div>
-      <div class="app-header-nav">
-        <a href="/">Inicio</a>
-        <a href="/catalogo.html">Catálogo</a>
-        <a href="#" onclick="API.logout(); return false;">Cerrar Sesión</a>
-      </div>
-    </div>
-
     <div id="alert-container"></div>
+    <div style="margin-bottom: 32px;">
+      <h1 class="font-barlow text-3xl font-extrabold text-white" id="userName">Dashboard</h1>
+      <p style="color: var(--color-text); margin-top: 4px;">Gestiona tus créditos y proyectos TURINGTECH</p>
+    </div>
 
-    <!-- Credit Balance -->
-    <div class="glass-panel mb-3">
-      <div class="credit-balance">
-        <div class="label">Créditos TURINGTECH</div>
-        <div class="amount" id="creditBalance">--</div>
-        <div class="subtitle" id="incentiveText">En tu próximo proyecto tienes créditos TURINGTECH</div>
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px;">
+      <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="width: 44px; height: 44px; background: rgba(255,107,0,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-coins" style="color: var(--color-accent); font-size: 20px;"></i>
+          </div>
+          <span style="color: var(--color-text); font-size: 14px;">Créditos Disponibles</span>
+        </div>
+        <div style="font-size: 32px; font-weight: 800; color: var(--color-accent);" id="creditBalance">0</div>
+      </div>
+      <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="width: 44px; height: 44px; background: rgba(59,130,246,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-paper-plane" style="color: #3b82f6; font-size: 20px;"></i>
+          </div>
+          <span style="color: var(--color-text); font-size: 14px;">Solicitudes Enviadas</span>
+        </div>
+        <div style="font-size: 32px; font-weight: 800; color: white;" id="requestCount">0</div>
+      </div>
+      <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="width: 44px; height: 44px; background: rgba(16,185,129,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-bell" style="color: var(--color-success); font-size: 20px;"></i>
+          </div>
+          <span style="color: var(--color-text); font-size: 14px;">Notificaciones</span>
+        </div>
+        <div style="font-size: 32px; font-weight: 800; color: white;" id="notifCount">0</div>
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('overview')">
-        <i class="fa-solid fa-chart-line"></i> Resumen
-      </button>
-      <button class="tab" onclick="switchTab('request')">
-        <i class="fa-solid fa-plus-circle"></i> Solicitar Créditos
-      </button>
-      <button class="tab" onclick="switchTab('history')">
-        <i class="fa-solid fa-clock-rotate-left"></i> Historial
-      </button>
-      <button class="tab" onclick="switchTab('notifications')">
-        <i class="fa-solid fa-bell"></i> Notificaciones
-        <span id="notifBadge" class="badge badge-accent" style="margin-left: 6px; display: none;">0</span>
-      </button>
-    </div>
-
-    <!-- Tab: Overview -->
-    <div id="tab-overview" class="tab-content active">
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-header">
-            <i class="fa-solid fa-arrow-trend-up"></i>
-            <h3>Transacciones Recientes</h3>
-          </div>
-          <div id="recentTransactions"></div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <i class="fa-solid fa-paper-plane"></i>
-            <h3>Solicitudes Recientes</h3>
-          </div>
-          <div id="recentRequests"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab: Request Credits -->
-    <div id="tab-request" class="tab-content">
-      <div class="glass-panel">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-plus-circle"></i>
-          <h3>Solicitar Créditos para tu Proyecto</h3>
-        </div>
-        <p style="color: var(--color-gray); margin-bottom: 24px;">
-          Cuéntanos sobre tu proyecto y cuántos créditos necesitas. Tu solicitud será aprobada en los siguientes minutos.
-        </p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;" id="mainGrid">
+      <div class="glass-panel" style="padding: 28px; border-radius: 16px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <i class="fa-solid fa-paper-plane" style="color: var(--color-accent);"></i>
+          Solicitar Créditos
+        </h2>
         <form id="requestForm" onsubmit="handleRequestCredits(event)">
           <div class="form-group">
-            <label for="projectDescription">Describe tu proyecto <span class="form-required-marker">*</span></label>
-            <textarea id="projectDescription" class="form-input" rows="5" required
-              placeholder="Ej: Necesito automatizar el proceso de conciliación bancaria mensual..."></textarea>
+            <label for="projectName">Nombre del Proyecto <span class="form-required-marker">*</span></label>
+            <input type="text" id="projectName" class="form-input" placeholder="Automatización de conciliaciones" required>
           </div>
           <div class="form-group">
-            <label for="requestedCredits">Créditos solicitados <span class="form-required-marker">*</span></label>
-            <input type="number" id="requestedCredits" class="form-input" min="1" value="2000" required>
+            <label for="projectDesc">Descripción <span class="form-required-marker">*</span></label>
+            <textarea id="projectDesc" class="form-input" rows="3" placeholder="Describe brevemente tu proyecto..." required style="resize: vertical;"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary btn-large" id="requestBtn">
-            <span id="requestBtnText">Enviar Solicitud</span>
-          </button>
+          <div class="form-group">
+            <label for="creditsRequested">Créditos Solicitados <span class="form-required-marker">*</span></label>
+            <input type="number" id="creditsRequested" class="form-input" placeholder="500" min="1" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="requestBtn">Enviar Solicitud</button>
         </form>
       </div>
-    </div>
 
-    <!-- Tab: History -->
-    <div id="tab-history" class="tab-content">
-      <div class="glass-panel">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-clock-rotate-left"></i>
-          <h3>Historial de Transacciones</h3>
-        </div>
-        <div class="table-container">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Tipo</th>
-                <th>Descripción</th>
-                <th class="text-right">Monto</th>
-              </tr>
-            </thead>
-            <tbody id="allTransactions"></tbody>
-          </table>
+      <div class="glass-panel" style="padding: 28px; border-radius: 16px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+          <i class="fa-solid fa-clock-rotate-left" style="color: var(--color-accent);"></i>
+          Historial de Transacciones
+        </h2>
+        <div id="transactionList" style="display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto;">
+          <p style="color: var(--color-gray); text-align: center; padding: 40px 0;">Cargando...</p>
         </div>
       </div>
     </div>
 
-    <!-- Tab: Notifications -->
-    <div id="tab-notifications" class="tab-content">
-      <div class="glass-panel">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-bell"></i>
-          <h3>Notificaciones</h3>
-        </div>
-        <div id="notificationsList"></div>
+    <div class="glass-panel" style="padding: 28px; border-radius: 16px; margin-bottom: 32px;">
+      <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-bell" style="color: var(--color-accent);"></i>
+        Notificaciones
+      </h2>
+      <div id="notificationList" style="display: flex; flex-direction: column; gap: 12px;">
+        <p style="color: var(--color-gray); text-align: center; padding: 20px 0;">Cargando...</p>
       </div>
     </div>
   </div>
 
   <script src="/js/app.js"></script>
+  <script src="/js/background.js"></script>
   <script>
-    let dashboardData = null;
-
+    if (!API.isLoggedIn()) { window.location.href = '/login.html'; }
+    let currentUser = null;
     async function loadDashboard() {
-      if (!API.isLoggedIn()) {
-        window.location.href = '/login.html';
-        return;
-      }
-
       try {
-        dashboardData = await API.getDashboard();
-        renderDashboard();
+        const data = await API.getDashboard();
+        currentUser = data.user;
+        document.getElementById('userName').textContent = `Hola, ${data.user.name}`;
+        document.getElementById('creditBalance').textContent = data.credits.toLocaleString();
+        document.getElementById('requestCount').textContent = data.requests.length;
+        document.getElementById('notifCount').textContent = data.notifications.length;
+        renderTransactions(data.transactions);
+        renderNotifications(data.notifications);
       } catch (err) {
         showAlert(err.message, 'error');
       }
     }
-
-    function renderDashboard() {
-      const { user, transactions, requests, notifications } = dashboardData;
-
-      document.getElementById('creditBalance').textContent = user.credits;
-      document.getElementById('incentiveText').textContent =
-        user.credits > 0
-          ? `En tu próximo proyecto tienes ${user.credits} créditos TURINGTECH`
-          : 'No tienes créditos disponibles. Solicita más abajo.';
-
-      // Recent transactions
-      const recentTx = transactions.slice(0, 5);
-      document.getElementById('recentTransactions').innerHTML = recentTx.length > 0
-        ? recentTx.map(tx => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
-            <div>
-              <div style="color: var(--color-white); font-size: 14px; font-weight: 600;">${tx.description || tx.type}</div>
-              <div style="color: var(--color-gray); font-size: 12px;">${formatDate(tx.created_at)}</div>
-            </div>
-            <div style="font-weight: 700; color: ${tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">
-              ${tx.amount >= 0 ? '+' : ''}${tx.amount}
-            </div>
-          </div>
-        `).join('')
-        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">Sin transacciones</p>';
-
-      // Recent requests
-      const recentReq = requests.slice(0, 5);
-      document.getElementById('recentRequests').innerHTML = recentReq.length > 0
-        ? recentReq.map(req => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
-            <div>
-              <div style="color: var(--color-white); font-size: 14px; font-weight: 600;">${req.requested_credits} créditos</div>
-              <div style="color: var(--color-gray); font-size: 12px;">${formatDate(req.created_at)}</div>
-            </div>
-            <span class="badge badge-${req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'error' : 'warning'}">
-              ${req.status === 'approved' ? 'Aprobada' : req.status === 'rejected' ? 'Rechazada' : 'Pendiente'}
-            </span>
-          </div>
-        `).join('')
-        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">Sin solicitudes</p>';
-
-      // All transactions
-      document.getElementById('allTransactions').innerHTML = transactions.length > 0
-        ? transactions.map(tx => `
-          <tr>
-            <td>${formatDate(tx.created_at)}</td>
-            <td><span class="badge badge-${tx.type === 'initial' ? 'accent' : tx.type === 'admin_grant' ? 'info' : 'secondary'}">${tx.type}</span></td>
-            <td>${tx.description || '-'}</td>
-            <td class="text-right" style="font-weight: 700; color: ${tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">
-              ${tx.amount >= 0 ? '+' : ''}${tx.amount}
-            </td>
-          </tr>
-        `).join('')
-        : '<tr><td colspan="4" style="text-align: center; padding: 24px;">Sin transacciones</td></tr>';
-
-      // Notifications
-      const unreadCount = notifications.filter(n => !n.is_read).length;
-      const badge = document.getElementById('notifBadge');
-      if (unreadCount > 0) {
-        badge.style.display = 'inline-block';
-        badge.textContent = unreadCount;
+    function renderTransactions(transactions) {
+      const list = document.getElementById('transactionList');
+      if (!transactions.length) {
+        list.innerHTML = '<p style="color: var(--color-gray); text-align: center; padding: 40px 0;">Sin transacciones aún.</p>';
+        return;
       }
-
-      document.getElementById('notificationsList').innerHTML = notifications.length > 0
-        ? notifications.map(n => `
-          <div class="notification-item ${!n.is_read ? 'unread' : ''}" onclick="markRead(${n.id})">
-            <div class="notif-icon ${getNotificationIconClass(n.type)}">
-              <i class="fa-solid ${getNotificationIcon(n.type)}"></i>
-            </div>
-            <div class="notif-content">
-              <h4>${n.title}</h4>
-              <p>${n.message}</p>
-              <div class="notif-time">${formatDate(n.created_at)}</div>
-            </div>
+      list.innerHTML = transactions.map(t => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+          <div>
+            <div style="color: white; font-weight: 600; font-size: 14px;">${t.description}</div>
+            <div style="color: var(--color-gray); font-size: 12px;">${new Date(t.created_at).toLocaleDateString('es-EC')}</div>
           </div>
-        `).join('')
-        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">Sin notificaciones</p>';
+          <div style="font-weight: 700; color: ${t.amount > 0 ? 'var(--color-success)' : 'var(--color-error)'};">${t.amount > 0 ? '+' : ''}${t.amount}</div>
+        </div>
+      `).join('');
     }
-
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.closest('.tab').classList.add('active');
-      document.getElementById(`tab-${tabName}`).classList.add('active');
+    function renderNotifications(notifications) {
+      const list = document.getElementById('notificationList');
+      if (!notifications.length) {
+        list.innerHTML = '<p style="color: var(--color-gray); text-align: center; padding: 20px 0;">Sin notificaciones.</p>';
+        return;
+      }
+      list.innerHTML = notifications.map(n => `
+        <div style="padding: 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); ${!n.is_read ? 'border-left: 3px solid var(--color-accent);' : ''}">
+          <div style="color: white; font-weight: 600; font-size: 14px;">${n.title}</div>
+          <div style="color: var(--color-text); font-size: 13px; margin-top: 4px;">${n.message}</div>
+          <div style="color: var(--color-gray); font-size: 11px; margin-top: 6px;">${new Date(n.created_at).toLocaleString('es-EC')}</div>
+        </div>
+      `).join('');
     }
-
     async function handleRequestCredits(event) {
       event.preventDefault();
       const btn = document.getElementById('requestBtn');
-      const btnText = document.getElementById('requestBtnText');
-      const description = document.getElementById('projectDescription').value;
-      const credits = document.getElementById('requestedCredits').value;
-
-      btn.disabled = true;
-      btnText.innerHTML = '<span class="spinner"></span>';
-
+      btn.disabled = true; btn.textContent = 'Enviando...';
       try {
-        await API.requestCredits(description, credits);
-        showAlert('Tu solicitud será aprobada en los siguientes minutos.', 'success');
+        await API.requestCredits({
+          project_name: document.getElementById('projectName').value,
+          project_description: document.getElementById('projectDesc').value,
+          credits_requested: parseInt(document.getElementById('creditsRequested').value)
+        });
+        showAlert('Solicitud enviada. El admin la revisará pronto.', 'success');
         document.getElementById('requestForm').reset();
-        dashboardData = await API.getDashboard();
-        renderDashboard();
-        switchTab('overview');
-        document.querySelector('.tab').click();
+        loadDashboard();
       } catch (err) {
         showAlert(err.message, 'error');
       }
-
-      btn.disabled = false;
-      btnText.textContent = 'Enviar Solicitud';
+      btn.disabled = false; btn.textContent = 'Enviar Solicitud';
     }
-
-    async function markRead(id) {
-      try {
-        await API.markNotificationRead(id);
-        dashboardData = await API.getDashboard();
-        renderDashboard();
-      } catch (err) {}
-    }
-
     loadDashboard();
   </script>
 </body>

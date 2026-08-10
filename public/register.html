@@ -6,13 +6,66 @@
   <title>Registrarse - TURINGTECH Ecuador</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/css/app.css">
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+        colors: { techDark: '#050C1F', techCard: 'rgba(11, 22, 49, 0.7)', accentOrange: '#FF6B00', accentOrangeHover: '#E05E00', brandNavyLight: '#111E3D' },
+        boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)' }
+      }}
+    }
+  </script>
 </head>
-<body>
+<body class="text-gray-200 antialiased relative">
+
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="fixed inset-0 overflow-hidden z-0">
+    <canvas id="bg-canvas"></canvas>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/20 to-[#050C1F]/40 pointer-events-none"></div>
+  </div>
+
+  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-3 cursor-pointer">
+        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+        <div>
+          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+        <a href="/#servicios" class="text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
+        <a href="/#metodo" class="text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
+        <a href="/#casos" class="text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
+        <a href="/catalogo.html" class="text-gray-300 hover:text-accentOrange transition-colors">Catálogo</a>
+        <a href="/login.html" class="text-accentOrange hover:text-white transition-colors flex items-center gap-1">
+          <i class="fa-solid fa-user text-xs"></i><span>Iniciar Sesión</span>
+        </a>
+      </nav>
+      <div class="md:hidden">
+        <button id="mobile-menu-btn" class="p-2 text-gray-400 hover:text-white">
+          <i class="fa-solid fa-bars text-2xl"></i>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
+      <a href="/" class="block text-gray-300 hover:text-white">Inicio</a>
+      <a href="/#servicios" class="block text-gray-300 hover:text-white">Servicios</a>
+      <a href="/catalogo.html" class="block text-gray-300 hover:text-white">Catálogo</a>
+      <a href="/login.html" class="block text-accentOrange font-medium">Iniciar Sesión</a>
+    </div>
+  </header>
+
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-logo">
@@ -20,48 +73,38 @@
         <h1>TURINGTECH</h1>
         <p>Ecuador</p>
       </div>
-
       <h2 class="auth-title">Crear Cuenta</h2>
       <p class="auth-subtitle">Regístrate para obtener créditos TURINGTECH</p>
-
       <div class="auth-incentive">
         <div class="credits">2000 créditos</div>
         <div class="text">de regalo al verificar tu email</div>
       </div>
-
       <div id="alert-container"></div>
-
       <form id="registerForm" onsubmit="handleRegister(event)">
         <div class="form-group">
           <label for="name">Nombre Completo <span class="form-required-marker">*</span></label>
           <input type="text" id="name" class="form-input" placeholder="Carlos Mendoza" required>
         </div>
-
         <div class="form-group">
           <label for="email">Email <span class="form-required-marker">*</span></label>
           <input type="email" id="email" class="form-input" placeholder="tu@email.com" required autocomplete="email">
         </div>
-
         <div class="form-group">
           <label for="password">Contraseña <span class="form-required-marker">*</span></label>
           <input type="password" id="password" class="form-input" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password">
         </div>
-
         <div class="form-group">
           <label for="company">Empresa</label>
           <input type="text" id="company" class="form-input" placeholder="Mi Empresa S.A. (opcional)">
         </div>
-
         <div class="form-group">
           <label for="phone">Teléfono</label>
           <input type="tel" id="phone" class="form-input" placeholder="+593 98 765 4321 (opcional)">
         </div>
-
         <button type="submit" class="btn btn-primary btn-block btn-large" id="submitBtn">
           <span id="btnText">Registrarme</span>
         </button>
       </form>
-
       <div class="auth-footer">
         ¿Ya tienes cuenta? <a href="/login.html">Inicia sesión aquí</a>
       </div>
@@ -69,26 +112,26 @@
   </div>
 
   <script src="/js/app.js"></script>
+  <script src="/js/background.js"></script>
   <script>
-    if (API.isLoggedIn()) {
-      window.location.href = '/dashboard.html';
-    }
-
+    document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
+    if (API.isLoggedIn()) { window.location.href = '/dashboard.html'; }
     async function handleRegister(event) {
       event.preventDefault();
       const btn = document.getElementById('submitBtn');
       const btnText = document.getElementById('btnText');
-      const name = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const company = document.getElementById('company').value;
-      const phone = document.getElementById('phone').value;
-
       btn.disabled = true;
       btnText.innerHTML = '<span class="spinner"></span>';
-
       try {
-        await API.register(name, email, password, company, phone);
+        await API.register(
+          document.getElementById('name').value,
+          document.getElementById('email').value,
+          document.getElementById('password').value,
+          document.getElementById('company').value,
+          document.getElementById('phone').value
+        );
         document.getElementById('registerForm').style.display = 'none';
         document.querySelector('.auth-incentive').style.display = 'none';
         document.querySelector('.auth-footer').style.display = 'none';

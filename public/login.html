@@ -6,13 +6,74 @@
   <title>Iniciar Sesión - TURINGTECH Ecuador</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/css/app.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+          colors: {
+            techDark: '#050C1F', techCard: 'rgba(11, 22, 49, 0.7)',
+            accentOrange: '#FF6B00', accentOrangeHover: '#E05E00', brandNavyLight: '#111E3D'
+          },
+          boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)' }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
+<body class="text-gray-200 antialiased relative">
+
+  <!-- Fondo dinámico -->
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="fixed inset-0 overflow-hidden z-0">
+    <canvas id="bg-canvas"></canvas>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/20 to-[#050C1F]/40 pointer-events-none"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-3 cursor-pointer">
+        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+        <div>
+          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+        <a href="/#servicios" class="text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
+        <a href="/#metodo" class="text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
+        <a href="/#casos" class="text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
+        <a href="/catalogo.html" class="text-gray-300 hover:text-accentOrange transition-colors">Catálogo</a>
+        <a href="/login.html" class="text-accentOrange hover:text-white transition-colors flex items-center gap-1">
+          <i class="fa-solid fa-user text-xs"></i><span>Iniciar Sesión</span>
+        </a>
+      </nav>
+      <div class="md:hidden">
+        <button id="mobile-menu-btn" class="p-2 text-gray-400 hover:text-white">
+          <i class="fa-solid fa-bars text-2xl"></i>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
+      <a href="/" class="block text-gray-300 hover:text-white">Inicio</a>
+      <a href="/#servicios" class="block text-gray-300 hover:text-white">Servicios</a>
+      <a href="/catalogo.html" class="block text-gray-300 hover:text-white">Catálogo</a>
+      <a href="/register.html" class="block text-accentOrange font-medium">Registrarse</a>
+    </div>
+  </header>
+
+  <!-- LOGIN -->
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-logo">
@@ -20,28 +81,22 @@
         <h1>TURINGTECH</h1>
         <p>Ecuador</p>
       </div>
-
       <h2 class="auth-title">Iniciar Sesión</h2>
       <p class="auth-subtitle">Ingresa a tu cuenta para gestionar tus créditos</p>
-
       <div id="alert-container"></div>
-
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
           <label for="email">Email <span class="form-required-marker">*</span></label>
           <input type="email" id="email" class="form-input" placeholder="tu@email.com" required autocomplete="email">
         </div>
-
         <div class="form-group">
           <label for="password">Contraseña <span class="form-required-marker">*</span></label>
           <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
         </div>
-
         <button type="submit" class="btn btn-primary btn-block btn-large" id="submitBtn">
           <span id="btnText">Iniciar Sesión</span>
         </button>
       </form>
-
       <div class="auth-footer">
         ¿No tienes cuenta? <a href="/register.html">Regístrate aquí</a>
       </div>
@@ -49,34 +104,25 @@
   </div>
 
   <script src="/js/app.js"></script>
+  <script src="/js/background.js"></script>
   <script>
+    document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    });
     if (API.isLoggedIn()) {
       API.getMe().then(data => {
-        if (data.user.role === 'admin') {
-          window.location.href = '/admin.html';
-        } else {
-          window.location.href = '/dashboard.html';
-        }
+        window.location.href = data.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
       }).catch(() => {});
     }
-
     async function handleLogin(event) {
       event.preventDefault();
       const btn = document.getElementById('submitBtn');
       const btnText = document.getElementById('btnText');
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
       btn.disabled = true;
       btnText.innerHTML = '<span class="spinner"></span>';
-
       try {
-        const data = await API.login(email, password);
-        if (data.user.role === 'admin') {
-          window.location.href = '/admin.html';
-        } else {
-          window.location.href = '/dashboard.html';
-        }
+        const data = await API.login(document.getElementById('email').value, document.getElementById('password').value);
+        window.location.href = data.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
       } catch (err) {
         showAlert(err.message, 'error');
         btn.disabled = false;

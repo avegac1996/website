@@ -3,392 +3,242 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Admin - TURINGTECH Ecuador</title>
+  <title>Admin Panel - TURINGTECH Ecuador</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/css/app.css">
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+      colors: { techDark: '#050C1F', accentOrange: '#FF6B00' },
+      boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)' }
+    }}}
+  </script>
 </head>
-<body>
+<body class="text-gray-200 antialiased relative">
+
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="fixed inset-0 overflow-hidden z-0">
+    <canvas id="bg-canvas"></canvas>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/20 to-[#050C1F]/40 pointer-events-none"></div>
+  </div>
+
+  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-3 cursor-pointer">
+        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+        <div>
+          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+        <a href="/catalogo.html" class="text-gray-300 hover:text-accentOrange transition-colors">Catálogo</a>
+        <a href="#" onclick="API.logout(); return false;" class="text-gray-300 hover:text-accentOrange transition-colors">Cerrar Sesión</a>
+      </nav>
+    </div>
+  </header>
+
   <div class="app-container">
-    <!-- Header -->
-    <div class="app-header">
-      <div class="app-header-logo">
-        <img src="logo-turingtech-nuevo.png" alt="TURINGTECH">
-        <h1>TURINGTECH Admin</h1>
-      </div>
-      <div class="app-header-nav">
-        <a href="/">Inicio</a>
-        <a href="#" onclick="API.logout(); return false;">Cerrar Sesión</a>
-      </div>
+    <div id="alert-container"></div>
+    <div style="margin-bottom: 32px;">
+      <h1 class="font-barlow text-3xl font-extrabold text-white">Panel de Administración</h1>
+      <p style="color: var(--color-text); margin-top: 4px;">Gestión de usuarios, créditos y configuración</p>
     </div>
 
-    <div id="alert-container"></div>
-
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('requests')">
-        <i class="fa-solid fa-inbox"></i> Solicitudes
-        <span id="pendingBadge" class="badge badge-warning" style="margin-left: 6px; display: none;">0</span>
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+      <button class="tab-btn active" onclick="switchTab('requests')" id="tab-requests">
+        <i class="fa-solid fa-paper-plane"></i> Solicitudes
       </button>
-      <button class="tab" onclick="switchTab('users')">
+      <button class="tab-btn" onclick="switchTab('users')" id="tab-users">
         <i class="fa-solid fa-users"></i> Usuarios
       </button>
-      <button class="tab" onclick="switchTab('config')">
+      <button class="tab-btn" onclick="switchTab('credits')" id="tab-credits">
+        <i class="fa-solid fa-coins"></i> Modificar Créditos
+      </button>
+      <button class="tab-btn" onclick="switchTab('config')" id="tab-config">
         <i class="fa-solid fa-gear"></i> Configuración
       </button>
     </div>
 
-    <!-- Tab: Requests -->
-    <div id="tab-requests" class="tab-content active">
-      <div class="glass-panel">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-inbox"></i>
-          <h3>Solicitudes de Créditos Pendientes</h3>
-        </div>
-        <div id="requestsList"></div>
-      </div>
-
-      <div class="glass-panel mt-3">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-check-circle"></i>
-          <h3>Solicitudes Revisadas</h3>
-        </div>
-        <div id="reviewedRequestsList"></div>
-      </div>
-    </div>
-
-    <!-- Tab: Users -->
-    <div id="tab-users" class="tab-content">
-      <div class="glass-panel">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-users"></i>
-          <h3>Usuarios Registrados</h3>
-        </div>
-        <div class="table-container">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Empresa</th>
-                <th class="text-right">Créditos</th>
-                <th>Estado</th>
-                <th>Solicitudes</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="usersTable"></tbody>
-          </table>
+    <!-- Tab: Solicitudes -->
+    <div id="content-requests" class="tab-content">
+      <div class="glass-panel" style="padding: 28px; border-radius: 16px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px;">Solicitudes de Créditos</h2>
+        <div id="requestsList" style="display: flex; flex-direction: column; gap: 16px;">
+          <p style="color: var(--color-gray); text-align: center; padding: 40px 0;">Cargando...</p>
         </div>
       </div>
     </div>
 
-    <!-- Tab: Config -->
-    <div id="tab-config" class="tab-content">
-      <div class="glass-panel">
-        <div class="card-header mb-3">
-          <i class="fa-solid fa-gear"></i>
-          <h3>Configuración del Sistema</h3>
+    <!-- Tab: Usuarios -->
+    <div id="content-users" class="tab-content" style="display: none;">
+      <div class="glass-panel" style="padding: 28px; border-radius: 16px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px;">Usuarios Registrados</h2>
+        <div id="usersList" style="display: flex; flex-direction: column; gap: 12px;">
+          <p style="color: var(--color-gray); text-align: center; padding: 40px 0;">Cargando...</p>
         </div>
-        <form id="configForm" onsubmit="handleSaveConfig(event)">
+      </div>
+    </div>
+
+    <!-- Tab: Créditos -->
+    <div id="content-credits" class="tab-content" style="display: none;">
+      <div class="glass-panel" style="padding: 28px; border-radius: 16px; max-width: 500px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px;">Modificar Créditos de Usuario</h2>
+        <form id="creditsForm" onsubmit="handleModifyCredits(event)">
           <div class="form-group">
-            <label for="notificationEmail">Email de notificaciones (adonde llegan las solicitudes)</label>
-            <input type="email" id="notificationEmail" class="form-input" placeholder="nicole.flores@turingtech.com.ec">
-            <p style="color: var(--color-gray); font-size: 13px; margin-top: 6px;">
-              Cuando un usuario solicita créditos, la notificación llega a este correo.
-            </p>
+            <label for="userEmail">Email del Usuario <span class="form-required-marker">*</span></label>
+            <input type="email" id="userEmail" class="form-input" placeholder="usuario@email.com" required>
           </div>
           <div class="form-group">
-            <label for="initialCredits">Créditos iniciales (al verificar email)</label>
-            <input type="number" id="initialCredits" class="form-input" placeholder="2000">
+            <label for="creditAmount">Cantidad <span class="form-required-marker">*</span></label>
+            <input type="number" id="creditAmount" class="form-input" placeholder="500 (positivo o negativo)" required>
           </div>
-          <button type="submit" class="btn btn-primary" id="configBtn">
-            <span id="configBtnText">Guardar Configuración</span>
-          </button>
+          <div class="form-group">
+            <label for="creditReason">Razón <span class="form-required-marker">*</span></label>
+            <input type="text" id="creditReason" class="form-input" placeholder="Bonificación por proyecto" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="creditsBtn">Aplicar</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tab: Configuración -->
+    <div id="content-config" class="tab-content" style="display: none;">
+      <div class="glass-panel" style="padding: 28px; border-radius: 16px; max-width: 500px;">
+        <h2 style="font-size: 20px; font-weight: 700; color: white; margin-bottom: 20px;">Email de Notificaciones</h2>
+        <p style="color: var(--color-text); margin-bottom: 20px; font-size: 14px;">
+          Las solicitudes de créditos se enviarán a este email.
+        </p>
+        <form id="configForm" onsubmit="handleUpdateConfig(event)">
+          <div class="form-group">
+            <label for="notifEmail">Email de Notificaciones <span class="form-required-marker">*</span></label>
+            <input type="email" id="notifEmail" class="form-input" placeholder="admin@turingtech.com.ec" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="configBtn">Guardar</button>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Adjust Credits -->
-  <div class="modal-overlay" id="creditsModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Modificar Créditos</h3>
-        <button class="modal-close" onclick="closeCreditsModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="modalUserInfo" style="margin-bottom: 20px;"></div>
-        <div class="form-group">
-          <label for="creditAmount">Cantidad (positivo para sumar, negativo para restar)</label>
-          <input type="number" id="creditAmount" class="form-input" placeholder="Ej: 500 o -200">
-        </div>
-        <div class="form-group">
-          <label for="creditReason">Motivo</label>
-          <input type="text" id="creditReason" class="form-input" placeholder="Ej: Bonus por proyecto referido">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeCreditsModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="submitCreditsAdjustment()">Aplicar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Review Request -->
-  <div class="modal-overlay" id="reviewModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="reviewModalTitle">Revisar Solicitud</h3>
-        <button class="modal-close" onclick="closeReviewModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="reviewRequestInfo" style="margin-bottom: 20px;"></div>
-        <div class="form-group">
-          <label for="reviewNotes">Notas (opcional)</label>
-          <textarea id="reviewNotes" class="form-input" rows="3" placeholder="Notas para el usuario..."></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeReviewModal()">Cancelar</button>
-        <button class="btn btn-error" id="rejectBtn" onclick="submitReview('rejected')">Rechazar</button>
-        <button class="btn btn-success" id="approveBtn" onclick="submitReview('approved')">Aprobar</button>
-      </div>
-    </div>
-  </div>
+  <style>
+    .tab-btn {
+      padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      background: rgba(255,255,255,0.05); color: var(--color-text); border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;
+    }
+    .tab-btn:hover { color: white; border-color: rgba(255,107,0,0.3); }
+    .tab-btn.active { background: linear-gradient(135deg, #FF6B00, #E05E00); color: white; border-color: rgba(255,107,0,0.5); }
+  </style>
 
   <script src="/js/app.js"></script>
+  <script src="/js/background.js"></script>
   <script>
-    let currentUserId = null;
-    let currentRequestId = null;
-    let adminData = { users: [], pendingRequests: [], reviewedRequests: [], config: {} };
+    if (!API.isLoggedIn()) { window.location.href = '/login.html'; }
+    API.getMe().then(data => {
+      if (data.user.role !== 'admin') { window.location.href = '/dashboard.html'; }
+    }).catch(() => { window.location.href = '/login.html'; });
 
-    async function loadAdmin() {
-      if (!API.isLoggedIn()) {
-        window.location.href = '/login.html';
-        return;
-      }
-
-      try {
-        const me = await API.getMe();
-        if (me.user.role !== 'admin') {
-          window.location.href = '/dashboard.html';
-          return;
-        }
-
-        const [usersData, pendingData, approvedData, rejectedData, configData] = await Promise.all([
-          API.getAdminUsers(),
-          API.getAdminRequests('pending'),
-          API.getAdminRequests('approved'),
-          API.getAdminRequests('rejected'),
-          API.getAdminConfig(),
-        ]);
-
-        adminData.users = usersData.users;
-        adminData.pendingRequests = pendingData.requests;
-        adminData.reviewedRequests = [...approvedData.requests, ...rejectedData.requests];
-        adminData.config = configData.config;
-
-        renderAdmin();
-      } catch (err) {
-        showAlert(err.message, 'error');
-      }
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('content-' + tab).style.display = 'block';
+      document.getElementById('tab-' + tab).classList.add('active');
     }
 
-    function renderAdmin() {
-      // Pending badge
-      const pendingCount = adminData.pendingRequests.length;
-      const badge = document.getElementById('pendingBadge');
-      if (pendingCount > 0) {
-        badge.style.display = 'inline-block';
-        badge.textContent = pendingCount;
-      }
-
-      // Pending requests
-      document.getElementById('requestsList').innerHTML = adminData.pendingRequests.length > 0
-        ? adminData.pendingRequests.map(r => `
-          <div class="card mb-2">
-            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 16px;">
-              <div style="flex: 1; min-width: 250px;">
-                <div style="color: var(--color-white); font-size: 16px; font-weight: 700; margin-bottom: 4px;">${r.user_name}</div>
-                <div style="color: var(--color-gray); font-size: 14px; margin-bottom: 8px;">${r.user_email} ${r.user_company ? '| ' + r.user_company : ''}</div>
-                <div style="color: var(--color-text); font-size: 14px; margin-bottom: 8px;">${r.project_description}</div>
-                <div style="color: var(--color-gray); font-size: 12px;">Solicitado: ${formatDate(r.created_at)}</div>
+    async function loadRequests() {
+      try {
+        const data = await API.getAdminRequests();
+        const list = document.getElementById('requestsList');
+        if (!data.length) { list.innerHTML = '<p style="color: var(--color-gray); text-align: center; padding: 40px 0;">Sin solicitudes pendientes.</p>'; return; }
+        list.innerHTML = data.map(r => `
+          <div style="padding: 18px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <div style="color: white; font-weight: 700; font-size: 15px;">${r.project_name}</div>
+                <div style="color: var(--color-text); font-size: 13px; margin-top: 4px;">${r.project_description}</div>
+                <div style="color: var(--color-gray); font-size: 12px; margin-top: 8px;">
+                  Usuario: ${r.user_name} (${r.user_email}) | Créditos: <strong style="color: var(--color-accent);">${r.credits_requested}</strong>
+                </div>
               </div>
-              <div style="text-align: right;">
-                <div style="color: var(--color-accent); font-size: 24px; font-weight: 800; margin-bottom: 12px;">${r.requested_credits} créditos</div>
-                <button class="btn btn-success btn-small" onclick="openReviewModal(${r.id}, 'approve')">
-                  <i class="fa-solid fa-check"></i> Aprobar
-                </button>
-                <button class="btn btn-error btn-small" style="margin-top: 8px;" onclick="openReviewModal(${r.id}, 'reject')">
-                  <i class="fa-solid fa-times"></i> Rechazar
-                </button>
+              <div style="display: flex; gap: 8px;">
+                <button onclick="approveRequest(${r.id})" class="btn btn-success" style="padding: 8px 16px; font-size: 13px;">Aprobar</button>
+                <button onclick="rejectRequest(${r.id})" class="btn btn-danger" style="padding: 8px 16px; font-size: 13px;">Rechazar</button>
               </div>
             </div>
           </div>
-        `).join('')
-        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">No hay solicitudes pendientes</p>';
+        `).join('');
+      } catch (err) { showAlert(err.message, 'error'); }
+    }
 
-      // Reviewed requests
-      document.getElementById('reviewedRequestsList').innerHTML = adminData.reviewedRequests.length > 0
-        ? adminData.reviewedRequests.slice(0, 10).map(r => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+    async function loadUsers() {
+      try {
+        const data = await API.getAdminUsers();
+        const list = document.getElementById('usersList');
+        if (!data.length) { list.innerHTML = '<p style="color: var(--color-gray); text-align: center; padding: 40px 0;">Sin usuarios.</p>'; return; }
+        list.innerHTML = data.map(u => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
             <div>
-              <div style="color: var(--color-white); font-size: 14px; font-weight: 600;">${r.user_name} - ${r.requested_credits} créditos</div>
-              <div style="color: var(--color-gray); font-size: 12px;">${formatDate(r.created_at)}</div>
+              <div style="color: white; font-weight: 600; font-size: 14px;">${u.name} ${u.role === 'admin' ? '<span style="font-size:10px; background:rgba(255,107,0,0.2); color:#FF6B00; padding:2px 8px; border-radius:6px; margin-left:6px;">ADMIN</span>' : ''}</div>
+              <div style="color: var(--color-gray); font-size: 12px;">${u.email} | ${u.company || 'N/A'} | Verificado: ${u.is_verified ? '✓' : '✗'}</div>
             </div>
-            <span class="badge badge-${r.status === 'approved' ? 'success' : 'error'}">
-              ${r.status === 'approved' ? 'Aprobada' : 'Rechazada'}
-            </span>
+            <div style="text-align: right;">
+              <div style="font-weight: 700; color: var(--color-accent); font-size: 18px;">${(u.credits || 0).toLocaleString()}</div>
+              <div style="color: var(--color-gray); font-size: 11px;">créditos</div>
+            </div>
           </div>
-        `).join('')
-        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">No hay solicitudes revisadas</p>';
-
-      // Users table
-      document.getElementById('usersTable').innerHTML = adminData.users.map(u => `
-        <tr>
-          <td style="color: var(--color-white); font-weight: 600;">${u.name}</td>
-          <td>${u.email}</td>
-          <td>${u.company || '-'}</td>
-          <td class="text-right" style="color: var(--color-accent); font-weight: 700;">${u.credits}</td>
-          <td>
-            ${u.role === 'admin'
-              ? '<span class="badge badge-accent">Admin</span>'
-              : u.email_verified
-                ? '<span class="badge badge-success">Verificado</span>'
-                : '<span class="badge badge-warning">Pendiente</span>'}
-          </td>
-          <td>${u.pending_requests > 0 ? `<span class="badge badge-warning">${u.pending_requests}</span>` : '0'}</td>
-          <td>
-            ${u.role !== 'admin' ? `<button class="btn btn-outline btn-small" onclick="openCreditsModal(${u.id}, '${u.name}', '${u.email}', ${u.credits})">
-              <i class="fa-solid fa-coins"></i> Créditos
-            </button>` : '-'}
-          </td>
-        </tr>
-      `).join('');
-
-      // Config
-      document.getElementById('notificationEmail').value = adminData.config.notification_email || '';
-      document.getElementById('initialCredits').value = adminData.config.initial_credits || '2000';
+        `).join('');
+      } catch (err) { showAlert(err.message, 'error'); }
     }
 
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.closest('.tab').classList.add('active');
-      document.getElementById(`tab-${tabName}`).classList.add('active');
-    }
-
-    // Credits Modal
-    function openCreditsModal(id, name, email, credits) {
-      currentUserId = id;
-      document.getElementById('modalUserInfo').innerHTML = `
-        <div style="color: var(--color-white); font-weight: 600; font-size: 16px;">${name}</div>
-        <div style="color: var(--color-gray); font-size: 14px;">${email}</div>
-        <div style="color: var(--color-accent); font-size: 20px; font-weight: 700; margin-top: 8px;">Balance actual: ${credits} créditos</div>
-      `;
-      document.getElementById('creditAmount').value = '';
-      document.getElementById('creditReason').value = '';
-      document.getElementById('creditsModal').classList.add('show');
-    }
-
-    function closeCreditsModal() {
-      document.getElementById('creditsModal').classList.remove('show');
-      currentUserId = null;
-    }
-
-    async function submitCreditsAdjustment() {
-      const amount = document.getElementById('creditAmount').value;
-      const reason = document.getElementById('creditReason').value;
-
-      if (!amount || amount === '0') {
-        showAlert('Ingresa una cantidad válida', 'warning');
-        return;
-      }
-
+    async function loadConfig() {
       try {
-        await API.adjustUserCredits(currentUserId, amount, reason);
-        showAlert('Créditos actualizados correctamente', 'success');
-        closeCreditsModal();
-        await loadAdmin();
-      } catch (err) {
-        showAlert(err.message, 'error');
-      }
+        const data = await API.getAdminConfig();
+        if (data.notification_email) document.getElementById('notifEmail').value = data.notification_email;
+      } catch (err) {}
     }
 
-    // Review Modal
-    function openReviewModal(requestId, action) {
-      currentRequestId = requestId;
-      const request = adminData.pendingRequests.find(r => r.id === requestId);
-      if (!request) return;
-
-      document.getElementById('reviewModalTitle').textContent =
-        action === 'approve' ? 'Aprobar Solicitud' : 'Rechazar Solicitud';
-
-      document.getElementById('reviewRequestInfo').innerHTML = `
-        <div style="color: var(--color-white); font-weight: 600; font-size: 16px;">${request.user_name}</div>
-        <div style="color: var(--color-gray); font-size: 14px;">${request.user_email}</div>
-        <div style="color: var(--color-accent); font-size: 20px; font-weight: 700; margin-top: 8px;">${request.requested_credits} créditos</div>
-        <div style="color: var(--color-text); font-size: 14px; margin-top: 12px;">${request.project_description}</div>
-      `;
-
-      document.getElementById('reviewNotes').value = '';
-      document.getElementById('approveBtn').style.display = action === 'approve' ? 'inline-flex' : 'none';
-      document.getElementById('rejectBtn').style.display = action === 'reject' ? 'inline-flex' : 'none';
-      document.getElementById('reviewModal').classList.add('show');
+    async function approveRequest(id) {
+      try { await API.approveRequest(id); showAlert('Solicitud aprobada. Email enviado al usuario.', 'success'); loadRequests(); }
+      catch (err) { showAlert(err.message, 'error'); }
     }
-
-    function closeReviewModal() {
-      document.getElementById('reviewModal').classList.remove('show');
-      currentRequestId = null;
+    async function rejectRequest(id) {
+      try { await API.rejectRequest(id); showAlert('Solicitud rechazada. Email enviado al usuario.', 'success'); loadRequests(); }
+      catch (err) { showAlert(err.message, 'error'); }
     }
-
-    async function submitReview(action) {
-      const notes = document.getElementById('reviewNotes').value;
-
+    async function handleModifyCredits(event) {
+      event.preventDefault();
+      const btn = document.getElementById('creditsBtn');
+      btn.disabled = true; btn.textContent = 'Aplicando...';
       try {
-        if (action === 'approved') {
-          await API.approveRequest(currentRequestId, notes);
-          showAlert('Solicitud aprobada correctamente', 'success');
-        } else {
-          await API.rejectRequest(currentRequestId, notes);
-          showAlert('Solicitud rechazada', 'info');
-        }
-        closeReviewModal();
-        await loadAdmin();
-      } catch (err) {
-        showAlert(err.message, 'error');
-      }
+        await API.modifyCredits(document.getElementById('userEmail').value, parseInt(document.getElementById('creditAmount').value), document.getElementById('creditReason').value);
+        showAlert('Créditos modificados correctamente.', 'success');
+        document.getElementById('creditsForm').reset();
+      } catch (err) { showAlert(err.message, 'error'); }
+      btn.disabled = false; btn.textContent = 'Aplicar';
     }
-
-    // Config
-    async function handleSaveConfig(event) {
+    async function handleUpdateConfig(event) {
       event.preventDefault();
       const btn = document.getElementById('configBtn');
-      const btnText = document.getElementById('configBtnText');
-      const email = document.getElementById('notificationEmail').value;
-      const credits = document.getElementById('initialCredits').value;
-
-      btn.disabled = true;
-      btnText.innerHTML = '<span class="spinner"></span>';
-
+      btn.disabled = true; btn.textContent = 'Guardando...';
       try {
-        await API.updateAdminConfig('notification_email', email);
-        await API.updateAdminConfig('initial_credits', credits);
-        showAlert('Configuración guardada correctamente', 'success');
-      } catch (err) {
-        showAlert(err.message, 'error');
-      }
-
-      btn.disabled = false;
-      btnText.textContent = 'Guardar Configuración';
+        await API.updateConfig(document.getElementById('notifEmail').value);
+        showAlert('Configuración guardada.', 'success');
+      } catch (err) { showAlert(err.message, 'error'); }
+      btn.disabled = false; btn.textContent = 'Guardar';
     }
 
-    loadAdmin();
+    loadRequests(); loadUsers(); loadConfig();
   </script>
 </body>
 </html>

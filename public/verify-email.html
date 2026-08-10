@@ -6,13 +6,50 @@
   <title>Verificar Email - TURINGTECH Ecuador</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="favicon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/css/app.css">
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+      colors: { techDark: '#050C1F', accentOrange: '#FF6B00' },
+      boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)' }
+    }}}
+  </script>
 </head>
-<body>
+<body class="text-gray-200 antialiased relative">
+
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+  <div class="fixed inset-0 overflow-hidden z-0">
+    <canvas id="bg-canvas"></canvas>
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/20 to-[#050C1F]/40 pointer-events-none"></div>
+  </div>
+
+  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-3 cursor-pointer">
+        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+        <div>
+          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
+        </div>
+      </a>
+      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+        <a href="/catalogo.html" class="text-gray-300 hover:text-accentOrange transition-colors">Catálogo</a>
+        <a href="/login.html" class="text-accentOrange hover:text-white transition-colors flex items-center gap-1">
+          <i class="fa-solid fa-user text-xs"></i><span>Iniciar Sesión</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-logo">
@@ -20,14 +57,11 @@
         <h1>TURINGTECH</h1>
         <p>Ecuador</p>
       </div>
-
       <div id="alert-container"></div>
-
       <div id="loading" style="text-align: center; padding: 40px 0;">
         <span class="spinner" style="width: 40px; height: 40px; border-width: 4px;"></span>
         <p style="color: var(--color-gray); margin-top: 16px;">Verificando tu email...</p>
       </div>
-
       <div id="success" style="display: none; text-align: center;">
         <div style="width: 80px; height: 80px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
           <i class="fa-solid fa-circle-check" style="font-size: 40px; color: var(--color-success);"></i>
@@ -38,7 +72,6 @@
         </p>
         <a href="/login.html" class="btn btn-primary btn-block btn-large">Iniciar Sesión</a>
       </div>
-
       <div id="error" style="display: none; text-align: center;">
         <div style="width: 80px; height: 80px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
           <i class="fa-solid fa-circle-xmark" style="font-size: 40px; color: var(--color-error);"></i>
@@ -51,24 +84,21 @@
   </div>
 
   <script src="/js/app.js"></script>
+  <script src="/js/background.js"></script>
   <script>
     async function verifyEmail() {
       const params = new URLSearchParams(window.location.search);
       const token = params.get('token');
-
       if (!token) {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('error').style.display = 'block';
         document.getElementById('errorText').textContent = 'No se proporcionó token de verificación.';
         return;
       }
-
       try {
         const response = await fetch(`/api/auth/verify?token=${token}`);
         const data = await response.json();
-
         document.getElementById('loading').style.display = 'none';
-
         if (response.ok) {
           document.getElementById('success').style.display = 'block';
         } else {
@@ -81,7 +111,6 @@
         document.getElementById('errorText').textContent = 'Error de conexión. Inténtalo más tarde.';
       }
     }
-
     verifyEmail();
   </script>
 </body>
