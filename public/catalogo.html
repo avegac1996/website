@@ -35,7 +35,8 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         * {
@@ -44,21 +45,115 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --techDark: #050C1F;
+            --techCard: rgba(11, 22, 49, 0.7);
+            --accentOrange: #FF6B00;
+            --accentOrangeHover: #E05E00;
+            --brandNavyLight: #111E3D;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            background-color: var(--techDark);
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(11, 30, 68, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(17, 30, 61, 0.25) 0%, transparent 50%),
+                radial-gradient(ellipse at 40% 100%, rgba(8, 18, 40, 0.35) 0%, transparent 60%),
+                linear-gradient(180deg, #050C1F 0%, #060E22 40%, #050C1F 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 40px 20px 140px 20px;
-            overflow-x: hidden;
+            padding: 100px 20px 140px 20px;
+            animation: pageFadeIn 0.6s ease-out;
+        }
+
+        @keyframes pageFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Orbes de luz flotantes en el fondo */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.35;
+        }
+        .bg-orb-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 107, 0, 0.15) 0%, transparent 70%);
+            top: -150px;
+            right: -100px;
+            animation: orbFloat1 20s ease-in-out infinite;
+        }
+        .bg-orb-2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(30, 64, 175, 0.18) 0%, transparent 70%);
+            bottom: 10%;
+            left: -100px;
+            animation: orbFloat2 25s ease-in-out infinite;
+        }
+        .bg-orb-3 {
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            animation: orbFloat3 30s ease-in-out infinite;
+        }
+        @keyframes orbFloat1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-60px, 80px) scale(1.1); }
+            66% { transform: translate(40px, -40px) scale(0.95); }
+        }
+        @keyframes orbFloat2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(80px, -60px) scale(1.15); }
+            66% { transform: translate(-30px, 40px) scale(0.9); }
+        }
+        @keyframes orbFloat3 {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-30%, -60%) scale(1.2); }
+        }
+
+        /* Grid sutil de fondo */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+            mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+        }
+
+        /* Canvas de fondo global - capa intermedia para verse dentro de las páginas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
         }
 
         .catalog-container {
             max-width: 1800px;
             width: 100%;
             position: relative;
+            z-index: 2;
         }
 
         /* Book container - simula un libro abierto */
@@ -94,34 +189,40 @@
             width: 100%;
             max-width: 650px;
             min-height: 85vh;
-            background: white;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            background: rgba(11, 22, 49, 0.04);
+            backdrop-filter: blur(2px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
             padding: 50px 45px;
             overflow-y: auto;
             flex: 1;
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            z-index: 3;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
         }
 
         .page.left-page {
             border-radius: 8px 0 0 8px;
-            border-right: 1px solid #e2e8f0;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .page.right-page {
             border-radius: 0 8px 8px 0;
-            border-left: 1px solid #e2e8f0;
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .page.single-page {
             border-radius: 12px;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.08);
             max-width: 800px;
         }
 
         /* Portada - siempre sola */
         .portada {
             background: 
-                linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%),
-                url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(148,163,184,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+                linear-gradient(135deg, rgba(5, 12, 31, 0.125) 0%, rgba(17, 30, 61, 0.1) 100%),
+                url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,107,0,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
             color: white;
             display: flex;
             flex-direction: column;
@@ -158,17 +259,18 @@
         }
 
         .logo-container {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            background: rgba(255, 255, 255, 0.05);
             padding: 30px 35px;
             border-radius: 24px;
             margin-bottom: 40px;
             box-shadow: 
                 0 20px 60px rgba(0, 0, 0, 0.5),
-                0 0 0 1px rgba(249, 115, 22, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+                0 0 0 1px rgba(255, 107, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
             display: inline-block;
             position: relative;
             animation: floatLogo 3s ease-in-out infinite;
+            border: 1px solid rgba(255, 107, 0, 0.2);
         }
         
         @keyframes floatLogo {
@@ -211,7 +313,7 @@
         }
         
         .portada h1 .highlight {
-            background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+            background: linear-gradient(135deg, #FF6B00 0%, #fb923c 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -226,11 +328,11 @@
             color: #ffffff !important;
             font-weight: 500;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(251, 146, 60, 0.1) 100%);
+            background: linear-gradient(135deg, rgba(255, 107, 0, 0.12) 0%, rgba(255, 107, 0, 0.06) 100%);
             padding: 30px 40px;
             border-radius: 20px;
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(249, 115, 22, 0.3);
+            border: 1px solid rgba(255, 107, 0, 0.25);
             box-shadow: 
                 0 10px 40px rgba(0, 0, 0, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -247,21 +349,22 @@
             height: 3px;
             background: linear-gradient(90deg, 
                 transparent 0%, 
-                rgba(249, 115, 22, 0.8) 50%, 
+                rgba(255, 107, 0, 0.8) 50%, 
                 transparent 100%);
         }
         
 
         .portada-footer {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(20px);
             padding: 25px 40px;
             border-radius: 20px;
             font-size: 15px;
             margin-top: 40px;
-            border: 1px solid rgba(249, 115, 22, 0.2);
+            border: 1px solid rgba(255, 107, 0, 0.2);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             max-width: 700px;
+            color: #e2e8f0;
         }
         
         .stats-grid {
@@ -277,21 +380,21 @@
             padding: 20px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(10px);
             transition: transform 0.3s, box-shadow 0.3s;
         }
         
         .stat-item:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(249, 115, 22, 0.2);
-            border-color: rgba(249, 115, 22, 0.3);
+            box-shadow: 0 10px 30px rgba(255, 107, 0, 0.2);
+            border-color: rgba(255, 107, 0, 0.3);
         }
         
         .stat-number {
             font-size: 32px;
             font-weight: 900;
-            color: #f97316;
+            color: #FF6B00;
             margin-bottom: 5px;
             display: block;
         }
@@ -306,33 +409,34 @@
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            background: linear-gradient(135deg, #FF6B00 0%, #E05E00 100%);
             color: white;
             padding: 16px 32px;
             border-radius: 50px;
             font-weight: 700;
             font-size: 16px;
             margin-top: 30px;
-            box-shadow: 0 15px 40px rgba(249, 115, 22, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 40px rgba(255, 107, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s;
             cursor: pointer;
         }
         
         .cta-badge:hover {
             transform: translateY(-3px);
-            box-shadow: 0 20px 50px rgba(249, 115, 22, 0.6);
+            box-shadow: 0 20px 50px rgba(255, 107, 0, 0.6);
         }
 
         /* Contraportada */
         .contraportada {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            background: linear-gradient(135deg, rgba(17, 30, 61, 0.112) 0%, rgba(5, 12, 31, 0.088) 100%);
             color: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
             text-align: center;
             border-radius: 12px !important;
+            border: 1px solid rgba(255, 107, 0, 0.2);
         }
 
         .contraportada h2 {
@@ -340,6 +444,7 @@
             font-weight: 900;
             margin-bottom: 25px;
             line-height: 1.3;
+            color: #ffffff;
         }
 
         .contraportada > p {
@@ -350,28 +455,31 @@
             max-width: 600px;
             margin-left: auto;
             margin-right: auto;
+            color: #cbd5e1;
         }
 
         .cta-button {
-            background: white;
-            color: #f97316;
+            background: linear-gradient(135deg, #FF6B00 0%, #E05E00 100%);
+            color: white;
             padding: 18px 45px;
             border-radius: 35px;
             font-weight: 700;
             font-size: 19px;
             display: inline-block;
             margin: 20px auto;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 15px 40px rgba(255, 107, 0, 0.4);
             cursor: pointer;
-            transition: transform 0.3s;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .cta-button:hover {
             transform: scale(1.05);
+            box-shadow: 0 20px 50px rgba(255, 107, 0, 0.6);
         }
 
         .contact-info {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             padding: 30px 35px;
             border-radius: 20px;
@@ -379,7 +487,8 @@
             max-width: 550px;
             margin-left: auto;
             margin-right: auto;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
         }
 
         .contact-info div {
@@ -389,14 +498,16 @@
 
         .contact-info strong {
             font-weight: 700;
+            color: #ffffff;
         }
 
         .contact-logo {
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
             display: inline-block;
             padding: 15px;
             border-radius: 12px;
             margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .contact-logo img {
@@ -409,17 +520,18 @@
         .page-title {
             font-size: 34px;
             font-weight: 800;
-            color: #0f172a;
+            color: #ffffff;
             margin-bottom: 20px;
-            border-bottom: 5px solid #f97316;
+            border-bottom: 5px solid var(--accentOrange);
             padding-bottom: 10px;
             display: inline-block;
+            font-family: 'Barlow', sans-serif;
         }
 
         .page-subtitle {
             font-size: 17px;
             font-weight: 600;
-            color: #f97316;
+            color: var(--accentOrange);
             margin-bottom: 25px;
             text-transform: uppercase;
             letter-spacing: 1.2px;
@@ -428,74 +540,79 @@
         .page p {
             font-size: 16px;
             line-height: 1.8;
-            color: #334155;
+            color: #cbd5e1;
             margin-bottom: 20px;
         }
 
         .service-box {
-            background: #f8fafc;
-            border-left: 5px solid #f97316;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 5px solid var(--accentOrange);
             padding: 22px 25px;
             margin-bottom: 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 5px solid var(--accentOrange);
         }
 
         .service-box h3 {
             font-size: 18px;
             font-weight: 700;
-            color: #0f172a;
+            color: #ffffff;
             margin-bottom: 10px;
         }
 
         .service-box p {
             font-size: 15px;
-            color: #475569;
+            color: #94a3b8;
             line-height: 1.7;
             margin: 0;
         }
 
         .promise-box {
-            background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+            background: rgba(255, 107, 0, 0.08);
             padding: 18px 22px;
             border-radius: 12px;
             margin: 15px 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 107, 0, 0.2);
         }
 
         .promise-box h4 {
             font-size: 17px;
             font-weight: 700;
-            color: #ea580c;
+            color: var(--accentOrange);
             margin-bottom: 6px;
         }
 
         .promise-box p {
             font-size: 14px;
-            color: #334155;
+            color: #cbd5e1;
             margin: 0;
             line-height: 1.6;
         }
 
         .methodology-step {
-            background: #f1f5f9;
+            background: rgba(255, 255, 255, 0.05);
             padding: 18px 22px;
             border-radius: 12px;
             margin-bottom: 18px;
-            border-left: 5px solid #f97316;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid var(--accentOrange);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 5px solid var(--accentOrange);
         }
 
         .methodology-step h4 {
             font-size: 17px;
             font-weight: 700;
-            color: #0f172a;
+            color: #ffffff;
             margin-bottom: 8px;
         }
 
         .methodology-step p {
             font-size: 14px;
-            color: #475569;
+            color: #94a3b8;
             margin: 0;
             line-height: 1.7;
         }
@@ -509,21 +626,21 @@
         }
 
         .brand-logo {
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
             padding: 10px 18px;
             border-radius: 8px;
             font-weight: 700;
-            color: #64748b;
+            color: #94a3b8;
             font-size: 13px;
-            border: 2px solid #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .icon-circle {
             display: inline-block;
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            background: linear-gradient(135deg, #FF6B00 0%, #E05E00 100%);
             padding: 30px;
             border-radius: 50%;
-            box-shadow: 0 15px 40px rgba(249, 115, 22, 0.4);
+            box-shadow: 0 15px 40px rgba(255, 107, 0, 0.4);
             margin: 25px 0;
         }
 
@@ -544,12 +661,13 @@
         }
 
         .highlight-box {
-            background: #0f172a;
+            background: rgba(255, 107, 0, 0.1);
             color: white;
             padding: 20px;
             border-radius: 12px;
             margin-top: 25px;
             text-align: center;
+            border: 1px solid rgba(255, 107, 0, 0.2);
         }
 
         .highlight-box p {
@@ -560,40 +678,241 @@
         }
 
         .highlight-box span {
-            color: #f97316;
+            color: var(--accentOrange);
             font-size: 18px;
             font-weight: 800;
         }
 
         .info-box {
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            background: rgba(59, 130, 246, 0.1);
             padding: 18px;
             border-radius: 12px;
             margin-top: 20px;
             text-align: center;
-            border: 2px solid #3b82f6;
+            border: 2px solid rgba(59, 130, 246, 0.4);
         }
 
         .info-box p {
             font-size: 14px;
             font-weight: 700;
-            color: #1e40af;
+            color: #93c5fd;
             margin: 0;
         }
 
         .warning-box {
             margin-top: 20px;
             padding: 15px;
-            background: #fef3c7;
+            background: rgba(245, 158, 11, 0.1);
             border-radius: 10px;
             border-left: 4px solid #f59e0b;
         }
 
         .warning-box p {
             font-size: 13px;
-            color: #92400e;
+            color: #fde68a;
             margin: 0;
             line-height: 1.6;
+        }
+
+        /* Header de navegación - estilo turing.html */
+        .site-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(11, 22, 49, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            height: 80px;
+        }
+
+        .site-header .header-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .site-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            text-decoration: none;
+        }
+
+        .site-header .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: 0 0 20px rgba(255, 107, 0, 0.3);
+        }
+
+        .site-header .logo-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .site-header .logo-text .brand {
+            font-weight: 800;
+            font-size: 20px;
+            letter-spacing: 1px;
+            font-family: 'Barlow', sans-serif;
+            color: white;
+        }
+
+        .site-header .logo-text .subbrand {
+            font-size: 11px;
+            color: #FF6B00;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            margin-top: 2px;
+        }
+
+        .site-header .desktop-nav {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .site-header .desktop-nav a {
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .site-header .desktop-nav a:hover,
+        .site-header .desktop-nav a.active {
+            color: #FF6B00;
+        }
+
+        .site-header .desktop-nav .divider {
+            color: rgba(255, 255, 255, 0.1);
+        }
+
+        .site-header .desktop-nav .badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        .site-header .desktop-nav .badge i {
+            color: #FF6B00;
+        }
+
+        .site-header .cta-button-header {
+            background: linear-gradient(135deg, #FF6B00 0%, #E05E00 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .site-header .cta-button-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 0, 0.5);
+        }
+
+        .site-header .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .site-header .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 80px;
+            left: 0;
+            right: 0;
+            background: rgba(11, 22, 49, 0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px 24px;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .site-header .mobile-menu.open {
+            display: flex;
+        }
+
+        .site-header .mobile-menu a {
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+            padding: 8px 0;
+        }
+
+        .site-header .mobile-menu a.active {
+            color: #FF6B00;
+        }
+
+        .site-header .mobile-menu .cta-button-header {
+            justify-content: center;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .site-header .desktop-nav,
+            .site-header .cta-button-header {
+                display: none;
+            }
+            .site-header .mobile-menu-btn {
+                display: block;
+            }
+            .site-header .mobile-menu .cta-button-header {
+                display: flex;
+            }
+        }
+
+        /* Ajustes página de experiencia para tema oscuro */
+        .page[data-page="8"] h3 {
+            color: #ffffff !important;
+        }
+
+        .page[data-page="8"] div[style*="background: white"] {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        .page[data-page="8"] div[style*="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)"],
+        .page[data-page="8"] div[style*="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)"],
+        .page[data-page="8"] div[style*="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"] {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        .page[data-page="8"] p {
+            color: #94a3b8 !important;
+        }
+
+        .page[data-page="8"] svg[stroke="currentColor"] {
+            color: var(--accentOrange);
         }
 
         /* Logo hover effects */
@@ -640,9 +959,9 @@
             height: 50%;
             background: linear-gradient(
                 90deg,
-                #e2e8f0 0%,
-                #f1f5f9 50%,
-                #e2e8f0 100%
+                rgba(255, 255, 255, 0.05) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.05) 100%
             );
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
@@ -675,7 +994,7 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(5, 12, 31, 0.95);
             backdrop-filter: blur(10px);
             padding: 15px 30px;
             border-radius: 50px;
@@ -683,11 +1002,11 @@
             gap: 15px;
             align-items: center;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .nav-btn {
-            background: #f97316;
+            background: linear-gradient(135deg, #FF6B00 0%, #E05E00 100%);
             color: white;
             border: none;
             padding: 12px 24px;
@@ -699,12 +1018,13 @@
             align-items: center;
             gap: 8px;
             font-size: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .nav-btn:hover:not(:disabled) {
-            background: #ea580c;
+            background: linear-gradient(135deg, #E05E00 0%, #FF6B00 100%);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(249, 115, 22, 0.4);
+            box-shadow: 0 5px 15px rgba(255, 107, 0, 0.4);
         }
 
         .nav-btn:disabled {
@@ -735,7 +1055,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: var(--techDark);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -751,8 +1071,8 @@
         .spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid rgba(249, 115, 22, 0.2);
-            border-top-color: #f97316;
+            border: 4px solid rgba(255, 107, 0, 0.2);
+            border-top-color: #FF6B00;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -978,6 +1298,62 @@
     </style>
 </head>
 <body>
+    <!-- Fondo dinámico: grid sutil + orbes de luz + canvas de partículas -->
+    <div class="bg-grid"></div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+
+    <!-- Canvas de partículas interactivo global -->
+    <div class="fixed inset-0 overflow-hidden z-0">
+        <canvas id="bg-canvas"></canvas>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/10 to-[#050C1F]/25 pointer-events-none"></div>
+    </div>
+
+    <!-- Header de navegación -->
+    <header class="site-header">
+        <div class="header-container">
+            <a href="/" class="logo">
+                <img src="logo-turingtech-nuevo.png" alt="TURINGTECH Logo">
+                <div class="logo-text">
+                    <span class="brand">TURING</span>
+                    <span class="subbrand">TECH ECUADOR</span>
+                </div>
+            </a>
+
+            <nav class="desktop-nav">
+                <a href="/">Inicio</a>
+                <a href="/#servicios">Servicios</a>
+                <a href="/#metodo">Método Turing</a>
+                <a href="/#casos">Casos de Éxito</a>
+                <a href="/catalogo.html" class="active">Catálogo</a>
+                <a href="/login.html">Iniciar Sesión</a>
+            </nav>
+
+            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="cta-button-header">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Diagnóstico Técnico Gratuito</span>
+            </a>
+
+            <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+
+        <div class="mobile-menu" id="mobile-menu">
+            <a href="/" onclick="toggleMobileMenu()">Inicio</a>
+            <a href="/#servicios" onclick="toggleMobileMenu()">Servicios</a>
+            <a href="/#metodo" onclick="toggleMobileMenu()">Método Turing</a>
+            <a href="/#casos" onclick="toggleMobileMenu()">Casos de Éxito</a>
+            <a href="/catalogo.html" class="active" onclick="toggleMobileMenu()">Catálogo</a>
+            <a href="/login.html" onclick="toggleMobileMenu()">Iniciar Sesión</a>
+            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="cta-button-header" onclick="toggleMobileMenu()">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Diagnóstico Técnico Gratuito</span>
+            </a>
+        </div>
+    </header>
+
     <!-- Loading Screen -->
     <div id="loading" class="loading">
         <div class="spinner"></div>
@@ -1015,7 +1391,7 @@
             <div class="portada-content">
                 <div class="logo-container">
                     <div class="trust-badge">✓ CERTIFICADOS</div>
-                    <img src="LogoEmpresa.jpg" alt="TURINGTECH Logo">
+                    <img src="logo-turingtech-nuevo.png" alt="TURINGTECH Logo">
                 </div>
                 
                 <h1>
@@ -1065,7 +1441,7 @@
             
             <p>En <strong>TURINGTECH</strong>, entendemos que la tecnología en las empresas modernas no es un lujo, es una necesidad crítica. Trasladamos la rigurosidad de los entornos corporativos más exigentes a su industria. Conocemos de primera mano los desafíos de la integración digital, la necesidad de sistemas seguros y la urgencia de maximizar la eficiencia operativa.</p>
 
-            <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 25px 0 15px 0;">Nuestra Promesa:</h3>
+            <h3 style="font-size: 20px; font-weight: 700; color: #ffffff; margin: 25px 0 15px 0;">Nuestra Promesa:</h3>
 
             <div class="promise-box">
                 <h4>💡 Eficiencia</h4>
@@ -1266,70 +1642,70 @@
             <h2 class="page-title">Nuestra Experiencia</h2>
             <p class="page-subtitle">Respaldo comprobado en el mercado ecuatoriano</p>
             
-            <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 25px; border-radius: 16px; margin-bottom: 30px; border-left: 5px solid #f97316;">
-                <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
-                    <svg style="width: 28px; height: 28px; color: #f97316;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 16px; margin-bottom: 30px; border-left: 5px solid #FF6B00; border: 1px solid rgba(255,255,255,0.08); border-left: 5px solid #FF6B00;">
+                <h3 style="font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                    <svg style="width: 28px; height: 28px; color: #FF6B00;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                     </svg>
                     Empresas que Confían en Nosotros
                 </h3>
-                <p style="font-size: 14px; color: #475569; margin-bottom: 20px; line-height: 1.6;">
+                <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px; line-height: 1.6;">
                     Hemos implementado soluciones tecnológicas para empresas líderes en diversos sectores del Ecuador.
                 </p>
                 
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
                     <!--
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaEmpresa/Cooperativa_Santa_Rosa.png" alt="Cooperativa Santa Rosa" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
                     --> 
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaEmpresa/Mutualista_Ambato.png" alt="Mutualista Ambato" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaEmpresa/Gestcobra.png" alt="Gestcobra" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaEmpresa/MultigestionAmbato.png" alt="Multigestión Ambato" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaEmpresa/GV_Marmol.png" alt="GV Mármol" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
                 </div>
             </div>
 
-            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 25px; border-radius: 16px; border-left: 5px solid #3b82f6;">
-                <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+            <div style="background: rgba(59,130,246,0.1); padding: 25px; border-radius: 16px; border-left: 5px solid #3b82f6; border: 1px solid rgba(59,130,246,0.2); border-left: 5px solid #3b82f6;">
+                <h3 style="font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
                     <svg style="width: 28px; height: 28px; color: #3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                     </svg>
                     Experiencia de Nuestro Equipo
                 </h3>
-                <p style="font-size: 14px; color: #475569; margin-bottom: 20px; line-height: 1.6;">
+                <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px; line-height: 1.6;">
                     Nuestros colaboradores cuentan con trayectoria profesional en instituciones de prestigio nacional.
                 </p>
                 
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaColaboradores/Banco_Pichincha.png" alt="Banco Pichincha" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaColaboradores/Produbanco.png" alt="Produbanco" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaColaboradores/Banco_General_Rumiñahui.png" alt="Banco General Rumiñahui" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaColaboradores/Corposano.png" alt="Corposano" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
-                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
                         <img src="LogosEmpresas/ExperienciaColaboradores/Confiamed.png" alt="Confiamed" style="max-width: 100%; max-height: 60px; object-fit: contain;">
                     </div>
                 </div>
             </div>
 
-            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px 25px; border-radius: 12px; margin-top: 25px; text-align: center; border: 2px solid #f59e0b;">
-                <p style="font-size: 15px; font-weight: 700; color: #92400e; margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <div style="background: rgba(245,158,11,0.1); padding: 20px 25px; border-radius: 12px; margin-top: 25px; text-align: center; border: 2px solid #f59e0b;">
+                <p style="font-size: 15px; font-weight: 700; color: #fde68a; margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px;">
                     <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                     </svg>
@@ -1356,7 +1732,7 @@
                 <div><strong>🌐 Web:</strong> <a href="https://turingtech.com.ec" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">www.turingtech.com.ec</a></div>
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
                     <div class="contact-logo">
-                        <img src="LogoEmpresa.jpg" alt="TURINGTECH">
+                        <img src="logo-turingtech-nuevo.png" alt="TURINGTECH">
                     </div>
                 </div>
             </div>
@@ -1597,7 +1973,154 @@
         };
         
         // Ejecutar al inicio
-        setTimeout(handleImageLoading, 500);
+        setTimeout(handleImageLoading, 200);
+
+        // Menú móvil del header
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileMenu) {
+                mobileMenu.classList.toggle('open');
+            }
+        }
+
+        // --- FONDO DINÁMICO: CANVAS DE PARTÍCULAS (de turing.html) ---
+        const canvas = document.getElementById('bg-canvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let mouse = { x: null, y: null, radius: 150 };
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                initParticles();
+            }
+
+            class Particle {
+                constructor(x, y, vx, vy, size) {
+                    this.x = x;
+                    this.y = y;
+                    this.vx = vx;
+                    this.vy = vy;
+                    this.size = size;
+                    this.baseSize = size;
+                    this.isOrange = Math.random() > 0.4;
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    if (this.isOrange) {
+                        ctx.fillStyle = 'rgba(255, 107, 0, 0.85)';
+                        ctx.shadowColor = 'rgba(255, 107, 0, 0.9)';
+                    } else {
+                        ctx.fillStyle = 'rgba(59, 130, 246, 0.75)';
+                        ctx.shadowColor = 'rgba(59, 130, 246, 0.8)';
+                    }
+                    ctx.shadowBlur = 12;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                    if (mouse.x !== null && mouse.y !== null) {
+                        let dx = this.x - mouse.x;
+                        let dy = this.y - mouse.y;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < mouse.radius) {
+                            const force = (mouse.radius - distance) / mouse.radius;
+                            const angle = Math.atan2(dy, dx);
+                            this.x += Math.cos(angle) * force * 3;
+                            this.y += Math.sin(angle) * force * 3;
+                            this.size = this.baseSize * (1 + force * 1.5);
+                        } else {
+                            if (this.size > this.baseSize) this.size -= 0.1;
+                        }
+                    }
+                }
+            }
+
+            function initParticles() {
+                particles = [];
+                const totalParticles = window.innerWidth < 768 ? 40 : 100;
+                for (let i = 0; i < totalParticles; i++) {
+                    const size = Math.random() * 2 + 1;
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const vx = (Math.random() - 0.5) * 0.4;
+                    const vy = (Math.random() - 0.5) * 0.4;
+                    particles.push(new Particle(x, y, vx, vy, size));
+                }
+            }
+
+            function connectParticles() {
+                const maxDistance = window.innerWidth < 768 ? 90 : 120;
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < maxDistance) {
+                            const alpha = (1 - distance / maxDistance) * 0.5;
+                            ctx.strokeStyle = particles[i].isOrange
+                                ? `rgba(255, 107, 0, ${alpha})`
+                                : `rgba(59, 130, 246, ${alpha})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            function animateCanvas() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+                connectParticles();
+                requestAnimationFrame(animateCanvas);
+            }
+
+            window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = e.clientX - rect.left;
+                mouse.y = e.clientY - rect.top;
+            });
+
+            window.addEventListener('mouseleave', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    const rect = canvas.getBoundingClientRect();
+                    mouse.x = e.touches[0].clientX - rect.left;
+                    mouse.y = e.touches[0].clientY - rect.top;
+                }
+            });
+
+            window.addEventListener('touchend', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+
+            resizeCanvas();
+            animateCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        }
     </script>
 </body>
 </html>
