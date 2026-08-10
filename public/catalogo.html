@@ -37,8 +37,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+                colors: { techDark: '#050C1F', techCard: 'rgba(11, 22, 49, 0.7)', accentOrange: '#FF6B00', accentOrangeHover: '#E05E00', brandNavyLight: '#111E3D' },
+                boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)', 'neon-blue': '0 0 20px rgba(59, 130, 246, 0.2)', 'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.5)' }
+            }}
+        }
+    </script>
     <style>
+        .glass-panel { background: rgba(11, 22, 49, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
         * {
             margin: 0;
             padding: 0;
@@ -1310,54 +1320,56 @@
         <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/10 to-[#050C1F]/25 pointer-events-none"></div>
     </div>
 
-    <!-- Header de navegación -->
-    <header class="site-header">
-        <div class="header-container">
-            <a href="/" class="logo">
-                <img src="logo-turingtech-nuevo.png" alt="TURINGTECH Logo">
-                <div class="logo-text">
-                    <span class="brand">TURING</span>
-                    <span class="subbrand">TECH ECUADOR</span>
+    <!-- BARRA DE NAVEGACIÓN HEADER -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <a href="/" class="flex items-center space-x-3 cursor-pointer">
+                <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+                <div>
+                    <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+                    <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
                 </div>
             </a>
 
-            <nav class="desktop-nav">
-                <a href="/">Inicio</a>
-                <a href="/#servicios">Servicios</a>
-                <a href="/#metodo">Método Turing</a>
-                <a href="/#casos">Casos de Éxito</a>
-                <a href="/catalogo.html" class="active">Catálogo</a>
-                <a href="/login.html">Iniciar Sesión</a>
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+                <a href="/#servicios" class="text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
+                <a href="/#metodo" class="text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
+                <a href="/#casos" class="text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
+                <a href="/catalogo.html" class="text-accentOrange hover:text-white transition-colors">Catálogo</a>
+                <a href="/login.html" class="text-gray-300 hover:text-accentOrange transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-user text-xs"></i>
+                    <span>Iniciar Sesión</span>
+                </a>
             </nav>
 
-            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="cta-button-header">
-                <i class="fa-solid fa-calendar-check"></i>
-                <span>Diagnóstico Técnico Gratuito</span>
-            </a>
+            <div class="hidden md:flex items-center space-x-4">
+                <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-neon-orange duration-300 flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-check text-xs"></i>
+                    <span>Diagnóstico Técnico Gratuito</span>
+                </a>
+            </div>
 
-            <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">
-                <i class="fa-solid fa-bars"></i>
-            </button>
+            <div class="md:hidden">
+                <button id="mobile-menu-btn" class="p-2 text-gray-400 hover:text-white focus:outline-none">
+                    <i class="fa-solid fa-bars text-2xl"></i>
+                </button>
+            </div>
         </div>
 
-        <div class="mobile-menu" id="mobile-menu">
-            <a href="/" onclick="toggleMobileMenu()">Inicio</a>
-            <a href="/#servicios" onclick="toggleMobileMenu()">Servicios</a>
-            <a href="/#metodo" onclick="toggleMobileMenu()">Método Turing</a>
-            <a href="/#casos" onclick="toggleMobileMenu()">Casos de Éxito</a>
-            <a href="/catalogo.html" class="active" onclick="toggleMobileMenu()">Catálogo</a>
-            <a href="/login.html" onclick="toggleMobileMenu()">Iniciar Sesión</a>
-            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="cta-button-header" onclick="toggleMobileMenu()">
+        <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
+            <a href="/" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Inicio</a>
+            <a href="/#servicios" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Servicios</a>
+            <a href="/#metodo" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Método Turing</a>
+            <a href="/#casos" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Casos de Éxito</a>
+            <a href="/catalogo.html" class="block text-accentOrange font-medium" onclick="toggleMobileMenu()">Catálogo</a>
+            <a href="/login.html" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Iniciar Sesión</a>
+            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="block w-full py-3 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 text-white font-semibold text-sm flex items-center justify-center space-x-2">
                 <i class="fa-solid fa-calendar-check"></i>
-                <span>Diagnóstico Técnico Gratuito</span>
+                <span>Diagnóstico Técnico</span>
             </a>
         </div>
     </header>
-
-    <!-- Loading Screen -->
-    <div id="loading" class="loading">
-        <div class="spinner"></div>
-    </div>
 
     <div class="catalog-container">
         <div class="book-wrapper" id="bookWrapper">
@@ -1765,11 +1777,6 @@
             
             // Update navigation
             updateNavigation();
-            
-            // Hide loading
-            setTimeout(() => {
-                document.getElementById('loading').classList.add('hidden');
-            }, 500);
         }
 
         function createSpreads() {
@@ -1976,11 +1983,15 @@
         setTimeout(handleImageLoading, 200);
 
         // Menú móvil del header
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
         function toggleMobileMenu() {
-            const mobileMenu = document.getElementById('mobile-menu');
-            if (mobileMenu) {
-                mobileMenu.classList.toggle('open');
-            }
+            if (mobileMenu) mobileMenu.classList.add('hidden');
         }
 
         // --- FONDO DINÁMICO: CANVAS DE PARTÍCULAS (de turing.html) ---
