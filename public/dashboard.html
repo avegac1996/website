@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Dashboard - TURINGTECH Ecuador</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <div class="app-header">
+      <div class="app-header-logo">
+        <img src="LogoEmpresa.jpg" alt="TURINGTECH">
+        <h1>TURINGTECH</h1>
+      </div>
+      <div class="app-header-nav">
+        <a href="/">Inicio</a>
+        <a href="/catalogo.html">Catálogo</a>
+        <a href="#" onclick="API.logout(); return false;">Cerrar Sesión</a>
+      </div>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <!-- Credit Balance -->
+    <div class="glass-panel mb-3">
+      <div class="credit-balance">
+        <div class="label">Créditos TURINGTECH</div>
+        <div class="amount" id="creditBalance">--</div>
+        <div class="subtitle" id="incentiveText">En tu próximo proyecto tienes créditos TURINGTECH</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('overview')">
+        <i class="fa-solid fa-chart-line"></i> Resumen
+      </button>
+      <button class="tab" onclick="switchTab('request')">
+        <i class="fa-solid fa-plus-circle"></i> Solicitar Créditos
+      </button>
+      <button class="tab" onclick="switchTab('history')">
+        <i class="fa-solid fa-clock-rotate-left"></i> Historial
+      </button>
+      <button class="tab" onclick="switchTab('notifications')">
+        <i class="fa-solid fa-bell"></i> Notificaciones
+        <span id="notifBadge" class="badge badge-accent" style="margin-left: 6px; display: none;">0</span>
+      </button>
+    </div>
+
+    <!-- Tab: Overview -->
+    <div id="tab-overview" class="tab-content active">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <i class="fa-solid fa-arrow-trend-up"></i>
+            <h3>Transacciones Recientes</h3>
+          </div>
+          <div id="recentTransactions"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <i class="fa-solid fa-paper-plane"></i>
+            <h3>Solicitudes Recientes</h3>
+          </div>
+          <div id="recentRequests"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Request Credits -->
+    <div id="tab-request" class="tab-content">
+      <div class="glass-panel">
+        <div class="card-header mb-3">
+          <i class="fa-solid fa-plus-circle"></i>
+          <h3>Solicitar Créditos para tu Proyecto</h3>
+        </div>
+        <p style="color: var(--color-gray); margin-bottom: 24px;">
+          Cuéntanos sobre tu proyecto y cuántos créditos necesitas. Tu solicitud será aprobada en los siguientes minutos.
+        </p>
+        <form id="requestForm" onsubmit="handleRequestCredits(event)">
+          <div class="form-group">
+            <label for="projectDescription">Describe tu proyecto <span class="form-required-marker">*</span></label>
+            <textarea id="projectDescription" class="form-input" rows="5" required
+              placeholder="Ej: Necesito automatizar el proceso de conciliación bancaria mensual..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="requestedCredits">Créditos solicitados <span class="form-required-marker">*</span></label>
+            <input type="number" id="requestedCredits" class="form-input" min="1" value="2000" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-large" id="requestBtn">
+            <span id="requestBtnText">Enviar Solicitud</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tab: History -->
+    <div id="tab-history" class="tab-content">
+      <div class="glass-panel">
+        <div class="card-header mb-3">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <h3>Historial de Transacciones</h3>
+        </div>
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th class="text-right">Monto</th>
+              </tr>
+            </thead>
+            <tbody id="allTransactions"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Notifications -->
+    <div id="tab-notifications" class="tab-content">
+      <div class="glass-panel">
+        <div class="card-header mb-3">
+          <i class="fa-solid fa-bell"></i>
+          <h3>Notificaciones</h3>
+        </div>
+        <div id="notificationsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let dashboardData = null;
+
+    async function loadDashboard() {
+      if (!API.isLoggedIn()) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      try {
+        dashboardData = await API.getDashboard();
+        renderDashboard();
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+    }
+
+    function renderDashboard() {
+      const { user, transactions, requests, notifications } = dashboardData;
+
+      document.getElementById('creditBalance').textContent = user.credits;
+      document.getElementById('incentiveText').textContent =
+        user.credits > 0
+          ? `En tu próximo proyecto tienes ${user.credits} créditos TURINGTECH`
+          : 'No tienes créditos disponibles. Solicita más abajo.';
+
+      // Recent transactions
+      const recentTx = transactions.slice(0, 5);
+      document.getElementById('recentTransactions').innerHTML = recentTx.length > 0
+        ? recentTx.map(tx => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+            <div>
+              <div style="color: var(--color-white); font-size: 14px; font-weight: 600;">${tx.description || tx.type}</div>
+              <div style="color: var(--color-gray); font-size: 12px;">${formatDate(tx.created_at)}</div>
+            </div>
+            <div style="font-weight: 700; color: ${tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">
+              ${tx.amount >= 0 ? '+' : ''}${tx.amount}
+            </div>
+          </div>
+        `).join('')
+        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">Sin transacciones</p>';
+
+      // Recent requests
+      const recentReq = requests.slice(0, 5);
+      document.getElementById('recentRequests').innerHTML = recentReq.length > 0
+        ? recentReq.map(req => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+            <div>
+              <div style="color: var(--color-white); font-size: 14px; font-weight: 600;">${req.requested_credits} créditos</div>
+              <div style="color: var(--color-gray); font-size: 12px;">${formatDate(req.created_at)}</div>
+            </div>
+            <span class="badge badge-${req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'error' : 'warning'}">
+              ${req.status === 'approved' ? 'Aprobada' : req.status === 'rejected' ? 'Rechazada' : 'Pendiente'}
+            </span>
+          </div>
+        `).join('')
+        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">Sin solicitudes</p>';
+
+      // All transactions
+      document.getElementById('allTransactions').innerHTML = transactions.length > 0
+        ? transactions.map(tx => `
+          <tr>
+            <td>${formatDate(tx.created_at)}</td>
+            <td><span class="badge badge-${tx.type === 'initial' ? 'accent' : tx.type === 'admin_grant' ? 'info' : 'secondary'}">${tx.type}</span></td>
+            <td>${tx.description || '-'}</td>
+            <td class="text-right" style="font-weight: 700; color: ${tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">
+              ${tx.amount >= 0 ? '+' : ''}${tx.amount}
+            </td>
+          </tr>
+        `).join('')
+        : '<tr><td colspan="4" style="text-align: center; padding: 24px;">Sin transacciones</td></tr>';
+
+      // Notifications
+      const unreadCount = notifications.filter(n => !n.is_read).length;
+      const badge = document.getElementById('notifBadge');
+      if (unreadCount > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = unreadCount;
+      }
+
+      document.getElementById('notificationsList').innerHTML = notifications.length > 0
+        ? notifications.map(n => `
+          <div class="notification-item ${!n.is_read ? 'unread' : ''}" onclick="markRead(${n.id})">
+            <div class="notif-icon ${getNotificationIconClass(n.type)}">
+              <i class="fa-solid ${getNotificationIcon(n.type)}"></i>
+            </div>
+            <div class="notif-content">
+              <h4>${n.title}</h4>
+              <p>${n.message}</p>
+              <div class="notif-time">${formatDate(n.created_at)}</div>
+            </div>
+          </div>
+        `).join('')
+        : '<p style="color: var(--color-gray); text-align: center; padding: 24px;">Sin notificaciones</p>';
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.closest('.tab').classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    async function handleRequestCredits(event) {
+      event.preventDefault();
+      const btn = document.getElementById('requestBtn');
+      const btnText = document.getElementById('requestBtnText');
+      const description = document.getElementById('projectDescription').value;
+      const credits = document.getElementById('requestedCredits').value;
+
+      btn.disabled = true;
+      btnText.innerHTML = '<span class="spinner"></span>';
+
+      try {
+        await API.requestCredits(description, credits);
+        showAlert('Tu solicitud será aprobada en los siguientes minutos.', 'success');
+        document.getElementById('requestForm').reset();
+        dashboardData = await API.getDashboard();
+        renderDashboard();
+        switchTab('overview');
+        document.querySelector('.tab').click();
+      } catch (err) {
+        showAlert(err.message, 'error');
+      }
+
+      btn.disabled = false;
+      btnText.textContent = 'Enviar Solicitud';
+    }
+
+    async function markRead(id) {
+      try {
+        await API.markNotificationRead(id);
+        dashboardData = await API.getDashboard();
+        renderDashboard();
+      } catch (err) {}
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

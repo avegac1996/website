@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="es-EC">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Digital TURINGTECH | Automatización RPA, Desarrollo Software e Ingeniería Datos Ecuador | Quito, Guayaquil, Cuenca</title>
+    <meta name="description" content="📖 Catálogo interactivo de servicios tecnológicos: Automatización de procesos RPA, desarrollo de software a medida, ingeniería de datos. Experiencia en sector financiero adaptable a retail, manufactura, logística. Servicios en Quito, Guayaquil, Cuenca, Ecuador. ROI garantizado | Consultoría gratuita">
+    <link rel="icon" type="image/png" href="favicon.png">
+    
+    <!-- Open Graph / WhatsApp / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.turingtech.com.ec/catalogo.html">
+    <meta property="og:title" content="📖 Catálogo Digital TURINGTECH | Automatización Inteligente y Desarrollo de Software Ecuador">
+    <meta property="og:description" content="🚀 Descubre nuestro catálogo interactivo: Automatización Inteligente de Procesos | Desarrollo de Software | Inteligencia de Datos. ✅ Sector financiero ✅ Toda industria ✅ Quito, Guayaquil, Cuenca ✅ ROI garantizado">
+    <meta property="og:image" content="https://www.turingtech.com.ec/favicon.png">
+    <meta property="og:image:secure_url" content="https://www.turingtech.com.ec/favicon.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:image:alt" content="Catálogo Digital TURINGTECH - Automatización Inteligente y Transformación Digital Ecuador">
+    <meta property="og:site_name" content="TURINGTECH">
+    <meta property="og:locale" content="es_EC">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://www.turingtech.com.ec/catalogo.html">
+    <meta name="twitter:title" content="📖 Catálogo Digital TURINGTECH | Automatización Inteligente y Desarrollo de Software Ecuador">
+    <meta name="twitter:description" content="🚀 Descubre nuestro catálogo interactivo: Automatización Inteligente, Desarrollo de Software, Inteligencia de Datos. ✅ Sector financiero ✅ Servicios en Quito, Guayaquil, Cuenca">
+    <meta name="twitter:image" content="https://www.turingtech.com.ec/favicon.png">
+    
+    <!-- Additional Meta Tags -->
+    <meta name="author" content="TURINGTECH">
+    <meta name="keywords" content="catálogo servicios tecnológicos Ecuador, automatización de procesos Ecuador, RPA Ecuador, desarrollo software Ecuador, ingeniería de datos Ecuador, business intelligence Ecuador, consultoría tecnológica Ecuador, automatización Quito, automatización Guayaquil, automatización Cuenca, desarrollo software Quito, desarrollo software Guayaquil, servicios IT Ecuador, UiPath Ecuador, Power Automate Ecuador, Power BI Ecuador, automatización bancaria Ecuador, automatización financiera Ecuador, automatización retail Ecuador, automatización manufactura Ecuador, automatización logística Ecuador, software empresarial Ecuador, integración sistemas Ecuador, APIs Ecuador, desarrollo web Ecuador, desarrollo móvil Ecuador, ETL Ecuador, data engineering Ecuador, soluciones tecnológicas Ecuador, transformación digital Ecuador, consultoría IT Quito, consultoría IT Guayaquil, empresa tecnología Ecuador, servicios tecnológicos Ambato, IT Manta, automatización Loja, software Riobamba, tecnología Ibarra, desarrollo Machala, RPA Portoviejo, automatización Santo Domingo">
+    <link rel="canonical" href="https://www.turingtech.com.ec/catalogo.html">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px 140px 20px;
+            overflow-x: hidden;
+        }
+
+        .catalog-container {
+            max-width: 1800px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Book container - simula un libro abierto */
+        .book-wrapper {
+            perspective: 3000px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0;
+            min-height: 85vh;
+        }
+
+        .book-spread {
+            display: flex;
+            gap: 3px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
+            position: absolute;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .book-spread.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.5s ease-in-out, visibility 0s linear 0s;
+            position: relative;
+        }
+
+        /* Páginas individuales */
+        .page {
+            width: 100%;
+            max-width: 650px;
+            min-height: 85vh;
+            background: white;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            padding: 50px 45px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .page.left-page {
+            border-radius: 8px 0 0 8px;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .page.right-page {
+            border-radius: 0 8px 8px 0;
+            border-left: 1px solid #e2e8f0;
+        }
+
+        .page.single-page {
+            border-radius: 12px;
+            border: none;
+            max-width: 800px;
+        }
+
+        /* Portada - siempre sola */
+        .portada {
+            background: 
+                linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%),
+                url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(148,163,184,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px !important;
+        }
+
+        .portada::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 15% 30%, rgba(249, 115, 22, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 70%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+            animation: pulseGlow 8s ease-in-out infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .portada-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            padding: 30px 35px;
+            border-radius: 24px;
+            margin-bottom: 40px;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(249, 115, 22, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            display: inline-block;
+            position: relative;
+            animation: floatLogo 3s ease-in-out infinite;
+        }
+        
+        @keyframes floatLogo {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo-container img {
+            max-width: 240px;
+            height: auto;
+            border-radius: 12px;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+        }
+        
+        .trust-badge {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+        }
+
+        .portada h1 {
+            font-size: 52px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            line-height: 1.15;
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            filter: drop-shadow(0 2px 20px rgba(0, 0, 0, 0.3));
+        }
+        
+        .portada h1 .highlight {
+            background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+        }
+
+        .portada p {
+            font-size: 18px;
+            margin-bottom: 35px;
+            max-width: 750px;
+            line-height: 1.8;
+            color: #ffffff !important;
+            font-weight: 500;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(251, 146, 60, 0.1) 100%);
+            padding: 30px 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            box-shadow: 
+                0 10px 40px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .portada p::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(249, 115, 22, 0.8) 50%, 
+                transparent 100%);
+        }
+        
+
+        .portada-footer {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            padding: 25px 40px;
+            border-radius: 20px;
+            font-size: 15px;
+            margin-top: 40px;
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 35px;
+            max-width: 750px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .stat-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(249, 115, 22, 0.2);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: 900;
+            color: #f97316;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+        
+        .cta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 16px;
+            margin-top: 30px;
+            box-shadow: 0 15px 40px rgba(249, 115, 22, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .cta-badge:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px rgba(249, 115, 22, 0.6);
+        }
+
+        /* Contraportada */
+        .contraportada {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            border-radius: 12px !important;
+        }
+
+        .contraportada h2 {
+            font-size: 38px;
+            font-weight: 900;
+            margin-bottom: 25px;
+            line-height: 1.3;
+        }
+
+        .contraportada > p {
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-button {
+            background: white;
+            color: #f97316;
+            padding: 18px 45px;
+            border-radius: 35px;
+            font-weight: 700;
+            font-size: 19px;
+            display: inline-block;
+            margin: 20px auto;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+
+        .contact-info {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 30px 35px;
+            border-radius: 20px;
+            margin-top: 30px;
+            max-width: 550px;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .contact-info div {
+            padding: 8px 0;
+            font-size: 16px;
+        }
+
+        .contact-info strong {
+            font-weight: 700;
+        }
+
+        .contact-logo {
+            background: white;
+            display: inline-block;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .contact-logo img {
+            max-width: 120px;
+            height: auto;
+            border-radius: 6px;
+        }
+
+        /* Títulos y contenido */
+        .page-title {
+            font-size: 34px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 20px;
+            border-bottom: 5px solid #f97316;
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+
+        .page-subtitle {
+            font-size: 17px;
+            font-weight: 600;
+            color: #f97316;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+
+        .page p {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #334155;
+            margin-bottom: 20px;
+        }
+
+        .service-box {
+            background: #f8fafc;
+            border-left: 5px solid #f97316;
+            padding: 22px 25px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .service-box h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+
+        .service-box p {
+            font-size: 15px;
+            color: #475569;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .promise-box {
+            background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+            padding: 18px 22px;
+            border-radius: 12px;
+            margin: 15px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .promise-box h4 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #ea580c;
+            margin-bottom: 6px;
+        }
+
+        .promise-box p {
+            font-size: 14px;
+            color: #334155;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .methodology-step {
+            background: #f1f5f9;
+            padding: 18px 22px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            border-left: 5px solid #f97316;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .methodology-step h4 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .methodology-step p {
+            font-size: 14px;
+            color: #475569;
+            margin: 0;
+            line-height: 1.7;
+        }
+
+        .brand-logos {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .brand-logo {
+            background: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            color: #64748b;
+            font-size: 13px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .icon-circle {
+            display: inline-block;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            padding: 30px;
+            border-radius: 50%;
+            box-shadow: 0 15px 40px rgba(249, 115, 22, 0.4);
+            margin: 25px 0;
+        }
+
+        .icon-circle.blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
+        }
+
+        .icon-circle.green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
+        }
+
+        .icon-circle svg {
+            width: 55px;
+            height: 55px;
+            color: white;
+        }
+
+        .highlight-box {
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 25px;
+            text-align: center;
+        }
+
+        .highlight-box p {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0;
+            color: white;
+        }
+
+        .highlight-box span {
+            color: #f97316;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            padding: 18px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: center;
+            border: 2px solid #3b82f6;
+        }
+
+        .info-box p {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e40af;
+            margin: 0;
+        }
+
+        .warning-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fef3c7;
+            border-radius: 10px;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .warning-box p {
+            font-size: 13px;
+            color: #92400e;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        /* Logo hover effects */
+        .logo-hover {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .logo-hover:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .logo-hover img {
+            transition: all 0.3s ease;
+            filter: grayscale(20%);
+            opacity: 0;
+            animation: fadeIn 0.5s ease-in forwards;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .logo-hover:hover img {
+            filter: grayscale(0%);
+        }
+        
+        /* Skeleton Loader para imágenes */
+        .logo-hover::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 50%;
+            background: linear-gradient(
+                90deg,
+                #e2e8f0 0%,
+                #f1f5f9 50%,
+                #e2e8f0 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+        
+        .logo-hover.loaded::before {
+            opacity: 0;
+        }
+        
+        .logo-hover img.loaded {
+            opacity: 1;
+        }
+
+        /* Navegación */
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 50px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-btn {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #ea580c;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(249, 115, 22, 0.4);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-counter {
+            color: white;
+            font-weight: 600;
+            padding: 0 15px;
+            font-size: 16px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(249, 115, 22, 0.2);
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .page {
+                max-width: 550px;
+                padding: 45px 40px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .book-spread {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .page {
+                max-width: 750px;
+                border-radius: 12px !important;
+                border: none !important;
+            }
+
+            .page.left-page,
+            .page.right-page {
+                border-radius: 12px !important;
+                border: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 15px 110px 15px;
+            }
+
+            .page {
+                padding: 40px 30px;
+                min-height: 80vh;
+            }
+
+            .portada h1 {
+                font-size: 32px;
+            }
+
+            .portada p {
+                font-size: 16px;
+                padding: 25px 30px;
+            }
+
+            .page-title {
+                font-size: 26px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                margin-top: 25px;
+            }
+            
+            .stat-item {
+                padding: 18px;
+            }
+            
+            .stat-number {
+                font-size: 28px;
+            }
+            
+            .cta-badge {
+                padding: 14px 24px;
+                font-size: 14px;
+                margin-top: 20px;
+            }
+            
+            .trust-badge {
+                font-size: 10px;
+                padding: 6px 12px;
+            }
+            
+            .logo-container img {
+                max-width: 180px;
+            }
+
+            /* Página de experiencia responsive */
+            .page[data-page="8"] div[style*="grid-template-columns"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 12px !important;
+            }
+
+            .contraportada h2 {
+                font-size: 28px;
+            }
+
+            .navigation {
+                bottom: 0;
+                left: 0;
+                right: 0;
+                transform: none;
+                width: 100%;
+                max-width: 100%;
+                padding: 15px 20px;
+                border-radius: 0;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .nav-btn {
+                padding: 10px 16px;
+                font-size: 13px;
+                gap: 5px;
+            }
+
+            .nav-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .page-counter {
+                padding: 0 10px;
+                font-size: 14px;
+                min-width: 60px;
+                justify-content: center;
+            }
+
+            .logo-container img {
+                max-width: 160px;
+            }
+
+            .icon-circle {
+                padding: 25px;
+            }
+
+            .icon-circle svg {
+                width: 45px;
+                height: 45px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 20px 10px 100px 10px;
+            }
+
+            .page {
+                padding: 30px 20px;
+            }
+
+            .page-title {
+                font-size: 22px;
+            }
+
+            .portada h1 {
+                font-size: 28px;
+            }
+            
+            .portada p {
+                font-size: 15px;
+                padding: 20px 25px;
+            }
+            
+            .stats-grid {
+                gap: 12px;
+            }
+            
+            .stat-number {
+                font-size: 24px;
+            }
+            
+            .stat-label {
+                font-size: 12px;
+            }
+            
+            .logo-container {
+                padding: 25px 30px;
+            }
+            
+            .logo-container img {
+                max-width: 160px;
+            }
+            
+            .portada-footer {
+                padding: 20px 25px;
+                font-size: 13px;
+            }
+
+            .service-box,
+            .promise-box,
+            .methodology-step {
+                padding: 16px 18px;
+            }
+
+            /* Página de experiencia en móviles pequeños */
+            .page[data-page="8"] h3 {
+                font-size: 16px !important;
+            }
+
+            .page[data-page="8"] div[style*="grid-template-columns"] {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+            }
+
+            .navigation {
+                padding: 12px 15px;
+                gap: 10px;
+            }
+
+            .nav-btn {
+                padding: 10px 14px;
+                font-size: 12px;
+                flex: 1;
+                justify-content: center;
+            }
+
+            .page-counter {
+                padding: 0 8px;
+                font-size: 13px;
+                min-width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="catalog-container">
+        <div class="book-wrapper" id="bookWrapper">
+            <!-- Las páginas se generarán dinámicamente aquí -->
+        </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="navigation">
+        <button id="prevBtn" class="nav-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Anterior
+        </button>
+        <span class="page-counter">
+            <span id="currentPage">1</span> / <span id="totalPages">9</span>
+        </span>
+        <button id="nextBtn" class="nav-btn">
+            Siguiente
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Definición de páginas -->
+    <template id="pages-template">
+        <!-- PÁGINA 1: PORTADA -->
+        <div class="page portada single-page" data-page="1">
+            <div class="portada-content">
+                <div class="logo-container">
+                    <div class="trust-badge">✓ CERTIFICADOS</div>
+                    <img src="LogoEmpresa.jpg" alt="TURINGTECH Logo">
+                </div>
+                
+                <h1>
+                    Tecnología que <span class="highlight">Blinda</span> y<br>
+                    <span class="highlight">Potencia</span> su Empresa
+                </h1>
+                
+                <p>
+                    Automatización de Procesos, Desarrollo de Software e Ingeniería de Datos - Con experiencia en Sector Financiero y adaptable a cualquier industria
+                </p>
+                
+                <!--
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">+5</span>
+                        <span class="stat-label">Años de Experiencia</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">15+</span>
+                        <span class="stat-label">Clientes Satisfechos</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">99%</span>
+                        <span class="stat-label">Tasa de Éxito</span>
+                    </div>
+                </div>
+                -->
+                
+                <div class="cta-badge">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Soluciones con Normativas Regulatorias
+                </div>
+                
+                <div class="portada-footer">
+                    <strong>Experiencia Comprobada en Sector Financiero | Soluciones para Toda Industria</strong><br>
+                    <span style="font-size: 13px; opacity: 0.9;">Cooperativas, Retail, Manufactura, Logística y más - Tecnología que se adapta a su negocio</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PÁGINA 2: QUIÉNES SOMOS -->
+        <div class="page" data-page="2">
+            <h2 class="page-title">Quiénes Somos</h2>
+            <p class="page-subtitle">Más que proveedores, somos sus aliados estratégicos</p>
+            
+            <p>En <strong>TURINGTECH</strong>, entendemos que la tecnología en las empresas modernas no es un lujo, es una necesidad crítica. Trasladamos la rigurosidad de los entornos corporativos más exigentes a su industria. Conocemos de primera mano los desafíos de la integración digital, la necesidad de sistemas seguros y la urgencia de maximizar la eficiencia operativa.</p>
+
+            <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 25px 0 15px 0;">Nuestra Promesa:</h3>
+
+            <div class="promise-box">
+                <h4>💡 Eficiencia</h4>
+                <p>Transformamos tareas manuales de horas en procesos automáticos de minutos.</p>
+            </div>
+
+            <div class="promise-box">
+                <h4>🔒 Seguridad</h4>
+                <p>Infraestructura robusta y manejo confidencial de la información.</p>
+            </div>
+
+            <div class="promise-box">
+                <h4>📈 Resultados</h4>
+                <p>Tecnología que genera Retorno de Inversión (ROI) medible.</p>
+            </div>
+
+            <div class="highlight-box">
+                <p>Experiencia en entornos corporativos de alta exigencia<br>
+                <span>+5 años de trayectoria sólida</span><br>
+                <small style="font-size: 12px; opacity: 0.8; margin-top: 8px; display: block;">Estándares corporativos aplicados a cualquier industria</small></p>
+            </div>
+        </div>
+
+        <!-- PÁGINA 3: AUTOMATIZACIÓN -->
+        <div class="page" data-page="3">
+            <h2 class="page-title">Automatización Inteligente</h2>
+            <p class="page-subtitle">RPA & ETL - Elimine el error humano</p>
+            
+            <div style="text-align: center;">
+                <div class="icon-circle">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="service-box">
+                <h3>🤖 Robots de Software (RPA)</h3>
+                <p>Implementamos "trabajadores digitales" que operan 24/7 para realizar tareas repetitivas como conciliaciones, validación de datos externos y cargas masivas, sincronizando automáticamente la información entre portales web y sus sistemas de gestión empresarial.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>📊 Reportes Regulatorios</h3>
+                <p>¿El cierre de mes satura a su equipo operativo? Automatizamos la extracción, limpieza y estructuración de datos para generar los reportes exigidos por los organismos de control (Estructuras SEPS / SRI) en tiempo récord.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>🔄 Migración de Datos Segura</h3>
+                <p>Procesos especializados para mover grandes volúmenes de información entre sistemas sin pérdida de datos ni inconsistencias.</p>
+            </div>
+        </div>
+
+        <!-- PÁGINA 4: DESARROLLO DE SOFTWARE -->
+        <div class="page" data-page="4">
+            <h2 class="page-title">Desarrollo de Software</h2>
+            <p class="page-subtitle">Soluciones tecnológicas a su medida</p>
+            
+            <div style="text-align: center;">
+                <div class="icon-circle" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); box-shadow: 0 15px 40px rgba(139, 92, 246, 0.4);">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="service-box">
+                <h3>🌐 Aplicaciones Web & Móviles</h3>
+                <p>Portales transaccionales y aplicaciones móviles (iOS/Android) de alto rendimiento, diseñadas para que sus usuarios gestionen productos y servicios de forma segura desde cualquier dispositivo.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>🏦 Desarrollo de Módulos a Medida</h3>
+                <p>Potenciamos sus sistemas actuales desarrollando módulos personalizados que cubren brechas operativas específicas. Nos adaptamos 100% a su flujo de trabajo.</p>
+            </div>
+
+            <!--    
+            <div class="service-box">
+                <h3>🔐 APIs & Microservicios</h3>
+                <p>Permitimos que su empresa se interconecte ágilmente con plataformas externas (socios, proveedores, Fintechs) o exponga sus propios servicios de forma controlada y escalable.</p>
+            </div>
+            -->
+
+            <div class="service-box">
+                <h3>📱 Transformación Digital</h3>
+                <p>Convertimos procesos presenciales en flujos 100% digitales y seguros. Desde el registro de usuarios hasta la firma electrónica, para operar sin papeles y con plena validez jurídica.</p>
+            </div>
+
+            <div class="brand-logos" style="margin-top: 25px;">
+                <div class="brand-logo">REACT</div>
+                <div class="brand-logo">NODE.JS</div>
+                <div class="brand-logo">PYTHON</div>
+                <div class="brand-logo">.NET</div>
+                <div class="brand-logo">FLUTTER</div>
+            </div>
+        </div>
+
+        <!-- PÁGINA 5: INGENIERÍA DE DATOS -->
+        <div class="page" data-page="5">
+            <h2 class="page-title">Ingeniería de Datos</h2>
+            <p class="page-subtitle">Convierta sus datos en su activo más valioso</p>
+            
+            <div style="text-align: center;">
+                <div class="icon-circle blue">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="service-box">
+                <h3>🔍 Limpieza y Calidad de Datos</h3>
+                <p>Depuramos sus bases de datos eliminando duplicados y corrigiendo inconsistencias. Convertimos información desordenada en registros confiables, garantizando el éxito de sus campañas comerciales y el cumplimiento normativo.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>🔌 Integración de Sistemas</h3>
+                <p>Conectamos su software de gestión principal con sus otras herramientas (página web, facturación electrónica o aplicaciones móviles) para que la información fluya automáticamente, evitando errores y trabajo manual.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>📈 Business Intelligence</h3>
+                <p>Convierta información compleja en ventajas competitivas. Diseñamos dashboards interactivos que transforman sus datos en indicadores claros y accionables, facilitando decisiones estratégicas basadas en la realidad de su negocio en tiempo real.</p>
+            </div>
+        </div>
+
+        <!-- PÁGINA 6: INFRAESTRUCTURA -->
+        <div class="page" data-page="6">
+            <h2 class="page-title">Infraestructura</h2>
+            <p class="page-subtitle">Hardware de clase mundial</p>
+            
+            <div style="text-align: center;">
+                <div class="icon-circle green">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="service-box">
+                <h3>🖥️ Servidores y Almacenamiento</h3>
+                <p>Fortalezca su infraestructura con servidores y storage de marcas líderes. Configuramos soluciones robustas y escalables, diseñadas para proteger sus datos y maximizar la velocidad operativa.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>🔐 Networking y Seguridad</h3>
+                <p>Optimizamos el tráfico y la seguridad de su red con arquitectura robusta (Aruba, Cisco). Garantizamos velocidad y continuidad operativa, protegiendo su perímetro digital sin interrupciones.</p>
+            </div>
+
+            <div class="service-box">
+                <h3>📜 Licenciamiento de Software</h3>
+                <p>Suministramos software original Microsoft (Windows Server, SQL, Office). Regularizamos sus activos garantizando soporte oficial, actualizaciones de seguridad y cumplimiento legal.</p>
+            </div>
+
+            <div class="brand-logos">
+                <div class="brand-logo">DELL</div>
+                <div class="brand-logo">HP</div>
+                <div class="brand-logo">CISCO</div>
+                <div class="brand-logo">MICROSOFT</div>
+            </div>
+        </div>
+
+        <!-- PÁGINA 7: METODOLOGÍA -->
+        <div class="page" data-page="7">
+            <h2 class="page-title">¿Cómo Trabajamos?</h2>
+            <p class="page-subtitle">Metodología probada</p>
+            
+            <div class="methodology-step">
+                <h4>1️⃣ Diagnóstico (NDA)</h4>
+                <p>Firmamos un acuerdo de confidencialidad y realizamos un diagnóstico preliminar de su situación actual.</p>
+            </div>
+
+            <div class="methodology-step">
+                <h4>2️⃣ Propuesta a Medida</h4>
+                <p>No vendemos "cajas", diseñamos la arquitectura tecnológica que su organización necesita.</p>
+            </div>
+
+            <div class="methodology-step">
+                <h4>3️⃣ Implementación Ágil</h4>
+                <p>Despliegues controlados, pruebas exhaustivas (QA) y puesta en producción sin afectar la operación diaria.</p>
+            </div>
+
+            <div class="methodology-step">
+                <h4>4️⃣ Soporte Post-Venta</h4>
+                <p>Garantía real sobre hardware y soporte técnico sobre nuestros desarrollos.</p>
+            </div>
+
+            <div class="info-box">
+                <p>✓ Metodología Ágil &nbsp;|&nbsp; ✓ QA Exhaustivo &nbsp;|&nbsp; ✓ Garantía Real</p>
+            </div>
+
+            <div class="warning-box">
+                <p><strong>💡 Compromiso:</strong> Trabajamos bajo acuerdos de confidencialidad (NDA) y garantizamos la seguridad de su información en todo momento.</p>
+            </div>
+        </div>
+
+        <!-- PÁGINA 8: EXPERIENCIA -->
+        <div class="page" data-page="8">
+            <h2 class="page-title">Nuestra Experiencia</h2>
+            <p class="page-subtitle">Respaldo comprobado en el mercado ecuatoriano</p>
+            
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 25px; border-radius: 16px; margin-bottom: 30px; border-left: 5px solid #f97316;">
+                <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                    <svg style="width: 28px; height: 28px; color: #f97316;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    Empresas que Confían en Nosotros
+                </h3>
+                <p style="font-size: 14px; color: #475569; margin-bottom: 20px; line-height: 1.6;">
+                    Hemos implementado soluciones tecnológicas para empresas líderes en diversos sectores del Ecuador.
+                </p>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+                    <!--
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaEmpresa/Cooperativa_Santa_Rosa.png" alt="Cooperativa Santa Rosa" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    --> 
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaEmpresa/Mutualista_Ambato.png" alt="Mutualista Ambato" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaEmpresa/Gestcobra.png" alt="Gestcobra" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaEmpresa/MultigestionAmbato.png" alt="Multigestión Ambato" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaEmpresa/GV_Marmol.png" alt="GV Mármol" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 25px; border-radius: 16px; border-left: 5px solid #3b82f6;">
+                <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                    <svg style="width: 28px; height: 28px; color: #3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    Experiencia de Nuestro Equipo
+                </h3>
+                <p style="font-size: 14px; color: #475569; margin-bottom: 20px; line-height: 1.6;">
+                    Nuestros colaboradores cuentan con trayectoria profesional en instituciones de prestigio nacional.
+                </p>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaColaboradores/Banco_Pichincha.png" alt="Banco Pichincha" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaColaboradores/Produbanco.png" alt="Produbanco" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaColaboradores/Banco_General_Rumiñahui.png" alt="Banco General Rumiñahui" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaColaboradores/Corposano.png" alt="Corposano" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 80px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.3s, box-shadow 0.3s;" class="logo-hover">
+                        <img src="LogosEmpresas/ExperienciaColaboradores/Confiamed.png" alt="Confiamed" style="max-width: 100%; max-height: 60px; object-fit: contain;">
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px 25px; border-radius: 12px; margin-top: 25px; text-align: center; border: 2px solid #f59e0b;">
+                <p style="font-size: 15px; font-weight: 700; color: #92400e; margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    Solidez técnica que garantiza cada proyecto
+                </p>
+            </div>
+        </div>
+
+        <!-- CONTRAPORTADA -->
+        <div class="page contraportada single-page" data-page="9">
+            <h2>El Futuro de su Empresa<br>Comienza con una Decisión Inteligente</h2>
+            
+            <p>No permita que los procesos manuales o la infraestructura obsoleta frenen su crecimiento. Permita que TURINGTECH optimice su operación hoy mismo.</p>
+
+            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito%20para%20mi%20empresa.%20¿Podrían%20brindarme%20más%20información?" target="_blank" rel="noopener noreferrer" class="cta-button" style="text-decoration: none; display: inline-block;">
+                📞 Solicite un Diagnóstico Técnico Gratuito
+            </a>
+
+            <div class="contact-info">
+                <div><strong>📍 Oficinas:</strong> Quito, Ecuador</div>
+                <div style="font-size: 14px; opacity: 0.9;">(Cobertura Nacional)</div>
+                <div style="margin-top: 12px;"><strong>📧 Email:</strong> gerencia@turingtech.com.ec</div>
+                <div><strong>📱 WhatsApp:</strong> <a href="https://wa.me/593990686162" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">+593 99 068 6162</a></div>
+                <div><strong>🌐 Web:</strong> <a href="https://turingtech.com.ec" target="_blank" rel="noopener noreferrer" style="color: #fff; text-decoration: underline;">www.turingtech.com.ec</a></div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <div class="contact-logo">
+                        <img src="LogoEmpresa.jpg" alt="TURINGTECH">
+                    </div>
+                </div>
+            </div>
+
+            <p style="font-size: 13px; margin-top: 25px; opacity: 0.8;">
+                ✓ Sin compromiso &nbsp;|&nbsp; ✓ Análisis personalizado &nbsp;|&nbsp; ✓ Respuesta en 24 horas
+            </p>
+        </div>
+    </template>
+
+    <script>
+        // Variables globales
+        let currentSpread = 0;
+        let totalSpreads = 0;
+        let pages = [];
+        let spreads = [];
+        let isDesktop = window.innerWidth > 1200;
+
+        // Inicializar el catálogo
+        function init() {
+            // Obtener todas las páginas del template
+            const template = document.getElementById('pages-template');
+            pages = Array.from(template.content.querySelectorAll('.page'));
+            
+            // Crear spreads (agrupaciones de páginas)
+            createSpreads();
+            
+            // Renderizar el primer spread
+            renderSpread(0);
+            
+            // Update navigation
+            updateNavigation();
+            
+            // Hide loading
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('hidden');
+            }, 500);
+        }
+
+        function createSpreads() {
+            const bookWrapper = document.getElementById('bookWrapper');
+            bookWrapper.innerHTML = '';
+            spreads = [];
+            isDesktop = window.innerWidth > 1200;
+
+            if (isDesktop) {
+                // En desktop: portada sola, pares de páginas, contraportada sola
+                // Spread 1: Portada (página 1)
+                spreads.push([pages[0].cloneNode(true)]);
+                
+                // Spreads 2-3: Páginas 2-3, 4-5
+                for (let i = 1; i < pages.length - 1; i += 2) {
+                    const leftPage = pages[i].cloneNode(true);
+                    const rightPage = pages[i + 1] ? pages[i + 1].cloneNode(true) : null;
+                    
+                    leftPage.classList.add('left-page');
+                    leftPage.classList.remove('single-page');
+                    
+                    if (rightPage) {
+                        rightPage.classList.add('right-page');
+                        rightPage.classList.remove('single-page');
+                        spreads.push([leftPage, rightPage]);
+                    } else {
+                        spreads.push([leftPage]);
+                    }
+                }
+                
+                // Última página (contraportada) sola si no está ya incluida
+                const lastPage = pages[pages.length - 1];
+                if (!spreads[spreads.length - 1].some(p => p.dataset.page === lastPage.dataset.page)) {
+                    spreads.push([lastPage.cloneNode(true)]);
+                }
+            } else {
+                // En móvil/tablet: una página por spread
+                pages.forEach(page => {
+                    const clonedPage = page.cloneNode(true);
+                    clonedPage.classList.add('single-page');
+                    clonedPage.classList.remove('left-page', 'right-page');
+                    spreads.push([clonedPage]);
+                });
+            }
+
+            totalSpreads = spreads.length;
+            document.getElementById('totalPages').textContent = pages.length;
+        }
+
+        function renderSpread(spreadIndex) {
+            const bookWrapper = document.getElementById('bookWrapper');
+            
+            // Remover todos los spreads activos
+            const allSpreads = bookWrapper.querySelectorAll('.book-spread');
+            allSpreads.forEach(spread => {
+                spread.classList.remove('active');
+                setTimeout(() => spread.remove(), 500);
+            });
+
+            // Crear nuevo spread
+            const spreadDiv = document.createElement('div');
+            spreadDiv.className = 'book-spread';
+            
+            spreads[spreadIndex].forEach(page => {
+                spreadDiv.appendChild(page.cloneNode(true));
+            });
+
+            bookWrapper.appendChild(spreadDiv);
+            
+            // Activar después de un pequeño delay para la transición
+            setTimeout(() => {
+                spreadDiv.classList.add('active');
+            }, 50);
+
+            // Actualizar contador de páginas
+            const firstPageNum = spreads[spreadIndex][0].dataset.page;
+            document.getElementById('currentPage').textContent = firstPageNum;
+        }
+
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = currentSpread === 0;
+            nextBtn.disabled = currentSpread === totalSpreads - 1;
+        }
+
+        function nextSpread() {
+            if (currentSpread < totalSpreads - 1) {
+                currentSpread++;
+                renderSpread(currentSpread);
+                updateNavigation();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function prevSpread() {
+            if (currentSpread > 0) {
+                currentSpread--;
+                renderSpread(currentSpread);
+                updateNavigation();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Event listeners
+        document.getElementById('prevBtn').addEventListener('click', prevSpread);
+        document.getElementById('nextBtn').addEventListener('click', nextSpread);
+
+        // Navegación por teclado
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                prevSpread();
+            } else if (e.key === 'ArrowRight') {
+                nextSpread();
+            }
+        });
+
+        // Touch swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    nextSpread();
+                } else {
+                    prevSpread();
+                }
+            }
+        }
+
+        // Reiniciar en cambio de tamaño de ventana
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                const wasDesktop = isDesktop;
+                isDesktop = window.innerWidth > 1200;
+                
+                if (wasDesktop !== isDesktop) {
+                    currentSpread = 0;
+                    createSpreads();
+                    renderSpread(0);
+                    updateNavigation();
+                }
+            }, 250);
+        });
+
+        // Inicializar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // Manejo de carga de imágenes con skeleton loader
+        function handleImageLoading() {
+            const images = document.querySelectorAll('.logo-hover img');
+            
+            images.forEach(img => {
+                // Si la imagen ya está cargada
+                if (img.complete) {
+                    img.classList.add('loaded');
+                    img.parentElement.classList.add('loaded');
+                } else {
+                    // Cuando la imagen se carga
+                    img.addEventListener('load', function() {
+                        setTimeout(() => {
+                            this.classList.add('loaded');
+                            this.parentElement.classList.add('loaded');
+                        }, 100);
+                    });
+                    
+                    // Si hay error al cargar
+                    img.addEventListener('error', function() {
+                        this.parentElement.classList.add('loaded');
+                        console.warn('Error al cargar imagen:', this.src);
+                    });
+                }
+            });
+        }
+        
+        // Ejecutar después de renderizar cada spread
+        const originalRenderSpread = renderSpread;
+        renderSpread = function(spreadIndex) {
+            originalRenderSpread(spreadIndex);
+            setTimeout(handleImageLoading, 100);
+        };
+        
+        // Ejecutar al inicio
+        setTimeout(handleImageLoading, 500);
+    </script>
+</body>
+</html>
