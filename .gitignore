@@ -3,6 +3,7 @@ node_modules/
 
 # Environment
 .env
+BITACORA-DEPLOY.md
 
 # OS
 .DS_Store
