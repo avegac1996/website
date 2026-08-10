@@ -49,46 +49,26 @@ website/
 ### 1. Prerrequisitos
 
 - Node.js 18+
-- PostgreSQL 14+
+- PostgreSQL 14+ (con `psql` disponible en el PATH)
 
-### 2. Instalar dependencias
-
-```bash
-npm install
-```
-
-### 3. Configurar variables de entorno
+### 2. Setup automático (recomendado)
 
 ```bash
-cp .env.template .env
+git clone https://github.com/avegac1996/website.git
+cd website
+npm run setup
 ```
 
-Editar `.env` con tus credenciales de PostgreSQL y SMTP.
+Esto ejecuta automáticamente:
+1. Crea `.env` desde `.env.example` (si no existe)
+2. `npm install` - instala dependencias
+3. Crea la base de datos `turingtech` en PostgreSQL
+4. `npm run init-db` - crea todas las tablas
+5. `npm run seed` - crea el admin inicial y configuración
 
-### 4. Crear base de datos
+**Importante**: Si es la primera vez, edita `.env` con tus credenciales de PostgreSQL y SMTP antes de ejecutar `npm run setup`.
 
-```sql
-CREATE DATABASE turingtech;
-```
-
-### 5. Inicializar tablas
-
-```bash
-npm run init-db
-```
-
-### 6. Ejecutar seed (crea admin inicial)
-
-```bash
-npm run seed
-```
-
-Esto crea:
-- **Admin**: `admin@turingtech.com.ec` / `turingtech2026`
-- **Email de notificaciones**: `nicole.flores@turingtech.com.ec`
-- **Créditos iniciales**: 2000
-
-### 7. Iniciar servidor
+### 3. Iniciar servidor
 
 ```bash
 npm run dev    # desarrollo (con nodemon)
@@ -96,6 +76,19 @@ npm start      # producción
 ```
 
 El servidor corre en `http://localhost:3000`
+
+### Setup manual (paso a paso)
+
+Si prefieres hacerlo manualmente:
+
+```bash
+npm install
+cp .env.example .env       # editar credenciales
+psql -U postgres -c "CREATE DATABASE turingtech;"
+npm run init-db
+npm run seed
+npm start
+```
 
 ## Flujos del sistema
 
