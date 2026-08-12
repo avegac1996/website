@@ -8,7 +8,7 @@
     <!-- Página Principal -->
     <url>
         <loc>https://www.turingtech.com.ec/</loc>
-        <lastmod>2024-12-14</lastmod>
+        <lastmod>2026-08-12</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
         <image:image>
@@ -18,53 +18,19 @@
         </image:image>
     </url>
 
-    <!-- Sección de Servicios -->
+    <!-- Catálogo Digital -->
     <url>
-        <loc>https://www.turingtech.com.ec/#servicios</loc>
-        <lastmod>2024-12-14</lastmod>
+        <loc>https://www.turingtech.com.ec/catalogo.html</loc>
+        <lastmod>2026-08-12</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
-    <!-- Sección de Proceso -->
-    <url>
-        <loc>https://www.turingtech.com.ec/#proceso</loc>
-        <lastmod>2024-12-14</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
 
-    <!-- Sección de Casos de Éxito -->
-    <url>
-        <loc>https://www.turingtech.com.ec/#casos</loc>
-        <lastmod>2024-12-14</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
 
-    <!-- Sección Nosotros -->
-    <url>
-        <loc>https://www.turingtech.com.ec/#nosotros</loc>
-        <lastmod>2024-12-14</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.7</priority>
-    </url>
 
-    <!-- Preguntas Frecuentes -->
-    <url>
-        <loc>https://www.turingtech.com.ec/#faq</loc>
-        <lastmod>2024-12-24</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.8</priority>
-    </url>
 
-    <!-- Formulario de Contacto -->
-    <url>
-        <loc>https://www.turingtech.com.ec/#contacto</loc>
-        <lastmod>2024-12-24</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.9</priority>
-    </url>
+
 
 </urlset>
 
