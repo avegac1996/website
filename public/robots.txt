@@ -1,5 +1,5 @@
 # robots.txt para TURINGTECH
-# https://www.turingtech.com.ec/robots.txt
+# https://turingtech.com.ec/robots.txt
 
 # Permitir a todos los bots rastrear el sitio
 User-agent: *
@@ -21,7 +21,7 @@ Disallow: /tmp/
 Disallow: /.git/
 
 # Sitemap
-Sitemap: https://www.turingtech.com.ec/sitemap.xml
+Sitemap: https://turingtech.com.ec/sitemap.xml
 
 # Configuración adicional
 User-agent: *
