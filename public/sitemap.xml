@@ -8,7 +8,7 @@
     <!-- Página Principal -->
     <url>
         <loc>https://turingtech.com.ec/</loc>
-        <lastmod>2026-08-12</lastmod>
+        <lastmod>2026-08-25</lastmod>
         <changefreq>weekly</changefreq>
         <priority>1.0</priority>
         <image:image>
@@ -21,13 +21,42 @@
     <!-- Catálogo Digital -->
     <url>
         <loc>https://turingtech.com.ec/catalogo.html</loc>
-        <lastmod>2026-08-12</lastmod>
+        <lastmod>2026-08-25</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.9</priority>
     </url>
 
+    <!-- Facturación Electrónica SRI 2026 (prioridad alta: alta intención, urgente) -->
+    <url>
+        <loc>https://turingtech.com.ec/facturacion-electronica-sri.html</loc>
+        <lastmod>2026-08-25</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>
 
+    <!-- Automatización RPA -->
+    <url>
+        <loc>https://turingtech.com.ec/automatizacion-rpa.html</loc>
+        <lastmod>2026-08-25</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
 
+    <!-- Desarrollo de Software a Medida -->
+    <url>
+        <loc>https://turingtech.com.ec/desarrollo-software.html</loc>
+        <lastmod>2026-08-25</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <!-- Ciencia e Ingeniería de Datos -->
+    <url>
+        <loc>https://turingtech.com.ec/ciencia-datos-ecuador.html</loc>
+        <lastmod>2026-08-25</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
 
 
 

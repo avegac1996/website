@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es-EC" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desarrollo de Software a Medida en Ecuador | TURINGTECH</title>
+
+    <!-- Google Analytics (GA4) -->
+    <!-- ⚠️ Reemplazar G-XXXXXXXXXX por el Measurement ID real de la propiedad GA4 de turingtech.com.ec -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="Desarrollo de software a medida en Ecuador: apps web y móviles, ERP/CRM personalizados y transformación digital con React, Node.js, Python y .NET. Consultoría gratuita.">
+    <meta name="keywords" content="desarrollo de software a medida Ecuador, desarrollo software Quito, desarrollo software Guayaquil, empresa desarrollo software Ecuador, desarrollo de apps Ecuador, ERP a medida Ecuador, CRM a medida Ecuador, software empresarial Ecuador">
+    <link rel="canonical" href="https://turingtech.com.ec/desarrollo-software.html">
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://turingtech.com.ec/desarrollo-software.html">
+    <meta property="og:title" content="Desarrollo de Software a Medida en Ecuador | TURINGTECH">
+    <meta property="og:description" content="Apps web y móviles, módulos ERP/CRM a medida y transformación digital con React, Node.js, Python y .NET. Consultoría gratuita en Ecuador.">
+    <meta property="og:image" content="https://turingtech.com.ec/LogoEmpresa.jpg">
+    <meta property="og:site_name" content="TURINGTECH">
+    <meta property="og:locale" content="es_EC">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Desarrollo de Software a Medida en Ecuador | TURINGTECH">
+    <meta name="twitter:description" content="Apps web y móviles, módulos ERP/CRM a medida y transformación digital con React, Node.js, Python y .NET.">
+    <meta name="twitter:image" content="https://turingtech.com.ec/LogoEmpresa.jpg">
+
+    <!-- SEO Ecuador Específico -->
+    <meta name="geo.region" content="EC-P">
+    <meta name="geo.placename" content="Quito, Ecuador">
+    <meta name="geo.position" content="-0.1807;-78.4678">
+    <meta name="theme-color" content="#FF6B00">
+
+    <!-- Schema.org Service + LocalBusiness -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        "serviceType": "Desarrollo de Software a Medida",
+        "provider": {
+            "@type": "LocalBusiness",
+            "name": "TURINGTECH",
+            "url": "https://turingtech.com.ec",
+            "telephone": "+593-99-068-6162",
+            "email": "gerencia@turingtech.com.ec",
+            "address": { "@type": "PostalAddress", "addressLocality": "Quito", "addressRegion": "Pichincha", "addressCountry": "EC" }
+        },
+        "areaServed": [
+            { "@type": "City", "name": "Quito" },
+            { "@type": "City", "name": "Guayaquil" },
+            { "@type": "City", "name": "Cuenca" },
+            { "@type": "Country", "name": "Ecuador" }
+        ],
+        "description": "Desarrollo de software a medida en Ecuador: aplicaciones web y móviles, módulos ERP/CRM personalizados e integración de sistemas."
+    }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'], barlow: ['Barlow', 'sans-serif'] },
+                colors: { techDark: '#050C1F', techCard: 'rgba(11, 22, 49, 0.7)', accentOrange: '#FF6B00', accentOrangeHover: '#E05E00', brandNavyLight: '#111E3D' },
+                boxShadow: { 'neon-orange': '0 0 20px rgba(255, 107, 0, 0.35)', 'neon-blue': '0 0 20px rgba(59, 130, 246, 0.2)', 'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.5)' }
+            }}
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050C1F;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(11, 30, 68, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(17, 30, 61, 0.5) 0%, transparent 50%),
+                radial-gradient(ellipse at 40% 100%, rgba(8, 18, 40, 0.7) 0%, transparent 60%),
+                linear-gradient(180deg, #050C1F 0%, #060E22 40%, #050C1F 100%);
+            background-attachment: fixed;
+        }
+        .bg-orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; opacity: 0.35; }
+        .bg-orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(255, 107, 0, 0.15) 0%, transparent 70%); top: -150px; right: -100px; animation: orbFloat1 20s ease-in-out infinite; }
+        .bg-orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(30, 64, 175, 0.18) 0%, transparent 70%); bottom: 10%; left: -100px; animation: orbFloat2 25s ease-in-out infinite; }
+        .bg-orb-3 { width: 350px; height: 350px; background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%); top: 50%; left: 50%; animation: orbFloat3 30s ease-in-out infinite; }
+        @keyframes orbFloat1 { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(-60px, 80px) scale(1.1); } 66% { transform: translate(40px, -40px) scale(0.95); } }
+        @keyframes orbFloat2 { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(80px, -60px) scale(1.15); } 66% { transform: translate(-30px, 40px) scale(0.9); } }
+        @keyframes orbFloat3 { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-30%, -60%) scale(1.2); } }
+        .bg-grid { position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px); background-size: 60px 60px; pointer-events: none; z-index: 0; mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%); -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050C1F; }
+        ::-webkit-scrollbar-thumb { background: #111E3D; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #FF6B00; }
+        .glass-panel { background: rgba(11, 22, 49, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        section h2, section h3 { text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+    </style>
+</head>
+<body class="text-gray-200 antialiased relative">
+
+    <div class="bg-grid"></div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+
+    <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <a href="/" class="flex items-center space-x-3 cursor-pointer">
+                <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
+                <div>
+                    <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
+                    <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+                <a href="/automatizacion-rpa.html" class="text-gray-300 hover:text-accentOrange transition-colors">Automatización RPA</a>
+                <a href="/desarrollo-software.html" class="text-accentOrange transition-colors">Desarrollo Software</a>
+                <a href="/ciencia-datos-ecuador.html" class="text-gray-300 hover:text-accentOrange transition-colors">Ciencia de Datos</a>
+                <a href="/catalogo.html" class="text-gray-300 hover:text-accentOrange transition-colors">Catálogo</a>
+                <a href="/facturacion-electronica-sri.html" class="text-gray-300 hover:text-accentOrange transition-colors">SRI 2026</a>
+                <a href="/login.html" class="text-gray-300 hover:text-accentOrange transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-user text-xs"></i><span>Iniciar Sesión</span>
+                </a>
+            </nav>
+            <div class="hidden md:flex items-center space-x-4">
+                <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20desarrollar%20software%20a%20medida%20para%20mi%20empresa" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-neon-orange duration-300 flex items-center space-x-2">
+                    <i class="fa-solid fa-calendar-check text-xs"></i><span>Diagnóstico Técnico Gratuito</span>
+                </a>
+            </div>
+            <div class="md:hidden">
+                <button id="mobile-menu-btn" class="p-2 text-gray-400 hover:text-white focus:outline-none">
+                    <i class="fa-solid fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
+            <a href="/" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Inicio</a>
+            <a href="/automatizacion-rpa.html" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Automatización RPA</a>
+            <a href="/desarrollo-software.html" class="block text-accentOrange font-medium" onclick="toggleMobileMenu()">Desarrollo Software</a>
+            <a href="/ciencia-datos-ecuador.html" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Ciencia de Datos</a>
+            <a href="/catalogo.html" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Catálogo</a>
+            <a href="/facturacion-electronica-sri.html" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">SRI 2026</a>
+            <a href="/login.html" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Iniciar Sesión</a>
+            <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20desarrollar%20software%20a%20medida%20para%20mi%20empresa" target="_blank" class="block w-full py-3 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 text-white font-semibold text-sm flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-calendar-check"></i><span>Diagnóstico Técnico</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+        <div class="max-w-4xl mx-auto">
+            <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full glass-panel border border-accentOrange/30 mb-6">
+                <i class="fa-solid fa-code text-accentOrange text-sm"></i>
+                <span class="text-xs font-semibold text-accentOrange tracking-wider uppercase">Desarrollo a Medida</span>
+            </div>
+            <h1 class="font-barlow text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                Desarrollo de Software a Medida <span class="text-accentOrange">en Ecuador</span>
+            </h1>
+            <p class="mt-6 text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto font-light">
+                Aplicaciones web y móviles, módulos ERP/CRM personalizados y transformación digital construidos con React, Node.js, Python y .NET. Software que se adapta 100% a su flujo de trabajo.
+            </p>
+            <div class="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20desarrollar%20software%20a%20medida%20para%20mi%20empresa" target="_blank" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 text-white font-bold text-base transition-all hover:scale-105 shadow-lg hover:shadow-neon-orange duration-300 flex items-center justify-center space-x-3">
+                    <span>Cotizar mi Proyecto</span><i class="fa-solid fa-arrow-right"></i>
+                </a>
+                <a href="/catalogo.html" class="w-full sm:w-auto px-8 py-4 rounded-xl glass-panel text-gray-300 hover:text-white hover:bg-white/5 font-semibold text-base transition-all hover:scale-105 duration-300">
+                    Ver Catálogo Completo
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- SERVICIOS -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="glass-panel rounded-2xl p-8">
+                <i class="fa-solid fa-globe text-accentOrange text-3xl mb-4"></i>
+                <h2 class="text-xl font-bold text-white mb-3">Aplicaciones Web y Móviles</h2>
+                <p class="text-gray-400 text-sm leading-relaxed">Portales transaccionales y apps móviles (iOS/Android) de alto rendimiento para que sus usuarios gestionen productos y servicios de forma segura desde cualquier dispositivo.</p>
+            </div>
+            <div class="glass-panel rounded-2xl p-8">
+                <i class="fa-solid fa-puzzle-piece text-accentOrange text-3xl mb-4"></i>
+                <h2 class="text-xl font-bold text-white mb-3">Módulos ERP/CRM a Medida</h2>
+                <p class="text-gray-400 text-sm leading-relaxed">Potenciamos sus sistemas actuales con módulos personalizados que cubren brechas operativas específicas, integrados a su ecosistema tecnológico existente.</p>
+            </div>
+            <div class="glass-panel rounded-2xl p-8">
+                <i class="fa-solid fa-file-signature text-accentOrange text-3xl mb-4"></i>
+                <h2 class="text-xl font-bold text-white mb-3">Transformación Digital</h2>
+                <p class="text-gray-400 text-sm leading-relaxed">Convertimos procesos presenciales en flujos 100% digitales: registro de usuarios, firma electrónica y validez jurídica, sin papeles.</p>
+            </div>
+        </div>
+        <div class="max-w-5xl mx-auto flex flex-wrap justify-center gap-3 mt-10">
+            <span class="px-4 py-2 rounded-full bg-white/5 text-gray-300 text-xs border border-white/10 font-semibold">REACT</span>
+            <span class="px-4 py-2 rounded-full bg-white/5 text-gray-300 text-xs border border-white/10 font-semibold">NODE.JS</span>
+            <span class="px-4 py-2 rounded-full bg-white/5 text-gray-300 text-xs border border-white/10 font-semibold">PYTHON</span>
+            <span class="px-4 py-2 rounded-full bg-white/5 text-gray-300 text-xs border border-white/10 font-semibold">.NET</span>
+            <span class="px-4 py-2 rounded-full bg-white/5 text-gray-300 text-xs border border-white/10 font-semibold">FLUTTER</span>
+        </div>
+    </section>
+
+    <!-- RELACIONADOS -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div class="max-w-4xl mx-auto glass-panel rounded-2xl p-10 text-center">
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">¿Necesita también automatizar procesos o analizar sus datos?</h2>
+            <p class="text-gray-400 mb-6">Combinamos desarrollo de software con automatización RPA y ciencia de datos para soluciones integrales.</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="/automatizacion-rpa.html" class="px-5 py-2.5 rounded-xl glass-panel text-gray-300 hover:text-accentOrange transition-colors text-sm font-semibold">Automatización RPA →</a>
+                <a href="/ciencia-datos-ecuador.html" class="px-5 py-2.5 rounded-xl glass-panel text-gray-300 hover:text-accentOrange transition-colors text-sm font-semibold">Ciencia de Datos →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-transparent border-t border-white/5 py-12 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="space-y-4">
+                <div class="flex items-center space-x-3">
+                    <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-8 h-8 rounded-lg object-cover">
+                    <span class="text-white font-extrabold text-lg tracking-wider">TURING TECH</span>
+                </div>
+                <p class="text-xs text-gray-400 font-light leading-relaxed">Automatización de procesos, desarrollo de software y ciencia e ingeniería de datos en Ecuador.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-sm tracking-wider uppercase mb-4">Servicios</h4>
+                <ul class="space-y-2 text-xs text-gray-400 font-light">
+                    <li><a href="/automatizacion-rpa.html" class="hover:text-accentOrange transition-colors">Automatización Inteligente (RPA)</a></li>
+                    <li><a href="/desarrollo-software.html" class="hover:text-accentOrange transition-colors">Desarrollo de Software a Medida</a></li>
+                    <li><a href="/ciencia-datos-ecuador.html" class="hover:text-accentOrange transition-colors">Ciencia e Ingeniería de Datos</a></li>
+                    <li><a href="/facturacion-electronica-sri.html" class="hover:text-accentOrange transition-colors">Facturación Electrónica SRI 2026</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-sm tracking-wider uppercase mb-4">Soporte Local</h4>
+                <ul class="space-y-2 text-xs text-gray-400 font-light">
+                    <li class="flex items-center space-x-2"><i class="fa-solid fa-clock text-accentOrange text-[10px]"></i><span>Atención: Lun-Vie 09:00 - 18:00</span></li>
+                    <li class="flex items-center space-x-2"><i class="fa-solid fa-envelope text-accentOrange text-[10px]"></i><a href="mailto:gerencia@turingtech.com.ec" class="hover:text-accentOrange transition-colors">gerencia@turingtech.com.ec</a></li>
+                    <li class="flex items-center space-x-2"><i class="fa-solid fa-location-dot text-accentOrange text-[10px]"></i><span>Quito, Pichincha, Ecuador</span></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-sm tracking-wider uppercase mb-4">Contacto Directo</h4>
+                <a href="https://wa.me/593990686162" target="_blank" class="w-10 h-10 rounded-xl bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white flex items-center justify-center transition-all duration-300" aria-label="WhatsApp">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                </a>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto mt-10 pt-6 border-t border-white/5 text-center text-[11px] text-gray-500">
+            © 2026 TURINGTECH Ecuador. Todos los derechos reservados.
+        </div>
+    </footer>
+
+    <script>
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuBtn.addEventListener('click', () => { mobileMenu.classList.toggle('hidden'); });
+        function toggleMobileMenu() { mobileMenu.classList.add('hidden'); }
+    </script>
+</body>
+</html>

@@ -1,5 +1,35 @@
 # 📋 Resumen de Cambios Realizados - Enero 2026
 
+## 🇪🇨 Actualización SEO — Agosto 2026 (búsquedas actuales de Ecuador)
+
+### ✅ Páginas nuevas por línea de servicio (antes solo existían `index.html` y `catalogo.html`)
+- `automatizacion-rpa.html` — Automatización de Procesos / RPA
+- `desarrollo-software.html` — Desarrollo de Software a Medida
+- `ciencia-datos-ecuador.html` — Ciencia, Ingeniería y Análisis de Datos (cubre explícitamente "ciencia de datos", "científico de datos" y "análisis de datos", ausentes hasta ahora)
+- `facturacion-electronica-sri.html` — Cumplimiento de la transmisión en tiempo real de comprobantes electrónicos exigida por el SRI desde 2026 (prioridad alta: alta intención de búsqueda, multas de $470–$14,100 por incumplimiento)
+
+Cada página tiene su propio title/description/keywords, canonical, Open Graph/Twitter, geo-metadata, Schema.org (`Service` + `LocalBusiness`, y `FAQPage` en la de SRI), y quedaron enlazadas entre sí, desde el menú de navegación, el footer y el sitemap.
+
+### ✅ Correcciones técnicas
+- **`catalogo.html`**: el H1 y los H2 de servicio estaban atrapados dentro de un `<template>` HTML inerte (invisible para bots que no ejecutan JS y para previews sociales). Se agregó un bloque estático real con H1/H2 visible antes del catálogo interactivo, sin tocar el mecanismo de paginación. También se acortó la meta description (185→~155 car.), se reemplazó el keyword stuffing (~40 términos) por una lista natural, se agregó Schema.org/geo-metadata (antes solo en `index.html`) y se quitaron emojis de Open Graph/Twitter.
+- Se unificó `lang="es-EC"` en todas las páginas públicas (antes `index.html` usaba `es`).
+- `index.html`: meta keywords/description ampliadas con "ciencia de datos", "científico de datos", "análisis de datos" y "facturación electrónica SRI"; `og:title` alineado con el `<title>` real.
+- `robots.txt`: las reglas `Disallow: /admin/` y `/private/` no aplicaban a ningún archivo real (los archivos están sueltos en la raíz). Se corrigieron a `/admin.html`, `/login.html`, `/dashboard.html`, `/register.html`, `/verify-email.html`.
+- `sitemap.xml`: se agregaron las 4 páginas nuevas.
+- Se eliminó la copia legacy completa del sitio (`9-WebSite/`, ~65 archivos trackeados en git) y el `public/.htaccess` obsoleto que aún redirigía al dominio antiguo `grupoturing.com`.
+
+### ⚠️ Pendiente: Google Analytics (GA4)
+Se instaló el snippet `gtag.js` en todas las páginas públicas (`index.html`, `catalogo.html` y las 4 páginas nuevas) con un **ID placeholder `G-XXXXXXXXXX`**. Para activarlo:
+1. Entra a [analytics.google.com](https://analytics.google.com) y verifica si ya existe una propiedad GA4 para `turingtech.com.ec` (el usuario no recordaba si se llegó a crear).
+2. Si no existe, crea una propiedad nueva para el sitio.
+3. Copia el Measurement ID (formato `G-XXXXXXXXXX`).
+4. Reemplaza **todas** las ocurrencias de `G-XXXXXXXXXX` en los archivos `.html` de `public/` por el ID real (dos apariciones por archivo: el `src` del script y el `gtag('config', ...)`).
+
+### 📌 Tareas fuera de código (ver `SEO-ECUADOR-ESTRATEGIA.md`)
+Siguen pendientes y no se pueden resolver desde el código: verificar/crear Google Search Console (ya hay un meta tag de verificación en `index.html`) y Google My Business, y reenviar `sitemap.xml` una vez publicados los cambios.
+
+---
+
 ## 🌐 1. Migración de Dominio
 
 ### ✅ Cambios Completados

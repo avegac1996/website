@@ -25,8 +25,11 @@ Sitemap: https://turingtech.com.ec/sitemap.xml
 
 # Configuración adicional
 User-agent: *
-Disallow: /admin/
-Disallow: /private/
+Disallow: /admin.html
+Disallow: /dashboard.html
+Disallow: /login.html
+Disallow: /register.html
+Disallow: /verify-email.html
 Disallow: /*.php$
 Disallow: /*.inc$
 
