@@ -18,14 +18,6 @@
         </image:image>
     </url>
 
-    <!-- Catálogo Digital -->
-    <url>
-        <loc>https://turingtech.com.ec/catalogo.html</loc>
-        <lastmod>2026-08-25</lastmod>
-        <changefreq>monthly</changefreq>
-        <priority>0.9</priority>
-    </url>
-
     <!-- Facturación Electrónica SRI 2026 (prioridad alta: alta intención, urgente) -->
     <url>
         <loc>https://turingtech.com.ec/facturacion-electronica-sri.html</loc>

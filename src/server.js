@@ -13,6 +13,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Redirección: catalogo.html se retiró (duplicaba el contenido del home) y ahora
+// apunta a la sección de servicios del home. Va antes del estático para tener prioridad.
+app.get('/catalogo.html', (req, res) => {
+  res.redirect(301, '/#servicios');
+});
+
 // Archivos estáticos del sitio público
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
