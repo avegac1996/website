@@ -398,10 +398,10 @@
 
             <!-- Menú de navegación (Desktop) -->
             <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
-                <a href="#inicio" class="text-accentOrange hover:text-white transition-colors">Inicio</a>
-                <a href="#servicios" class="text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
-                <a href="#metodo" class="text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
-                <a href="#casos" class="text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
+                <a href="#inicio" data-section="inicio" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
+                <a href="#servicios" data-section="servicios" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
+                <a href="#casos" data-section="casos" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
+                <a href="#metodo" data-section="metodo" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
             </nav>
 
             <!-- Botones de Acción (Desktop) -->
@@ -422,10 +422,10 @@
 
         <!-- Menú Móvil Desplegable -->
         <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
-            <a href="#inicio" class="block text-accentOrange font-medium" onclick="toggleMobileMenu()">Inicio</a>
-            <a href="#servicios" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Servicios</a>
-            <a href="#metodo" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Método Turing</a>
-            <a href="#casos" class="block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Casos de Éxito</a>
+            <a href="#inicio" data-section="inicio" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Inicio</a>
+            <a href="#servicios" data-section="servicios" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Servicios</a>
+            <a href="#casos" data-section="casos" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Casos de Éxito</a>
+            <a href="#metodo" data-section="metodo" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Método Turing</a>
             <button onclick="openBookingModal(); toggleMobileMenu();" class="w-full py-3 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 text-white font-semibold text-sm flex items-center justify-center space-x-2">
                 <i class="fa-solid fa-calendar-check"></i>
                 <span>Diagnóstico Técnico</span>
@@ -1536,6 +1536,48 @@
 
         function toggleMobileMenu() {
             mobileMenu.classList.add('hidden');
+        }
+
+        // Scroll-spy: resalta en el navbar el link de la sección visible
+        const navLinks = document.querySelectorAll('.nav-link');
+        const observedSections = Array.from(new Set(
+            Array.from(navLinks).map(link => link.dataset.section)
+        )).map(id => document.getElementById(id)).filter(Boolean);
+
+        function setActiveNavLink(sectionId) {
+            navLinks.forEach(link => {
+                const isActive = link.dataset.section === sectionId;
+                link.classList.toggle('text-accentOrange', isActive);
+                link.classList.toggle('text-gray-300', !isActive);
+            });
+        }
+
+        if (observedSections.length) {
+            const headerOffset = document.querySelector('header')?.offsetHeight || 80;
+
+            const sectionObserver = new IntersectionObserver((entries) => {
+                // Elige la sección visible más cercana a la parte superior del viewport
+                const visible = entries
+                    .filter(entry => entry.isIntersecting)
+                    .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+                if (visible.length) {
+                    setActiveNavLink(visible[0].target.id);
+                }
+            }, {
+                root: null,
+                rootMargin: `-${headerOffset}px 0px -60% 0px`,
+                threshold: 0
+            });
+
+            observedSections.forEach(section => sectionObserver.observe(section));
+
+            // Estado inicial correcto al cargar la página (ej. recarga con scroll ya hecho)
+            const initialSection = observedSections
+                .slice()
+                .reverse()
+                .find(section => section.getBoundingClientRect().top - headerOffset <= 0);
+            setActiveNavLink((initialSection || observedSections[0]).id);
         }
 
         // Modal de Diagnóstico
