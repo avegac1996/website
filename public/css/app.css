@@ -770,11 +770,11 @@ select.form-input option {
    AUTH PAGES (login, register)
    ========================================== */
 .auth-wrapper {
-  min-height: calc(100vh - 80px);
+  min-height: calc(100vh - 84px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 100px 20px 60px 20px;
+  padding: 32px 20px;
   position: relative;
   z-index: 10;
 }
@@ -785,7 +785,7 @@ select.form-input option {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-xl);
-  padding: 40px;
+  padding: 28px 32px;
   max-width: 460px;
   width: 100%;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
@@ -793,12 +793,12 @@ select.form-input option {
 
 .auth-logo {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 .auth-logo img {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-lg);
   object-fit: cover;
   box-shadow: var(--shadow-neon-orange);
@@ -806,10 +806,10 @@ select.form-input option {
 
 .auth-logo h1 {
   font-family: 'Barlow', 'Inter', sans-serif;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--color-white);
-  margin: 12px 0 4px 0;
+  margin: 8px 0 2px 0;
 }
 
 .auth-logo p {
@@ -821,21 +821,21 @@ select.form-input option {
 
 .auth-title {
   font-family: 'Barlow', 'Inter', sans-serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--color-white);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .auth-subtitle {
   font-size: 14px;
   color: var(--color-gray);
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 
 .auth-footer {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 14px;
   font-size: 14px;
   color: var(--color-gray);
 }
@@ -854,13 +854,13 @@ select.form-input option {
   background: rgba(255, 107, 0, 0.08);
   border: 1px solid rgba(255, 107, 0, 0.2);
   border-radius: var(--radius-md);
-  padding: 16px;
-  margin-bottom: 24px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
   text-align: center;
 }
 
 .auth-incentive .credits {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--color-accent);
 }
@@ -869,6 +869,36 @@ select.form-input option {
   font-size: 14px;
   color: var(--color-light);
   margin-top: 4px;
+}
+
+/* Compact form overrides scoped to auth cards only — does not affect
+   .form-group/.form-input/.btn-large used on dashboard/admin/verify-email */
+.auth-card .form-group {
+  margin-bottom: 12px;
+}
+
+.auth-card .form-group label {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.auth-card .form-input {
+  padding: 10px 14px;
+}
+
+.auth-card .btn-large {
+  padding: 12px 32px;
+  font-size: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.form-row .form-group {
+  margin-bottom: 12px;
 }
 
 /* ==========================================
@@ -908,7 +938,11 @@ select.form-input option {
   }
 
   .auth-card {
-    padding: 24px;
+    padding: 20px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
   }
 
   .credit-balance .amount {
@@ -921,5 +955,40 @@ select.form-input option {
 
   .table th, .table td {
     padding: 8px 10px;
+  }
+}
+
+/* Extra compaction for short viewports (small laptops, landscape mobile)
+   so auth pages stay scroll-free even when vertical space is tight. */
+@media (max-height: 850px) {
+  .auth-wrapper {
+    padding: 16px 20px;
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    padding: 20px 32px;
+  }
+
+  .auth-logo {
+    margin-bottom: 10px;
+  }
+
+  .auth-logo img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .auth-incentive {
+    padding: 8px 16px;
+    margin-bottom: 12px;
+  }
+
+  .auth-card .form-group {
+    margin-bottom: 10px;
+  }
+
+  .auth-footer {
+    margin-top: 10px;
   }
 }

@@ -44,7 +44,7 @@ Siguen pendientes y no se pueden resolver desde el código: verificar/crear Goog
    - ✅ Canonical URL
    - ✅ Schema.org structured data
    - ✅ Breadcrumb navigation
-   - ✅ Email de contacto: `gerencia@turingtech.com.ec`
+   - ✅ Email de contacto: `info@turingtech.com.ec`
    - ✅ Referencias en JavaScript
 
 2. **catalogo.html**

@@ -169,7 +169,7 @@ async function sendRejectedEmail(email, name, notes) {
       </p>
       ${notes ? `<div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin: 24px 0;"><p style="color: #94A3B8; font-size: 14px; margin: 0 0 8px 0;">Notas del equipo</p><p style="color: #F1F5F9; font-size: 15px; margin: 0;">${notes}</p></div>` : ''}
       <p style="color: #94A3B8; font-size: 16px; line-height: 1.6;">
-        Si tienes preguntas, contáctanos en gerencia@turingtech.com.ec
+        Si tienes preguntas, contáctanos en info@turingtech.com.ec
       </p>
       <hr style="border: none; border-top: 1px solid #1E293B; margin: 32px 0;">
       <p style="color: #475569; font-size: 12px; text-align: center;">
