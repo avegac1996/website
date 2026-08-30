@@ -221,7 +221,7 @@ body {
 /* ==========================================
    CARDS / PANELS
    ========================================== */
-.glass-panel {
+.glass-card {
   background: rgba(11, 22, 49, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -770,7 +770,7 @@ select.form-input option {
    AUTH PAGES (login, register)
    ========================================== */
 .auth-wrapper {
-  min-height: 100vh;
+  min-height: calc(100vh - 80px);
   display: flex;
   align-items: center;
   justify-content: center;

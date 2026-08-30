@@ -95,7 +95,7 @@ npm start
 ### Registro de usuario
 1. Usuario completa formulario en `/register.html`
 2. Recibe email de verificación
-3. Al hacer clic en el link, se verifica y recibe 2000 créditos
+3. Al hacer clic en el link, se verifica y recibe 200 créditos
 4. Recibe email de bienvenida con créditos asignados
 
 ### Solicitud de créditos
