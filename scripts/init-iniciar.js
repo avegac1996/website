@@ -66,6 +66,8 @@ async function cargarSnapshot() {
   let sql = fs.readFileSync(DUMP, 'utf8');
   // pg17 mete meta-comandos de psql (\restrict / \unrestrict); el cliente pg no los entiende.
   sql = sql.replace(/^\\(?:un)?restrict\b.*$/gm, '');
+  // parámetros que solo existen en Postgres nuevos: si el servidor es más viejo, falla.
+  sql = sql.replace(/^SET\s+(?:transaction_timeout)\s*=.*$/gim, '');
 
   const db = new Client({ ...cfg, database: DB });
   await db.connect();
