@@ -16,7 +16,7 @@ const ACCOUNT_TYPES = ['cliente', 'colaborador'];
 router.post('/users', async (req, res) => {
   try {
     const { name, email, password, role, account_type, position, company, phone, credits,
-            vacation_total, vacation_used, handycoins } = req.body;
+            vacation_total, vacation_used } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos' });
@@ -39,13 +39,14 @@ router.post('/users', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const int = (v) => (Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : 0);
 
+    const bal = int(credits);
     const result = await db.query(
-      `INSERT INTO users (name, email, password_hash, role, account_type, position, credits, email_verified, company, phone,
-                          vacation_total, vacation_used, handycoins)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10, $11, $12)
+      `INSERT INTO users (name, email, password_hash, role, account_type, position, credits, handycoins, email_verified, company, phone,
+                          vacation_total, vacation_used)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, true, $8, $9, $10, $11)
        RETURNING id, name, email, role, account_type, position, credits, email_verified, company, phone, created_at`,
-      [name, email_, hash, finalRole, finalType, position || null, int(credits), company || null, phone || null,
-       int(vacation_total), int(vacation_used), int(handycoins)]
+      [name, email_, hash, finalRole, finalType, position || null, bal, company || null, phone || null,
+       int(vacation_total), int(vacation_used)]
     );
 
     res.status(201).json({ message: 'Usuario creado', user: result.rows[0] });
@@ -76,7 +77,7 @@ router.get('/users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { name, email, role, account_type, position, company, phone,
-            vacation_total, vacation_used, handycoins } = req.body;
+            vacation_total, vacation_used } = req.body;
     const id = req.params.id;
 
     if (!name || !email) {
@@ -97,12 +98,12 @@ router.put('/users/:id', async (req, res) => {
 
     const result = await db.query(
       `UPDATE users SET name = $1, email = $2, role = $3, account_type = $4, position = $5, company = $6, phone = $7,
-              vacation_total = $8, vacation_used = $9, handycoins = $10, updated_at = NOW()
-       WHERE id = $11
+              vacation_total = $8, vacation_used = $9, updated_at = NOW()
+       WHERE id = $10
        RETURNING id, name, email, role, account_type, position, credits, email_verified, active, company, phone,
-                 vacation_total, vacation_used, handycoins`,
+                 vacation_total, vacation_used`,
       [name, email_, finalRole, finalType, position || null, company || null, phone || null,
-       int(vacation_total), int(vacation_used), int(handycoins), id]
+       int(vacation_total), int(vacation_used), id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -215,7 +216,7 @@ router.post('/users/:id/credits', async (req, res) => {
 
     await db.query('BEGIN');
     await db.query(
-      'UPDATE users SET credits = credits + $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET credits = credits + $1, handycoins = credits + $1, updated_at = NOW() WHERE id = $2',
       [parseInt(amount), userId]
     );
     await db.query(
@@ -295,7 +296,7 @@ router.post('/requests/:id/approve', async (req, res) => {
       [notes || null, req.user.id, requestId]
     );
     await db.query(
-      'UPDATE users SET credits = credits + $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET credits = credits + $1, handycoins = credits + $1, updated_at = NOW() WHERE id = $2',
       [credits, request.user_id]
     );
     await db.query(

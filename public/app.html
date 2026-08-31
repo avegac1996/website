@@ -370,7 +370,7 @@
             '</div>' +
             '<div class="glass-panel" style="padding:24px;">' +
               '<div class="section-heading">Turingcoins</div>' +
-              '<div class="balance-hero"><i class="fa-solid fa-coins"></i> ' + (me.handycoins || 0).toLocaleString() + '</div>' +
+              '<div class="balance-hero"><i class="fa-solid fa-coins"></i> ' + (me.credits || 0).toLocaleString() + '</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1602,9 +1602,8 @@
         '<div style="flex:1;min-width:200px;"><div style="color:#fff;font-weight:600;font-size:14px;">' + esc(u.name) + badge + offBadge + pend + '</div>' +
         '<div class="text-gray text-xs">' + esc(u.email) + (u.position ? ' | ' + esc(u.position) : '') + ' | ' + esc(u.company || 'Sin empresa') + ' | ' + (u.account_type === 'colaborador' ? 'Colaborador' : 'Cliente') + '</div></div>' +
         '<div style="text-align:right;">' +
-          (u.account_type === 'colaborador'
-            ? '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.handycoins || 0).toLocaleString() + ' <span class="text-gray text-xs" style="font-weight:400;">Turingcoins</span></div>'
-            : '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.credits || 0).toLocaleString() + ' <span class="text-gray text-xs" style="font-weight:400;">créditos</span></div>') +
+          '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.credits || 0).toLocaleString() +
+            ' <span class="text-gray text-xs" style="font-weight:400;">' + (u.account_type === 'colaborador' ? 'Turingcoins' : 'créditos') + '</span></div>' +
           '<div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap;">' +
             '<button class="btn btn-secondary btn-small" data-edit="' + u.id + '">Modificar</button>' +
             '<button class="btn ' + toggleCls + ' btn-small" data-toggle="' + u.id + '" data-make="' + (inactive ? '1' : '0') + '">' + toggleTxt + '</button>' +
@@ -1653,8 +1652,8 @@
             '<div class="form-group"><label>Nueva contraseña</label><input id="eu_pass" type="text" class="form-input" placeholder="vacío = no cambiar" minlength="6"></div>' +
             '<div class="form-group eu-col"><label>Días de vacaciones (total)</label><input id="eu_vt" type="number" min="0" class="form-input" value="' + (u.vacation_total || 0) + '"></div>' +
             '<div class="form-group eu-col"><label>Vacaciones gozadas</label><input id="eu_vu" type="number" min="0" class="form-input" value="' + (u.vacation_used || 0) + '"></div>' +
-            '<div class="form-group eu-col"><label>Turingcoins</label><input id="eu_hc" type="number" min="0" class="form-input" value="' + (u.handycoins || 0) + '"></div>' +
           '</div>' +
+          '<p class="text-gray text-xs mt-1">Los ' + (u.account_type === 'colaborador' ? 'Turingcoins' : 'créditos') + ' se ajustan en <strong>Administración → Modificar créditos</strong>.</p>' +
           '<button type="submit" class="btn btn-primary" id="eu_btn">Guardar cambios</button></form>' +
         '</div>';
 
@@ -1672,8 +1671,7 @@
           position: el('eu_position').value.trim(),
           company: el('eu_company').value.trim(), phone: el('eu_phone').value.trim(),
           vacation_total: parseInt(el('eu_vt').value, 10) || 0,
-          vacation_used: parseInt(el('eu_vu').value, 10) || 0,
-          handycoins: parseInt(el('eu_hc').value, 10) || 0
+          vacation_used: parseInt(el('eu_vu').value, 10) || 0
         };
         var pass = el('eu_pass').value;
         API.request('/api/admin/users/' + u.id, { method: 'PUT', body: JSON.stringify(body) })
@@ -1726,10 +1724,9 @@
                 '<div class="form-group" id="nu_position_g"><label>Cargo <span class="form-required-marker" id="nu_pos_req" style="display:none;">*</span></label><input type="text" id="nu_position" class="form-input" placeholder="Data Engineer, Contadora..."></div>' +
                 '<div class="form-group"><label>Empresa</label><input type="text" id="nu_company" class="form-input" value="TURINGTECH Ecuador"></div>' +
                 '<div class="form-group"><label>Teléfono</label><input type="tel" id="nu_phone" class="form-input"></div>' +
-                '<div class="form-group nu-cli"><label>Créditos iniciales</label><input type="number" id="nu_credits" class="form-input" value="0" min="0"></div>' +
+                '<div class="form-group"><label>Saldo inicial (créditos / Turingcoins)</label><input type="number" id="nu_credits" class="form-input" value="0" min="0"></div>' +
                 '<div class="form-group nu-col" style="display:none;"><label>Días de vacaciones (total)</label><input type="number" id="nu_vt" class="form-input" value="10" min="0"></div>' +
                 '<div class="form-group nu-col" style="display:none;"><label>Vacaciones gozadas</label><input type="number" id="nu_vu" class="form-input" value="0" min="0"></div>' +
-                '<div class="form-group nu-col" style="display:none;"><label>Turingcoins</label><input type="number" id="nu_hc" class="form-input" value="0" min="0"></div>' +
               '</div>' +
               '<button type="submit" class="btn btn-primary" id="nu_btn"><i class="fa-solid fa-check"></i> Crear usuario</button>' +
             '</form>' +
@@ -1743,7 +1740,6 @@
           var col = el('nu_type').value === 'colaborador';
           el('nu_pos_req').style.display = col ? 'inline' : 'none';
           document.querySelectorAll('.nu-col').forEach(function (n) { n.style.display = col ? 'block' : 'none'; });
-          document.querySelectorAll('.nu-cli').forEach(function (n) { n.style.display = col ? 'none' : 'block'; });
         };
         el('nu_type').addEventListener('change', nuSync); nuSync();
 
@@ -1770,8 +1766,7 @@
               phone: el('nu_phone').value.trim(),
               credits: parseInt(el('nu_credits').value, 10) || 0,
               vacation_total: parseInt(el('nu_vt').value, 10) || 0,
-              vacation_used: parseInt(el('nu_vu').value, 10) || 0,
-              handycoins: parseInt(el('nu_hc').value, 10) || 0
+              vacation_used: parseInt(el('nu_vu').value, 10) || 0
             })
           }).then(function () {
             showAlert('Usuario creado.', 'success');
