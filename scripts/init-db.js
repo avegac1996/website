@@ -1,10 +1,19 @@
+/**
+ * init-db  —  crea/actualiza el ESQUEMA completo de la base `turingtech`.
+ *
+ *   npm run init-db
+ *
+ * Idempotente: CREATE TABLE IF NOT EXISTS + ADD COLUMN IF NOT EXISTS, así que
+ * sirve tanto en una base nueva como para poner al día una existente.
+ * Para cargar además los DATOS usa `npm run init:iniciar` (o `npm run seed`).
+ */
 const db = require('../src/config/database');
 
 async function initDatabase() {
-  console.log('Inicializando base de datos TURINGTECH...\n');
+  console.log('Inicializando esquema de la base TURINGTECH...\n');
 
   try {
-    // Tabla users
+    // ---------------- users ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -12,25 +21,37 @@ async function initDatabase() {
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'user',
-        credits INTEGER NOT NULL DEFAULT 0,
+        account_type VARCHAR(20) NOT NULL DEFAULT 'cliente',   -- cliente | colaborador
+        credits INTEGER NOT NULL DEFAULT 0,                    -- saldo (se muestra como "créditos" o "Turingcoins")
+        handycoins INTEGER NOT NULL DEFAULT 0,                 -- espejo de credits (compat.)
         email_verified BOOLEAN NOT NULL DEFAULT false,
         active BOOLEAN NOT NULL DEFAULT true,
-        account_type VARCHAR(20) NOT NULL DEFAULT 'cliente',
         verification_token VARCHAR(255),
         company VARCHAR(200),
-        position VARCHAR(120),
+        position VARCHAR(120),                                 -- cargo (colaboradores)
         phone VARCHAR(50),
-        photo TEXT,
-        vacation_total INTEGER NOT NULL DEFAULT 0,
+        photo TEXT,                                            -- foto de perfil (data URL)
+        vacation_total INTEGER NOT NULL DEFAULT 10,
         vacation_used INTEGER NOT NULL DEFAULT 0,
-        handycoins INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla users creada');
+    // columnas añadidas después (por si la tabla ya existía)
+    for (const [col, ddl] of [
+      ['account_type', "VARCHAR(20) NOT NULL DEFAULT 'cliente'"],
+      ['handycoins', 'INTEGER NOT NULL DEFAULT 0'],
+      ['active', 'BOOLEAN NOT NULL DEFAULT true'],
+      ['position', 'VARCHAR(120)'],
+      ['photo', 'TEXT'],
+      ['vacation_total', 'INTEGER NOT NULL DEFAULT 10'],
+      ['vacation_used', 'INTEGER NOT NULL DEFAULT 0'],
+    ]) {
+      await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
+    }
+    console.log('[OK] Tabla users');
 
-    // Tabla credit_transactions
+    // ---------------- créditos ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS credit_transactions (
         id SERIAL PRIMARY KEY,
@@ -41,9 +62,6 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla credit_transactions creada');
-
-    // Tabla credit_requests
     await db.query(`
       CREATE TABLE IF NOT EXISTS credit_requests (
         id SERIAL PRIMARY KEY,
@@ -57,14 +75,14 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla credit_requests creada');
+    console.log('[OK] Tablas credit_transactions / credit_requests');
 
-    // Tabla hr_requests (solicitudes de colaboradores TURINGTECH)
+    // ---------------- RRHH (Talento y Cultura) ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS hr_requests (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        type VARCHAR(40) NOT NULL,
+        type VARCHAR(40) NOT NULL,                 -- certificado_laboral | rol_pagos | vacaciones | permiso | adelanto
         details TEXT,
         start_date DATE,
         end_date DATE,
@@ -75,9 +93,9 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla hr_requests creada');
+    console.log('[OK] Tabla hr_requests');
 
-    // Tablero de seguimiento de proyectos (estilo Jira)
+    // ---------------- Tablero de proyectos (estilo Jira) ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS board_projects (
         id SERIAL PRIMARY KEY,
@@ -99,9 +117,9 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         titulo TEXT NOT NULL,
         project_id INTEGER REFERENCES board_projects(id),
-        proyecto VARCHAR(200),
+        proyecto VARCHAR(200),                     -- nombre de proyecto (legado / cache)
         assignee_id INTEGER REFERENCES users(id),
-        responsable VARCHAR(60),
+        responsable VARCHAR(60),                   -- primer nombre para mostrar
         tipo VARCHAR(40),
         estado VARCHAR(30) NOT NULL DEFAULT 'Tareas por hacer',
         fecha DATE,
@@ -114,9 +132,16 @@ async function initDatabase() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tablas board_projects / board_project_members / board_tasks creadas');
+    for (const [col, ddl] of [
+      ['fecha_fin', 'DATE'],
+      ['project_id', 'INTEGER REFERENCES board_projects(id)'],
+      ['assignee_id', 'INTEGER REFERENCES users(id)'],
+    ]) {
+      await db.query(`ALTER TABLE board_tasks ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
+    }
+    console.log('[OK] Tablas board_projects / board_project_members / board_tasks');
 
-    // Tabla prospectos (Matriz de Prospección B2B Ecuador)
+    // ---------------- Prospectos (Matriz B2B Ecuador) ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS prospectos (
         id SERIAL PRIMARY KEY,
@@ -143,9 +168,9 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla prospectos creada');
+    console.log('[OK] Tabla prospectos');
 
-    // Tabla notifications
+    // ---------------- notificaciones ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
@@ -157,9 +182,9 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla notifications creada');
+    console.log('[OK] Tabla notifications');
 
-    // Tabla admin_config
+    // ---------------- config ----------------
     await db.query(`
       CREATE TABLE IF NOT EXISTS admin_config (
         id SERIAL PRIMARY KEY,
@@ -168,25 +193,28 @@ async function initDatabase() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla admin_config creada');
+    console.log('[OK] Tabla admin_config');
 
-    // Índices
-    await db.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON credit_transactions(user_id);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_requests_user_id ON credit_requests(user_id);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_requests_status ON credit_requests(status);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_hr_requests_user ON hr_requests(user_id);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_hr_requests_status ON hr_requests(status);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_board_estado ON board_tasks(estado);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_board_project_id ON board_tasks(project_id);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_prospectos_sector ON prospectos(sector_id);');
-    await db.query('CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);');
-    console.log('[OK] Índices creados');
+    // ---------------- índices ----------------
+    const indices = [
+      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+      'CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON credit_transactions(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_requests_user_id ON credit_requests(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_requests_status ON credit_requests(status)',
+      'CREATE INDEX IF NOT EXISTS idx_hr_requests_user ON hr_requests(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_hr_requests_status ON hr_requests(status)',
+      'CREATE INDEX IF NOT EXISTS idx_board_estado ON board_tasks(estado)',
+      'CREATE INDEX IF NOT EXISTS idx_board_project_id ON board_tasks(project_id)',
+      'CREATE INDEX IF NOT EXISTS idx_prospectos_sector ON prospectos(sector_id)',
+      'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
+    ];
+    for (const q of indices) await db.query(q);
+    console.log('[OK] Índices');
 
-    console.log('\nBase de datos inicializada correctamente.');
+    console.log('\nEsquema listo.');
     process.exit(0);
   } catch (err) {
-    console.error('Error inicializando BD:', err.message);
+    console.error('Error inicializando el esquema:', err.message);
     process.exit(1);
   }
 }
