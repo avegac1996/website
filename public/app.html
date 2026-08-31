@@ -334,10 +334,18 @@
     }
 
     /* ===== Vistas de COLABORADOR (Talento y Cultura) ===== */
+    // refresca state.me desde el servidor (cargo, vacaciones, turingcoins, foto)
+    function refreshMe() {
+      return API.getMe().then(function (d) {
+        if (d && d.user) { state.me = d.user; paintTopbarAvatar(); }
+        return state.me;
+      }).catch(function () { return state.me; });
+    }
+
     function viewInicioHr() {
-      return API.request('/api/hr/requests').then(function (r) {
+      return Promise.all([refreshMe(), API.request('/api/hr/requests')]).then(function (res) {
         var me = state.me;
-        var reqs = r.requests || [];
+        var reqs = (res[1] && res[1].requests) || [];
         var vt = me.vacation_total || 0, vu = me.vacation_used || 0;
         var vd = Math.max(vt - vu, 0);
 
@@ -386,6 +394,9 @@
     window.goHr = function (type) { viewHrSolicitudes._preset = type; location.hash = '#/hr-solicitudes'; };
 
     function viewCredencial() {
+      return refreshMe().then(renderCredencial);
+    }
+    function renderCredencial() {
       var me = state.me;
       var idStr = 'TT-' + String(me.id).padStart(4, '0');
       el('view').innerHTML =
