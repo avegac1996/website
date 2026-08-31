@@ -59,7 +59,12 @@
         </div>
         <div class="form-group">
           <label for="password">Contraseña <span class="form-required-marker">*</span></label>
-          <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+          <div class="pw-field">
+            <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="pw-toggle" id="pwToggle" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary btn-block btn-large" id="submitBtn">
           <span id="btnText">Iniciar Sesión</span>
@@ -80,6 +85,17 @@
         window.location.href = '/app.html';
       }).catch(() => {});
     }
+
+    document.getElementById('pwToggle').addEventListener('click', function () {
+      var input = document.getElementById('password');
+      var showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      this.querySelector('i').className = showing ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+      var label = showing ? 'Mostrar contraseña' : 'Ocultar contraseña';
+      this.setAttribute('aria-label', label);
+      this.setAttribute('title', label);
+      input.focus();
+    });
     async function handleLogin(event) {
       event.preventDefault();
       const btn = document.getElementById('submitBtn');

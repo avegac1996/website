@@ -331,6 +331,34 @@ select.form-input option {
   font-size: 14px;
 }
 
+/* Campo de contraseña con botón "ver" (ojo) */
+.pw-field {
+  position: relative;
+}
+.pw-field .form-input {
+  padding-right: 46px;
+}
+.pw-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-gray);
+  cursor: pointer;
+  font-size: 15px;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease;
+}
+.pw-toggle:hover { color: var(--color-accent); }
+.pw-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
 /* ==========================================
    BUTTONS
    ========================================== */
