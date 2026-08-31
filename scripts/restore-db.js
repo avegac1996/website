@@ -9,7 +9,7 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const SQL = path.join(__dirname, 'db-backup.sql');
 if (!fs.existsSync(SQL)) {

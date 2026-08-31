@@ -13,11 +13,24 @@
  * db-backup.sql se genera con --clean --if-exists, así que es idempotente:
  * puedes correrlo en una base nueva o re-sincronizar una existente.
  */
-require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { Client } = require('pg');
+
+// carga el .env de la raíz del proyecto sin importar desde qué carpeta se ejecute
+const ENV_PATH = path.join(__dirname, '..', '.env');
+require('dotenv').config({ path: ENV_PATH });
+
+if (!fs.existsSync(ENV_PATH)) {
+  console.error(`\nNo existe ${ENV_PATH}`);
+  console.error('Crea el .env en la raíz del proyecto con DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD.');
+  process.exit(1);
+}
+if (!process.env.DB_PASSWORD) {
+  console.error('\nFalta DB_PASSWORD en el .env (' + ENV_PATH + ').');
+  process.exit(1);
+}
 
 const cfg = {
   host: process.env.DB_HOST || '127.0.0.1',

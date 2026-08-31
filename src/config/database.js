@@ -1,5 +1,7 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+const path = require('path');
+// carga el .env de la raíz del proyecto sin importar desde qué carpeta se ejecute
+require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
