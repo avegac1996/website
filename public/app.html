@@ -1602,7 +1602,9 @@
         '<div style="flex:1;min-width:200px;"><div style="color:#fff;font-weight:600;font-size:14px;">' + esc(u.name) + badge + offBadge + pend + '</div>' +
         '<div class="text-gray text-xs">' + esc(u.email) + (u.position ? ' | ' + esc(u.position) : '') + ' | ' + esc(u.company || 'Sin empresa') + ' | ' + (u.account_type === 'colaborador' ? 'Colaborador' : 'Cliente') + '</div></div>' +
         '<div style="text-align:right;">' +
-          '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.credits || 0).toLocaleString() + ' <span class="text-gray text-xs" style="font-weight:400;">créditos</span></div>' +
+          (u.account_type === 'colaborador'
+            ? '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.handycoins || 0).toLocaleString() + ' <span class="text-gray text-xs" style="font-weight:400;">Turingcoins</span></div>'
+            : '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.credits || 0).toLocaleString() + ' <span class="text-gray text-xs" style="font-weight:400;">créditos</span></div>') +
           '<div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap;">' +
             '<button class="btn btn-secondary btn-small" data-edit="' + u.id + '">Modificar</button>' +
             '<button class="btn ' + toggleCls + ' btn-small" data-toggle="' + u.id + '" data-make="' + (inactive ? '1' : '0') + '">' + toggleTxt + '</button>' +
