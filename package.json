@@ -9,7 +9,8 @@
     "seed": "node scripts/seed.js",
     "init-db": "node scripts/init-db.js",
     "setup": "node scripts/setup.js",
-    "db:restore": "node scripts/restore-db.js"
+    "db:restore": "node scripts/restore-db.js",
+    "init:iniciar": "node scripts/init-iniciar.js"
   },
   "keywords": [
     "turingtech",

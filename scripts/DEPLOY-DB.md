@@ -14,18 +14,23 @@ DB_PASSWORD=<la contraseña real del Postgres del servidor>
 
 (más `JWT_SECRET`, `SMTP_*`, `APP_URL=https://turingtech.com.ec`, etc. — ver `.env.example`)
 
-## 2. Crear y cargar la base
+## 2. Crear y cargar la base — un solo comando
 
 ```bash
-# crear la base (una sola vez)
-psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE turingtech;"
+npm run init:iniciar
+```
 
-# opción A — esquema + datos actuales (recomendado): restaura el snapshot
-npm run db:restore                 # usa scripts/db-backup.sql y las DB_* del .env
+Hace todo automáticamente con las variables `DB_*` del `.env`:
+1. crea la base `turingtech` si no existe
+2. carga el esquema + **todos los datos** (usuarios/login, prospectos, tablero, RRHH…) desde `scripts/db-backup.sql`
 
-# opción B — base vacía: solo esquema + admin inicial
-npm run init-db
-npm run seed
+No necesita `psql` (usa el cliente `pg`). Es idempotente: se puede correr en una base
+nueva o para re-sincronizar una existente.
+
+### Alternativas
+```bash
+npm run db:restore        # igual, pero vía psql (requiere psql en el PATH)
+npm run init-db && npm run seed   # base vacía: solo esquema + admin inicial
 ```
 
 ## 3. Arrancar
