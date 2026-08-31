@@ -40,59 +40,17 @@
   </div>
 
   <!-- HEADER -->
-  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-      <a href="/" class="flex items-center space-x-3 cursor-pointer">
-        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
-        <div>
-          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
-          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
-        </div>
-      </a>
-      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
-        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
-        <a href="/#servicios" class="text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
-        <a href="/#casos" class="text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
-        <a href="/#metodo" class="text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
-      </nav>
-      <div class="hidden md:flex items-center space-x-4">
-        <a href="/login.html" class="text-accentOrange hover:text-white transition-colors flex items-center gap-1 text-sm font-medium">
-          <i class="fa-solid fa-user text-xs"></i><span>Iniciar Sesión</span>
-        </a>
-        <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-neon-orange duration-300 flex items-center space-x-2">
-          <i class="fa-solid fa-calendar-check text-xs"></i>
-          <span>Diagnóstico Técnico Gratuito</span>
-        </a>
-      </div>
-      <div class="md:hidden">
-        <button id="mobile-menu-btn" class="p-2 text-gray-400 hover:text-white">
-          <i class="fa-solid fa-bars text-2xl"></i>
-        </button>
-      </div>
-    </div>
-    <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
-      <a href="/" class="block text-gray-300 hover:text-white">Inicio</a>
-      <a href="/#servicios" class="block text-gray-300 hover:text-white">Servicios</a>
-      <a href="/#metodo" class="block text-gray-300 hover:text-white">Método Turing</a>
-      <a href="/#casos" class="block text-gray-300 hover:text-white">Casos de Éxito</a>
-      <a href="/register.html" class="block text-accentOrange font-medium">Registrarse</a>
-      <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="block w-full py-3 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 text-white font-semibold text-sm flex items-center justify-center space-x-2">
-        <i class="fa-solid fa-calendar-check"></i>
-        <span>Diagnóstico Técnico</span>
-      </a>
-    </div>
-  </header>
+  <div id="site-header"></div>
 
   <!-- LOGIN -->
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="logo-turingtech-nuevo.png" alt="TURINGTECH">
-        <h1>TURINGTECH</h1>
-        <p>Ecuador</p>
+        <img src="/logo-turingtech-mark.svg" alt="TURINGTECH">
+        <h1>TURING<span style="color:var(--color-accent)">TECH</span></h1>
+        <p>Tu visión. <span style="color:var(--color-accent)">Nuestro código.</span></p>
       </div>
-      <h2 class="auth-title">Iniciar Sesión</h2>
-      <p class="auth-subtitle">Ingresa a tu cuenta para gestionar tus créditos</p>
+      <h2 class="auth-title" style="text-align: center; margin-bottom: 24px;">Iniciar Sesión</h2>
       <div id="alert-container"></div>
       <form id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
@@ -116,12 +74,10 @@
   <script src="/js/app.js"></script>
   <script src="/js/background.js"></script>
   <script>
-    document.getElementById('mobile-menu-btn').addEventListener('click', function() {
-      document.getElementById('mobile-menu').classList.toggle('hidden');
-    });
+
     if (API.isLoggedIn()) {
-      API.getMe().then(data => {
-        window.location.href = data.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
+      API.getMe().then(() => {
+        window.location.href = '/app.html';
       }).catch(() => {});
     }
     async function handleLogin(event) {
@@ -131,8 +87,8 @@
       btn.disabled = true;
       btnText.innerHTML = '<span class="spinner"></span>';
       try {
-        const data = await API.login(document.getElementById('email').value, document.getElementById('password').value);
-        window.location.href = data.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
+        await API.login(document.getElementById('email').value, document.getElementById('password').value);
+        window.location.href = '/app.html';
       } catch (err) {
         showAlert(err.message, 'error');
         btn.disabled = false;
@@ -140,5 +96,6 @@
       }
     }
   </script>
+  <script src="/js/site-header.js"></script>
 </body>
 </html>

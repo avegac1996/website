@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Shell demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="antialiased">
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+
+  <div class="shell" id="shell">
+    <aside class="sidebar">
+      <a href="#" class="sidebar-brand">
+        <img src="/logo-turingtech-mark.svg" alt="TURINGTECH">
+        <div>
+          <span class="brand">TURING<span style="color:var(--color-accent)">TECH</span></span>
+          <span class="subbrand">Tu visión. <span style="color:var(--color-accent)">Nuestro código.</span></span>
+        </div>
+      </a>
+      <div class="sidebar-search"><input type="text" placeholder="Buscar ..."></div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Mi espacio</div>
+        <a class="nav-item active" href="#"><i class="fa-solid fa-house"></i><span>Mi espacio</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-coins"></i><span>Solicitar créditos</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-paper-plane"></i><span>Mis solicitudes</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-clock-rotate-left"></i><span>Historial</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-bell"></i><span>Notificaciones</span><span class="nav-badge">3</span></a>
+        <div class="nav-section-label">Administración</div>
+        <a class="nav-item" href="#"><i class="fa-solid fa-inbox"></i><span>Solicitudes de créditos</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-users"></i><span>Usuarios</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-sliders"></i><span>Modificar créditos</span></a>
+        <a class="nav-item" href="#"><i class="fa-solid fa-gear"></i><span>Configuración</span></a>
+      </nav>
+    </aside>
+    <div class="sidebar-backdrop" id="navBackdrop"></div>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="topbar-toggle" id="navToggle" aria-label="Menú"><i class="fa-solid fa-bars"></i></button>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-bell"><i class="fa-solid fa-bell"></i><span class="dot">3</span></div>
+        <div class="topbar-user" id="userChip">
+          <div class="avatar">JV</div>
+          <div><div class="u-name">Jhossua Vega</div><div class="u-role">Administrador TURINGTECH</div></div>
+          <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--color-gray);"></i>
+          <div class="user-menu" id="userMenu">
+            <a href="#"><i class="fa-solid fa-globe"></i> Ir al sitio</a>
+            <a href="#"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</a>
+          </div>
+        </div>
+      </header>
+      <div class="content">
+        <div class="breadcrumb">TURINGTECH <span class="sep">/</span> Mi espacio <span class="sep">/</span> <span class="current">Mi espacio</span></div>
+        <h1 class="page-title">Mi espacio</h1>
+        <div class="dash-grid">
+          <div class="glass-panel welcome-card">
+            <div class="avatar-lg">JV</div>
+            <div class="w-hi">¡Bienvenid@ Jhossua Vega!</div>
+            <div class="w-sub">Administrador TURINGTECH · TURINGTECH Ecuador</div>
+          </div>
+          <div class="dash-col">
+            <div class="glass-panel" style="padding:24px;">
+              <div class="section-heading">Mis créditos</div>
+              <div class="tile-row">
+                <div class="stat-tile"><div class="st-label">Totales</div><div class="st-value">5.000</div></div>
+                <div class="stat-tile"><div class="st-label">Usados</div><div class="st-value">0</div></div>
+                <div class="stat-tile"><div class="st-label">Disponibles</div><div class="st-value">5.000</div></div>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding:24px;">
+              <div class="section-heading">Saldo créditos TURINGTECH</div>
+              <div class="balance-hero"><i class="fa-solid fa-coins"></i> 5.000</div>
+            </div>
+          </div>
+        </div>
+        <div class="dash-grid-aside">
+          <div class="glass-panel" style="padding:24px;">
+            <div class="section-heading">Solicitudes</div>
+            <button class="btn btn-primary quick-action"><i class="fa-solid fa-coins"></i> Solicitar créditos</button>
+            <button class="btn btn-secondary quick-action"><i class="fa-solid fa-paper-plane"></i> Mis solicitudes</button>
+          </div>
+          <div class="glass-panel" style="padding:24px;">
+            <div class="section-heading">Últimas solicitudes</div>
+            <div class="table-container"><table class="table">
+              <thead><tr><th>Proyecto</th><th>Créditos</th><th>Estado</th><th>Fecha</th></tr></thead>
+              <tbody><tr><td>[Automatización RPA] Conciliaciones</td><td>1.500</td><td><span class="status-pill pending">Pendiente</span></td><td>30 ago 2026</td></tr></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var shell = document.getElementById('shell');
+    document.getElementById('navToggle').addEventListener('click', function () {
+      if (window.matchMedia('(max-width: 1024px)').matches) shell.classList.toggle('nav-open');
+      else shell.classList.toggle('collapsed');
+    });
+    document.getElementById('navBackdrop').addEventListener('click', function () { shell.classList.remove('nav-open'); });
+    document.getElementById('userChip').addEventListener('click', function (e) {
+      if (e.target.closest('#userMenu')) return;
+      document.getElementById('userMenu').classList.toggle('show');
+    });
+    document.querySelectorAll('.nav-item').forEach(function (n) {
+      n.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelectorAll('.nav-item').forEach(function (x) { x.classList.remove('active'); });
+        this.classList.add('active');
+        shell.classList.remove('nav-open');
+      });
+    });
+  </script>
+</body>
+</html>

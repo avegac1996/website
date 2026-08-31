@@ -385,58 +385,7 @@
     </div>
 
     <!-- BARRA DE NAVEGACIÓN HEADER -->
-    <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            <!-- Logotipo de la Empresa (Naranja y Azul Marino) -->
-            <div class="flex items-center space-x-3 cursor-pointer">
-                <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
-                <div>
-                    <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
-                    <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
-                </div>
-            </div>
-
-            <!-- Menú de navegación (Desktop) -->
-            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
-                <a href="#inicio" data-section="inicio" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
-                <a href="#servicios" data-section="servicios" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
-                <a href="#casos" data-section="casos" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
-                <a href="#metodo" data-section="metodo" class="nav-link text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
-            </nav>
-
-            <!-- Botones de Acción (Desktop) -->
-            <div class="hidden md:flex items-center space-x-4">
-                <a href="/login.html" class="text-gray-300 hover:text-accentOrange transition-colors flex items-center gap-1 text-sm font-medium">
-                    <i class="fa-solid fa-user text-xs"></i>
-                    <span>Iniciar Sesión</span>
-                </a>
-                <button onclick="openBookingModal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-neon-orange duration-300 flex items-center space-x-2">
-                    <i class="fa-solid fa-calendar-check text-xs"></i>
-                    <span>Diagnóstico Técnico Gratuito</span>
-                </button>
-            </div>
-
-            <!-- Botón de Menú Móvil -->
-            <div class="md:hidden">
-                <button id="mobile-menu-btn" class="p-2 text-gray-400 hover:text-white focus:outline-none">
-                    <i class="fa-solid fa-bars text-2xl"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Menú Móvil Desplegable -->
-        <div id="mobile-menu" class="hidden md:hidden glass-panel border-t border-white/5 py-4 px-6 space-y-4">
-            <a href="#inicio" data-section="inicio" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Inicio</a>
-            <a href="#servicios" data-section="servicios" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Servicios</a>
-            <a href="#casos" data-section="casos" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Casos de Éxito</a>
-            <a href="#metodo" data-section="metodo" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Método Turing</a>
-            <a href="/login.html" class="nav-link block text-gray-300 hover:text-white" onclick="toggleMobileMenu()">Iniciar Sesión</a>
-            <button onclick="openBookingModal(); toggleMobileMenu();" class="w-full py-3 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 text-white font-semibold text-sm flex items-center justify-center space-x-2">
-                <i class="fa-solid fa-calendar-check"></i>
-                <span>Diagnóstico Técnico</span>
-            </button>
-        </div>
-    </header>
+  <div id="site-header"></div>
 
     <!-- SECCIÓN HERO -->
     <section id="inicio" class="relative md:min-h-[calc(100vh-80px)] flex items-center justify-center py-14 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
@@ -515,7 +464,7 @@
                     </div>
 
                     <h2 class="font-barlow text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight mb-6">
-                        En <span class="text-transparent bg-clip-text bg-gradient-to-r from-accentOrange to-amber-500">TuringTech</span> trasladamos la rigurosidad de entornos corporativos exigentes a su organización.
+                        En <span class="text-accentOrange">TURINGTECH</span> trasladamos la rigurosidad de entornos corporativos exigentes a su organización.
                     </h2>
 
                     <p class="text-gray-400 text-lg leading-relaxed mb-6 font-light">
@@ -1172,6 +1121,50 @@
         </div>
     </section>
 
+    <!-- SECCIÓN: REGÍSTRATE Y OBTÉN CRÉDITOS TURINGTECH -->
+    <section id="creditos" class="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden z-10 border-t border-white/5">
+        <div class="absolute inset-0 opacity-20">
+            <div class="absolute top-0 right-1/4 w-96 h-96 bg-accentOrange rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-1/4 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
+        </div>
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full glass-panel border border-accentOrange/30 text-accentOrange text-sm font-semibold mb-8 uppercase tracking-wider">
+                <i class="fa-solid fa-coins"></i>
+                <span>Beneficio exclusivo TURINGTECH</span>
+            </div>
+            <h2 class="font-barlow text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight mb-6">
+                ¿Tienes un proyecto en mente? <span class="text-accentOrange">Regístrate y obtén créditos</span> TURINGTECH
+            </h2>
+            <p class="text-lg text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+                Al registrarte y verificar tu email, recibes <strong class="text-accentOrange">créditos gratuitos</strong> para usar en tu próximo proyecto de automatización, desarrollo o ingeniería de datos con nosotros.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+                <a href="register.html" class="px-10 py-4 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-bold text-lg transition-all shadow-lg hover:shadow-neon-orange duration-300 transform hover:scale-105 inline-flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Registrarse Ahora</span>
+                </a>
+                <a href="login.html" class="px-10 py-4 rounded-xl border-2 border-white/20 hover:border-accentOrange text-gray-300 hover:text-accentOrange font-bold text-lg transition-all duration-300 inline-flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>Ya tengo cuenta</span>
+                </a>
+            </div>
+            <div class="flex flex-wrap justify-center gap-8 text-sm text-gray-400">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-green-500"></i>
+                    <span>Créditos gratuitos al verificar email</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-green-500"></i>
+                    <span>Úsalos en cualquier servicio</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-green-500"></i>
+                    <span>Sin compromiso</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- FOOTER LOCAL COMPLETO Y DE CONFIANZA CORPORATIVA -->
     <footer class="bg-transparent border-t border-white/5 py-12 px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -1179,7 +1172,7 @@
             <!-- Columna 1: Turing Tech info -->
             <div class="space-y-4">
                 <div class="flex items-center space-x-3">
-                    <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-8 h-8 rounded-lg object-cover">
+                    <img src="/logo-turingtech-mark.svg" alt="TuringTech" class="w-8 h-8 object-contain">
                     <span class="text-white font-extrabold text-lg tracking-wider">TURING TECH</span>
                 </div>
                 <p class="text-xs text-gray-400 font-light leading-relaxed">
@@ -1577,12 +1570,14 @@
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
 
-        mobileMenuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
 
         function toggleMobileMenu() {
-            mobileMenu.classList.add('hidden');
+            if (mobileMenu) mobileMenu.classList.add('hidden');
         }
 
         // Scroll-spy: resalta en el navbar el link de la sección visible
@@ -1712,5 +1707,6 @@
 
         window.addEventListener('resize', resizeCanvas);
     </script>
+  <script src="/js/site-header.js"></script>
 </body>
 </html>

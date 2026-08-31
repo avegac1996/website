@@ -11,7 +11,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const userResult = await db.query(
-      'SELECT id, name, email, role, credits, company, phone, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, role, account_type, position, credits, company, phone, created_at FROM users WHERE id = $1',
       [userId]
     );
 

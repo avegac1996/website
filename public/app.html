@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi espacio - TURINGTECH Ecuador</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="antialiased">
+
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+
+  <div class="shell" id="shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <a href="/" class="sidebar-brand">
+        <img src="/logo-turingtech-mark.svg" alt="TURINGTECH">
+        <div>
+          <span class="brand">TURING<span style="color:var(--color-accent)">TECH</span></span>
+          <span class="subbrand">Tu visión. <span style="color:var(--color-accent)">Nuestro código.</span></span>
+        </div>
+      </a>
+      <div class="sidebar-search">
+        <input type="text" id="navSearch" placeholder="Buscar ...">
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+    </aside>
+    <div class="sidebar-backdrop" id="navBackdrop"></div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <header class="topbar">
+        <button class="topbar-toggle" id="navToggle" aria-label="Menú"><i class="fa-solid fa-bars"></i></button>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-bell" id="bell" title="Notificaciones">
+          <i class="fa-solid fa-bell"></i>
+          <span class="dot" id="bellDot" style="display:none;">0</span>
+        </div>
+        <div class="topbar-user" id="userChip">
+          <div class="avatar" id="userAvatar">--</div>
+          <div>
+            <div class="u-name" id="userChipName">...</div>
+            <div class="u-role" id="userChipRole"></div>
+          </div>
+          <i class="fa-solid fa-chevron-down" style="font-size:11px;color:var(--color-gray);"></i>
+          <div class="user-menu" id="userMenu">
+            <a href="/"><i class="fa-solid fa-globe"></i> Ir al sitio</a>
+            <a href="#" id="logoutLink"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</a>
+          </div>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <h1 class="page-title" id="pageTitle">Mi espacio</h1>
+        <div id="alert-container"></div>
+        <div id="view"><p class="text-gray" style="padding:40px 0;text-align:center;">Cargando...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/prospectos-data.js"></script>
+  <script>
+  (function () {
+    if (!API.isLoggedIn()) { window.location.href = '/login.html'; return; }
+
+    var ROLE_LABELS = { admin: 'Administrador TURINGTECH', user: 'Cliente' };
+    var HR_TYPES = [
+      { id: 'certificado_laboral', label: 'Certificado laboral', icon: 'fa-file-lines', dates: false },
+      { id: 'rol_pagos',           label: 'Rol de pagos',        icon: 'fa-receipt', dates: false },
+      { id: 'vacaciones',          label: 'Vacaciones',          icon: 'fa-umbrella-beach', dates: true },
+      { id: 'permiso',             label: 'Permiso',             icon: 'fa-calendar-day', dates: true },
+      { id: 'adelanto',            label: 'Adelanto de sueldo',  icon: 'fa-money-bill-wave', dates: false }
+    ];
+    var hrLabel = function (t) { var x = HR_TYPES.filter(function (h) { return h.id === t; })[0]; return x ? x.label : t; };
+
+    // El menú depende del tipo de cuenta: cliente = créditos, colaborador = RRHH.
+    function buildMenu() {
+      var personal = state.me.account_type === 'colaborador'
+        ? { section: 'Talento y Cultura', items: [
+            { id: 'inicio',         label: 'Mi espacio',            icon: 'fa-house' },
+            { id: 'board',          label: 'Seguimiento de proyectos', icon: 'fa-diagram-project' },
+            { id: 'prospectos',     label: 'Prospectos',            icon: 'fa-crosshairs' },
+            { id: 'humanizador',    label: 'Humanizador',           icon: 'fa-wand-magic-sparkles' },
+            { id: 'credencial',     label: 'Mi credencial',         icon: 'fa-id-badge' },
+            { id: 'hr-solicitudes', label: 'Mis solicitudes',       icon: 'fa-paper-plane' },
+            { id: 'notificaciones', label: 'Notificaciones',        icon: 'fa-bell' }
+          ].concat(state.me.role === 'admin' ? [] : [{ id: 'config', label: 'Configuración', icon: 'fa-gear' }]) }
+        : { section: 'Mi espacio', items: [
+            { id: 'inicio',         label: 'Mi espacio',         icon: 'fa-house' },
+            { id: 'solicitar',      label: 'Solicitar créditos', icon: 'fa-coins' },
+            { id: 'solicitudes',    label: 'Mis solicitudes',    icon: 'fa-paper-plane' },
+            { id: 'historial',      label: 'Historial',          icon: 'fa-clock-rotate-left' },
+            { id: 'notificaciones', label: 'Notificaciones',     icon: 'fa-bell' }
+          ]};
+      var menu = [personal];
+      if (state.me.role === 'admin') {
+        menu.push({ section: 'Administración', items: [
+          { id: 'admin-solicitudes',    label: 'Solicitudes de créditos', icon: 'fa-inbox' },
+          { id: 'admin-hr-solicitudes', label: 'Solicitudes RRHH',        icon: 'fa-user-clock' },
+          { id: 'admin-usuarios',       label: 'Usuarios',                icon: 'fa-users' },
+          { id: 'admin-creditos',       label: 'Modificar créditos',      icon: 'fa-sliders' },
+          { id: 'admin-config',         label: 'Configuración',           icon: 'fa-gear' }
+        ] });
+      }
+      return menu;
+    }
+
+    var CREDIT_TYPES = [
+      { id: 'rpa',         name: 'Automatización RPA',         icon: 'fa-robot',            desc: 'Bots para procesos operativos y bancarios.' },
+      { id: 'bi',          name: 'Business Intelligence',      icon: 'fa-chart-line',       desc: 'Dashboards y control financiero.' },
+      { id: 'software',    name: 'Desarrollo de Software',     icon: 'fa-code',             desc: 'Aplicaciones y sistemas a medida.' },
+      { id: 'integracion', name: 'Integración de Sistemas',    icon: 'fa-diagram-project',  desc: 'APIs y conectores entre plataformas.' },
+      { id: 'zerolicense', name: 'Consultoría Zero-License',   icon: 'fa-scale-balanced',   desc: 'Reducción de costos de licenciamiento.' },
+      { id: 'ia',          name: 'Agentes de IA y WhatsApp',   icon: 'fa-comment-dots',     desc: 'Asistentes inteligentes y chatbots.' }
+    ];
+    var PACKAGES = [
+      { id: 'starter', label: 'Starter', credits: 500 },
+      { id: 'growth',  label: 'Growth',  credits: 1500 },
+      { id: 'scale',   label: 'Scale',   credits: 5000 },
+      { id: 'custom',  label: 'Personalizado', credits: null }
+    ];
+    var PRIORIDADES = ['Baja', 'Media', 'Alta'];
+
+    var state = { me: null, menu: [], dashboard: null, users: null };
+    var el = function (id) { return document.getElementById(id); };
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var initials = function (name) {
+      var p = String(name || '').trim().split(/\s+/).filter(Boolean);
+      var s = ((p[0] || '')[0] || '') + ((p[1] || '')[0] || '');
+      return (s || 'TT').toUpperCase();
+    };
+    // Avatar redondo: foto si existe, si no las iniciales
+    var avatarHtml = function (name, photo, sizePx) {
+      if (photo) return '<img src="' + photo + '" alt="" style="width:100%;height:100%;object-fit:cover;">';
+      return esc(initials(name));
+    };
+    function paintTopbarAvatar() {
+      var a = el('userAvatar');
+      if (state.me && state.me.photo) {
+        a.innerHTML = '<img src="' + state.me.photo + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+        a.style.padding = '0'; a.style.overflow = 'hidden';
+      } else {
+        a.textContent = initials(state.me ? state.me.name : '');
+      }
+    }
+    var fmtDate = function (d) { return d ? new Date(d).toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'; };
+    var fmtDateTime = function (d) { return d ? new Date(d).toLocaleString('es-EC') : '—'; };
+    var isTuringtech = function (u) { return u.role === 'admin' || /@turingtech\.com\.ec\s*$/i.test(u.email || ''); };
+    var statusLabel = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
+
+    /* ---------- Shell / navegación ---------- */
+    function buildSidebar() {
+      var html = '';
+      state.menu.forEach(function (grp) {
+        html += '<div class="nav-section-label">' + esc(grp.section) + '</div>';
+        grp.items.forEach(function (it) {
+          html += '<a class="nav-item" data-route="' + it.id + '" href="#/' + it.id + '">' +
+                    '<i class="fa-solid ' + it.icon + '"></i><span>' + esc(it.label) + '</span>' +
+                    (it.id === 'notificaciones' ? '<span class="nav-badge" data-nav-badge style="display:none;">0</span>' : '') +
+                  '</a>';
+        });
+      });
+      el('sidebarNav').innerHTML = html;
+    }
+
+    function menuLookup(routeId) {
+      for (var i = 0; i < state.menu.length; i++) {
+        for (var j = 0; j < state.menu[i].items.length; j++) {
+          if (state.menu[i].items[j].id === routeId) return { section: state.menu[i].section, item: state.menu[i].items[j] };
+        }
+      }
+      return null;
+    }
+
+    function setActive(routeId) {
+      var items = document.querySelectorAll('.nav-item');
+      for (var i = 0; i < items.length; i++) items[i].classList.toggle('active', items[i].getAttribute('data-route') === routeId);
+    }
+
+    var ROUTES = {
+      'inicio': viewInicio,
+      'solicitar': viewSolicitar,
+      'solicitudes': viewSolicitudes,
+      'historial': viewHistorial,
+      'notificaciones': viewNotificaciones,
+      'credencial': viewCredencial,
+      'hr-solicitudes': viewHrSolicitudes,
+      'board': viewBoard,
+      'prospectos': viewProspectos,
+      'humanizador': viewHumanizador,
+      'config': viewMiConfig,
+      'admin-solicitudes': viewAdminSolicitudes,
+      'admin-hr-solicitudes': viewAdminHrSolicitudes,
+      'admin-usuarios': viewAdminUsuarios,
+      'admin-creditos': viewAdminCreditos,
+      'admin-config': viewAdminConfig
+    };
+
+    function router() {
+      var routeId = (location.hash.replace(/^#\/?/, '') || 'inicio');
+      var meta = menuLookup(routeId);
+      if (!ROUTES[routeId] || !meta) {
+        routeId = 'inicio'; meta = menuLookup('inicio');
+        if (location.hash !== '#/inicio') { location.hash = '#/inicio'; return; }
+      }
+      setActive(routeId);
+      el('breadcrumb').innerHTML = 'TURINGTECH <span class="sep">/</span> ' + esc(meta.section) +
+        ' <span class="sep">/</span> <span class="current">' + esc(meta.item.label) + '</span>';
+      el('pageTitle').textContent = meta.item.label;
+      el('view').innerHTML = '<p class="text-gray" style="padding:40px 0;text-align:center;">Cargando...</p>';
+      el('shell').classList.remove('nav-open');
+      Promise.resolve(ROUTES[routeId]()).catch(function (e) { showAlert(e.message, 'error'); });
+      refreshBell();
+    }
+
+    /* ---------- Data helpers ---------- */
+    // Siempre trae datos frescos: los créditos/estados cambian cuando el admin aprueba/ajusta.
+    function loadDashboard() {
+      return API.getDashboard().then(function (d) {
+        state.dashboard = d;
+        if (d.user) {
+          for (var k in d.user) { if (d.user[k] != null) state.me[k] = d.user[k]; }
+          el('userChipName').textContent = state.me.name;
+          paintTopbarAvatar();
+        }
+        return d;
+      });
+    }
+    function loadUsers(force) {
+      if (state.users && !force) return Promise.resolve(state.users);
+      return API.getAdminUsers().then(function (r) { state.users = Array.isArray(r) ? r : (r.users || []); return state.users; });
+    }
+    function refreshBell() {
+      return API.getNotifications().then(function (r) {
+        var list = (r.notifications || r || []);
+        var unread = list.filter(function (n) { return !n.is_read; }).length;
+        el('bellDot').style.display = unread ? 'block' : 'none';
+        el('bellDot').textContent = unread;
+        var b = document.querySelector('[data-nav-badge]');
+        if (b) { b.style.display = unread ? 'inline-block' : 'none'; b.textContent = unread; }
+      }).catch(function () {});
+    }
+
+    /* ---------- Vistas ---------- */
+    function viewInicio() {
+      return state.me.account_type === 'colaborador' ? viewInicioHr() : viewInicioCliente();
+    }
+
+    function viewInicioCliente() {
+      return loadDashboard().then(function (d) {
+        var me = d.user || state.me;
+        var txns = d.transactions || [];
+        // Usados = créditos consumidos (transacciones negativas). Disponibles = saldo real.
+        // Totales = Disponibles + Usados  -> siempre cuadra.
+        var spent = txns.filter(function (t) { return t.amount < 0; }).reduce(function (a, t) { return a - t.amount; }, 0);
+        var avail = (me && me.credits != null) ? me.credits : 0;
+        var totals = avail + spent;
+
+        // Movimientos = transacciones (ingresos y usos, incl. ajustes del admin) + solicitudes no aprobadas
+        var acts = [];
+        txns.forEach(function (t) {
+          acts.push({ date: t.created_at, label: t.description || 'Movimiento de créditos', amount: t.amount });
+        });
+        (d.requests || []).forEach(function (r) {
+          if (r.status === 'approved') return; // ya figura como transacción
+          acts.push({ date: r.created_at, label: r.project_description, amount: r.requested_credits, req: r.status });
+        });
+        acts.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+
+        var actRows = acts.slice(0, 8).map(function (a) {
+          var monto, estado;
+          if (a.req) {
+            monto = '<span class="text-gray">' + (a.amount || 0).toLocaleString() + '</span>';
+            estado = '<span class="status-pill ' + a.req + '">' + (statusLabel[a.req] || a.req) + '</span>';
+          } else if (a.amount < 0) {
+            monto = '<span style="color:var(--color-error);font-weight:700;">&minus;' + Math.abs(a.amount).toLocaleString() + '</span>';
+            estado = '<span class="status-pill rejected">Uso</span>';
+          } else {
+            monto = '<span style="color:var(--color-success);font-weight:700;">+' + a.amount.toLocaleString() + '</span>';
+            estado = '<span class="status-pill approved">Ingreso</span>';
+          }
+          return '<tr><td>' + esc(a.label) + '</td><td>' + monto + '</td><td>' + estado + '</td><td>' + fmtDate(a.date) + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" class="text-gray text-center" style="padding:24px 0;">No se encontraron registros.</td></tr>';
+
+        el('view').innerHTML =
+        '<div class="dash-grid">' +
+          '<div class="glass-panel welcome-card">' +
+            '<div class="avatar-lg">' + esc(initials(me.name)) + '</div>' +
+            '<div class="w-hi">¡Bienvenid@ ' + esc(me.name) + '!</div>' +
+            '<div class="w-sub">' + esc(ROLE_LABELS[me.role] || me.role) + (me.company ? ' &middot; ' + esc(me.company) : '') + '</div>' +
+            '<div class="w-sub">' + esc(me.email) + '</div>' +
+          '</div>' +
+          '<div class="dash-col">' +
+            '<div class="glass-panel" style="padding:24px;">' +
+              '<div class="section-heading">Mis créditos</div>' +
+              '<div class="tile-row">' +
+                '<div class="stat-tile"><div class="st-label">Totales</div><div class="st-value">' + totals.toLocaleString() + '</div></div>' +
+                '<div class="stat-tile"><div class="st-label">Usados</div><div class="st-value">' + spent.toLocaleString() + '</div></div>' +
+                '<div class="stat-tile"><div class="st-label">Disponibles</div><div class="st-value">' + avail.toLocaleString() + '</div></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="glass-panel" style="padding:24px;">' +
+              '<div class="section-heading">Saldo créditos TURINGTECH</div>' +
+              '<div class="balance-hero"><i class="fa-solid fa-coins"></i> ' + avail.toLocaleString() + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dash-grid-aside">' +
+          '<div class="glass-panel" style="padding:24px;">' +
+            '<div class="section-heading">Solicitudes</div>' +
+            '<button class="btn btn-primary quick-action" onclick="location.hash=\'#/solicitar\'"><i class="fa-solid fa-coins"></i> Solicitar créditos</button>' +
+            '<button class="btn btn-secondary quick-action" onclick="location.hash=\'#/solicitudes\'"><i class="fa-solid fa-paper-plane"></i> Mis solicitudes</button>' +
+            '<button class="btn btn-secondary quick-action" onclick="location.hash=\'#/historial\'"><i class="fa-solid fa-clock-rotate-left"></i> Historial</button>' +
+          '</div>' +
+          '<div class="glass-panel" style="padding:24px;">' +
+            '<div class="section-heading">Movimientos recientes</div>' +
+            '<div class="table-container"><table class="table"><thead><tr><th>Concepto</th><th>Monto</th><th>Tipo</th><th>Fecha</th></tr></thead><tbody>' + actRows + '</tbody></table></div>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+
+    /* ===== Vistas de COLABORADOR (Talento y Cultura) ===== */
+    function viewInicioHr() {
+      return API.request('/api/hr/requests').then(function (r) {
+        var me = state.me;
+        var reqs = r.requests || [];
+        var vt = me.vacation_total || 0, vu = me.vacation_used || 0;
+        var vd = Math.max(vt - vu, 0);
+
+        var docRows = '<tr><td colspan="2" class="text-gray text-center" style="padding:26px 0;">No se encontraron registros.</td></tr>';
+
+        el('view').innerHTML =
+        '<div class="dash-grid">' +
+          '<div class="glass-panel welcome-card">' +
+            '<div class="avatar-lg"' + (me.photo ? ' style="overflow:hidden;padding:0;"' : '') + '>' + avatarHtml(me.name, me.photo) + '</div>' +
+            '<div class="w-hi">¡Bienvenid@ ' + esc(me.name) + '!</div>' +
+            '<div class="w-sub" style="color:var(--color-accent);font-weight:600;">' + esc(me.position || (me.role === 'admin' ? 'Administrador TURINGTECH' : 'Colaborador TURINGTECH')) + '</div>' +
+            (me.company ? '<div class="w-sub">' + esc(me.company) + '</div>' : '') +
+          '</div>' +
+          '<div class="dash-col">' +
+            '<div class="glass-panel" style="padding:24px;">' +
+              '<div class="section-heading">Mis vacaciones</div>' +
+              '<div class="tile-row">' +
+                '<div class="stat-tile"><div class="st-label">Totales</div><div class="st-value">' + vt + '</div></div>' +
+                '<div class="stat-tile"><div class="st-label">Gozadas</div><div class="st-value">' + vu + '</div></div>' +
+                '<div class="stat-tile"><div class="st-label">Disponibles</div><div class="st-value">' + vd + '</div></div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="glass-panel" style="padding:24px;">' +
+              '<div class="section-heading">Turingcoins</div>' +
+              '<div class="balance-hero"><i class="fa-solid fa-coins"></i> ' + (me.handycoins || 0).toLocaleString() + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dash-grid-aside">' +
+          '<div class="glass-panel" style="padding:24px;">' +
+            '<div class="section-heading">Solicitudes</div>' +
+            '<button class="btn btn-primary quick-action" onclick="goHr(\'certificado_laboral\')"><i class="fa-solid fa-file-lines"></i> Certificado laboral</button>' +
+            '<button class="btn btn-secondary quick-action" onclick="goHr(\'rol_pagos\')"><i class="fa-solid fa-receipt"></i> Rol de pagos</button>' +
+            '<button class="btn btn-secondary quick-action" onclick="goHr(\'vacaciones\')"><i class="fa-solid fa-umbrella-beach"></i> Vacaciones</button>' +
+          '</div>' +
+          '<div class="glass-panel" style="padding:24px;">' +
+            '<div class="section-heading">Documentos cargados</div>' +
+            '<div class="table-container"><table class="table"><thead><tr><th>Tipo</th><th class="text-right">Acciones</th></tr></thead><tbody>' + docRows + '</tbody></table></div>' +
+            '<div class="text-gray text-xs text-center mt-2">Mostrando 0 a 0 de 0 registros</div>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+
+    // ir a "Mis solicitudes" abriendo el formulario con un tipo preseleccionado
+    window.goHr = function (type) { viewHrSolicitudes._preset = type; location.hash = '#/hr-solicitudes'; };
+
+    function viewCredencial() {
+      var me = state.me;
+      var idStr = 'TT-' + String(me.id).padStart(4, '0');
+      el('view').innerHTML =
+        '<div style="display:flex;justify-content:center;">' +
+          '<div class="credential-card">' +
+            '<div class="cred-glow-a"></div><div class="cred-glow-b"></div>' +
+            '<div class="cred-head">' +
+              '<img src="/logo-turingtech-mark.svg" alt="" class="cred-logo">' +
+              '<div><div class="cred-brand">TURING<span>TECH</span></div><div class="cred-sub">Credencial de colaborador</div></div>' +
+            '</div>' +
+            '<div class="cred-avatar"' + (me.photo ? ' style="overflow:hidden;"' : '') + '>' + avatarHtml(me.name, me.photo) + '</div>' +
+            '<div class="cred-name">' + esc(me.name) + '</div>' +
+            '<div class="cred-role">' + esc(me.position || 'Colaborador') + '</div>' +
+            '<div class="cred-fields">' +
+              '<div><span>ID</span><strong>' + idStr + '</strong></div>' +
+              '<div><span>Área / Empresa</span><strong>' + esc(me.company || 'TURINGTECH Ecuador') + '</strong></div>' +
+              '<div><span>Email</span><strong>' + esc(me.email) + '</strong></div>' +
+              (me.phone ? '<div><span>Teléfono</span><strong>' + esc(me.phone) + '</strong></div>' : '') +
+            '</div>' +
+            '<div class="cred-foot">turingtech.com.ec &middot; Documento de identificación interno</div>' +
+          '</div>' +
+        '</div>' +
+        '<p class="text-gray text-center text-sm mt-3">' +
+          (me.position ? '' : 'Tu cargo aún no está definido. ') +
+          'La foto se cambia en <a href="#/config" style="color:var(--color-accent);">Configuración</a>.</p>';
+    }
+
+    function viewMiConfig() {
+      var me = state.me;
+      el('view').innerHTML =
+        '<div class="glass-panel" style="padding:28px;max-width:520px;margin-bottom:22px;">' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Foto de perfil</div>' +
+          '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">' +
+            '<div id="cfgPhoto" style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px;">' + avatarHtml(me.name, me.photo) + '</div>' +
+            '<div>' +
+              '<input type="file" id="cfg_file" accept="image/png,image/jpeg,image/webp" style="display:none;">' +
+              '<button class="btn btn-secondary btn-small" id="cfg_pick"><i class="fa-solid fa-upload"></i> Subir foto</button> ' +
+              (me.photo ? '<button class="btn btn-error btn-small" id="cfg_rmphoto">Quitar</button>' : '') +
+              '<div class="text-gray text-xs mt-1">JPG o PNG. Se recorta a un cuadrado.</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="glass-panel" style="padding:28px;max-width:520px;">' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Cambiar mi contraseña</div>' +
+          '<form id="pwForm">' +
+            '<div class="form-group"><label>Contraseña actual <span class="form-required-marker">*</span></label><input type="password" id="pw_cur" class="form-input" required autocomplete="current-password"></div>' +
+            '<div class="form-group"><label>Nueva contraseña <span class="form-required-marker">*</span></label><input type="password" id="pw_new" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
+            '<div class="form-group"><label>Repetir nueva contraseña <span class="form-required-marker">*</span></label><input type="password" id="pw_new2" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
+            '<button type="submit" class="btn btn-primary" id="pw_btn">Actualizar contraseña</button>' +
+          '</form>' +
+        '</div>';
+
+      function savePhoto(dataUrl) {
+        return API.request('/api/hr/profile', { method: 'POST', body: JSON.stringify({ photo: dataUrl }) })
+          .then(function () {
+            state.me.photo = dataUrl || null;
+            paintTopbarAvatar();
+            showAlert(dataUrl ? 'Foto actualizada.' : 'Foto quitada.', 'success');
+            viewMiConfig();
+          }).catch(function (e) { showAlert(e.message, 'error'); });
+      }
+
+      el('cfg_pick').addEventListener('click', function () { el('cfg_file').click(); });
+      el('cfg_file').addEventListener('change', function () {
+        var f = this.files && this.files[0];
+        if (!f) return;
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var img = new Image();
+          img.onload = function () {
+            var size = 256;
+            var c = document.createElement('canvas'); c.width = size; c.height = size;
+            var ctx = c.getContext('2d');
+            var s = Math.min(img.width, img.height);
+            ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+            savePhoto(c.toDataURL('image/jpeg', 0.85));
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(f);
+      });
+      var rm = el('cfg_rmphoto');
+      if (rm) rm.addEventListener('click', function () { savePhoto(''); });
+
+      el('pwForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (el('pw_new').value !== el('pw_new2').value) { showAlert('Las contraseñas nuevas no coinciden.', 'warning'); return; }
+        var btn = el('pw_btn'); btn.disabled = true; btn.textContent = 'Actualizando...';
+        API.request('/api/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ current_password: el('pw_cur').value, new_password: el('pw_new').value })
+        }).then(function () {
+          showAlert('Contraseña actualizada.', 'success');
+          el('pwForm').reset();
+        }).catch(function (err) { showAlert(err.message, 'error'); })
+          .then(function () { btn.disabled = false; btn.textContent = 'Actualizar contraseña'; });
+      });
+    }
+
+    function viewHrSolicitudes() {
+      return API.request('/api/hr/requests').then(function (r) {
+        var reqs = r.requests || [];
+        var rows = reqs.map(function (x) {
+          var rango = x.start_date ? fmtDate(x.start_date) + (x.end_date ? ' → ' + fmtDate(x.end_date) : '') : '—';
+          return '<tr><td>' + esc(hrLabel(x.type)) + '</td><td>' + esc(x.details || '—') + '</td><td>' + rango +
+            '</td><td><span class="status-pill ' + x.status + '">' + (statusLabel[x.status] || x.status) + '</span></td><td>' +
+            fmtDate(x.created_at) + '</td><td>' + esc(x.admin_notes || '—') + '</td></tr>';
+        }).join('') || '<tr><td colspan="6" class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</td></tr>';
+
+        var opts = HR_TYPES.map(function (h) { return '<option value="' + h.id + '">' + h.label + '</option>'; }).join('');
+
+        el('view').innerHTML =
+          '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+              '<h2 style="color:#fff;font-size:18px;font-weight:700;"><i class="fa-solid fa-paper-plane" style="color:var(--color-accent);margin-right:8px;"></i>Nueva solicitud</h2>' +
+              '<button class="btn btn-secondary btn-small" id="hrToggle">Crear solicitud</button>' +
+            '</div>' +
+            '<form id="hrForm" style="display:none;margin-top:18px;max-width:560px;">' +
+              '<div class="form-group"><label>Tipo <span class="form-required-marker">*</span></label><select id="hr_type" class="form-input">' + opts + '</select></div>' +
+              '<div id="hr_dates" style="display:none;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+                '<div class="form-group"><label>Desde</label><input type="date" id="hr_start" class="form-input"></div>' +
+                '<div class="form-group"><label>Hasta</label><input type="date" id="hr_end" class="form-input"></div>' +
+              '</div></div>' +
+              '<div class="form-group"><label>Detalle / motivo</label><textarea id="hr_details" class="form-input" rows="3" placeholder="Información adicional para Talento y Cultura..."></textarea></div>' +
+              '<button type="submit" class="btn btn-primary" id="hr_btn"><i class="fa-solid fa-check"></i> Enviar solicitud</button>' +
+            '</form>' +
+          '</div>' +
+          '<div class="glass-panel" style="padding:24px;"><div class="section-heading" style="text-align:left;margin-bottom:14px;">Historial de solicitudes</div>' +
+            '<div class="table-container"><table class="table"><thead><tr><th>Tipo</th><th>Detalle</th><th>Fechas</th><th>Estado</th><th>Enviada</th><th>Notas</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+          '</div>';
+
+        var syncDates = function () {
+          var h = HR_TYPES.filter(function (x) { return x.id === el('hr_type').value; })[0];
+          el('hr_dates').style.display = (h && h.dates) ? 'block' : 'none';
+        };
+        el('hr_type').addEventListener('change', syncDates);
+        el('hrToggle').addEventListener('click', function () {
+          var f = el('hrForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; syncDates();
+        });
+
+        // Preselección desde los accesos de "Mi espacio"
+        if (viewHrSolicitudes._preset) {
+          el('hr_type').value = viewHrSolicitudes._preset;
+          viewHrSolicitudes._preset = null;
+          el('hrForm').style.display = 'block';
+          syncDates();
+        }
+        el('hrForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = el('hr_btn'); btn.disabled = true; btn.textContent = 'Enviando...';
+          API.request('/api/hr/requests', {
+            method: 'POST',
+            body: JSON.stringify({
+              type: el('hr_type').value,
+              details: el('hr_details').value.trim(),
+              start_date: el('hr_start').value || null,
+              end_date: el('hr_end').value || null
+            })
+          }).then(function () {
+            showAlert('Solicitud enviada a Talento y Cultura.', 'success');
+            viewHrSolicitudes();
+          }).catch(function (err) {
+            showAlert(err.message, 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Enviar solicitud';
+          });
+        });
+      });
+    }
+
+    function viewAdminHrSolicitudes() {
+      var current = viewAdminHrSolicitudes._status || 'pending';
+      function load(status) {
+        viewAdminHrSolicitudes._status = status;
+        el('view').innerHTML = '<div class="tabs" style="margin-bottom:16px;">' +
+          ['pending', 'approved', 'rejected'].map(function (s) {
+            return '<button class="tab ' + (s === status ? 'active' : '') + '" data-s="' + s + '">' + statusLabel[s] + '</button>';
+          }).join('') + '</div><div id="hrList"><p class="text-gray text-center" style="padding:24px 0;">Cargando...</p></div>';
+        document.querySelectorAll('.tab[data-s]').forEach(function (t) {
+          t.addEventListener('click', function () { load(this.getAttribute('data-s')); });
+        });
+        return API.request('/api/admin/hr-requests?status=' + status).then(function (r) {
+          var list = r.requests || [];
+          el('hrList').innerHTML = list.map(function (h) {
+            var rango = h.start_date ? fmtDate(h.start_date) + (h.end_date ? ' → ' + fmtDate(h.end_date) : '') : '';
+            var actions = status === 'pending'
+              ? '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-success btn-small" data-ap="' + h.id + '">Aprobar</button>' +
+                '<button class="btn btn-error btn-small" data-rj="' + h.id + '">Rechazar</button></div>' : '';
+            return '<div class="glass-panel" style="padding:18px;margin-bottom:12px;">' +
+              '<div style="color:#fff;font-weight:700;">' + esc(hrLabel(h.type)) + (rango ? ' <span class="text-gray text-sm">' + rango + '</span>' : '') + '</div>' +
+              '<div class="text-gray text-sm" style="margin-top:6px;">' + esc(h.user_name) + ' (' + esc(h.user_email) + ')' + (h.user_position ? ' &middot; ' + esc(h.user_position) : '') + '</div>' +
+              (h.details ? '<div class="text-sm" style="margin-top:4px;">' + esc(h.details) + '</div>' : '') +
+              '<div class="text-gray text-xs" style="margin-top:4px;">' + fmtDate(h.created_at) + '</div>' + actions + '</div>';
+          }).join('') || '<p class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</p>';
+          document.querySelectorAll('[data-ap]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              API.request('/api/admin/hr-requests/' + this.getAttribute('data-ap') + '/approve', { method: 'POST', body: '{}' })
+                .then(function () { showAlert('Solicitud aprobada.', 'success'); refreshBell(); load('pending'); })
+                .catch(function (e) { showAlert(e.message, 'error'); });
+            });
+          });
+          document.querySelectorAll('[data-rj]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var notes = prompt('Motivo del rechazo (opcional):') || '';
+              API.request('/api/admin/hr-requests/' + this.getAttribute('data-rj') + '/reject', { method: 'POST', body: JSON.stringify({ notes: notes }) })
+                .then(function () { showAlert('Solicitud rechazada.', 'success'); refreshBell(); load('pending'); })
+                .catch(function (e) { showAlert(e.message, 'error'); });
+            });
+          });
+        });
+      }
+      return load(current);
+    }
+
+    /* ===== Seguimiento de proyectos: Cronograma (Gantt) + Tablero (Kanban), estilo Jira ===== */
+    var BOARD_ESTADOS = ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
+    var ESTADO_SLUG = { 'Tareas por hacer': 'todo', 'En curso': 'prog', 'Client Review': 'review', 'Control de calidad': 'qa', 'Finalizada': 'done', 'Bloqueado': 'blocked' };
+    var PX_DAY = 3;
+    var boardState = { tasks: [], meta: {}, tab: 'cronograma', filtros: { proyecto: '', responsable: '', tipo: '', q: '' }, collapsed: {} };
+    var dstr = function (d) { return d ? String(d).slice(0, 10) : null; };
+
+    function viewBoard() {
+      return API.request('/api/board/tasks').then(function (r) {
+        boardState.tasks = r.tasks || [];
+        boardState.meta = r.meta || {};
+        boardRender();
+      });
+    }
+
+    function boardFiltered() {
+      var f = boardState.filtros;
+      return boardState.tasks.filter(function (t) {
+        if (f.proyecto && t.proyecto !== f.proyecto) return false;
+        if (f.responsable && t.responsable !== f.responsable) return false;
+        if (f.tipo && t.tipo !== f.tipo) return false;
+        if (f.q && (t.titulo || '').toLowerCase().indexOf(f.q.toLowerCase()) === -1
+                && (t.observaciones || '').toLowerCase().indexOf(f.q.toLowerCase()) === -1) return false;
+        return true;
+      });
+    }
+    function boardProjectNames() {
+      return (boardState.meta.projects || []).map(function (p) { return p.nombre; });
+    }
+    function boardResponsables() {
+      return Array.from(new Set(boardState.tasks.map(function (t) { return t.responsable; }).filter(Boolean))).sort();
+    }
+
+    function boardRender() {
+      var f = boardState.filtros;
+      var opt = function (o, v) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; };
+      var sel = function (id, label, opts, val) {
+        return '<select id="' + id + '" class="form-input" style="width:auto;min-width:140px;padding:8px 10px;font-size:13px;">' +
+          '<option value="">' + label + '</option>' + opts.map(function (o) { return opt(o, val); }).join('') + '</select>';
+      };
+      var isAdmin = !!boardState.meta.isAdmin;
+      var hayProyectos = (boardState.meta.projects || []).length > 0;
+
+      var tabs = '<button class="tab ' + (boardState.tab === 'cronograma' ? 'active' : '') + '" data-tab="cronograma"><i class="fa-solid fa-chart-gantt"></i> Cronograma</button>' +
+        '<button class="tab ' + (boardState.tab === 'tablero' ? 'active' : '') + '" data-tab="tablero"><i class="fa-solid fa-table-columns"></i> Tablero</button>' +
+        (isAdmin ? '<button class="tab ' + (boardState.tab === 'proyectos' ? 'active' : '') + '" data-tab="proyectos"><i class="fa-solid fa-folder-open"></i> Proyectos</button>' : '');
+
+      var toolbar = boardState.tab === 'proyectos' ? '' :
+        '<div class="bt-toolbar">' +
+          '<input id="bt_q" class="form-input" placeholder="Buscar actividad..." style="max-width:220px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
+          sel('bt_proj', 'Todos los proyectos', boardProjectNames(), f.proyecto) +
+          sel('bt_resp', 'Todos los responsables', boardResponsables(), f.responsable) +
+          sel('bt_tipo', 'Todos los tipos', boardState.meta.tipos || [], f.tipo) +
+          '<div style="flex:1;"></div>' +
+          '<button class="btn btn-primary btn-small" id="bt_new" ' + (hayProyectos ? '' : 'disabled') + '><i class="fa-solid fa-plus"></i> Nueva actividad</button>' +
+        '</div>';
+
+      el('view').innerHTML = '<div class="tabs" style="margin-bottom:14px;">' + tabs + '</div>' + toolbar + '<div id="boardBody"></div>';
+
+      document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
+        b.addEventListener('click', function () { boardState.tab = this.getAttribute('data-tab'); boardRender(); });
+      });
+      if (boardState.tab !== 'proyectos') {
+        el('bt_q').addEventListener('input', function () { f.q = this.value; boardRenderBody(); });
+        el('bt_proj').addEventListener('change', function () { f.proyecto = this.value; boardRenderBody(); });
+        el('bt_resp').addEventListener('change', function () { f.responsable = this.value; boardRenderBody(); });
+        el('bt_tipo').addEventListener('change', function () { f.tipo = this.value; boardRenderBody(); });
+        el('bt_new').addEventListener('click', function () { if (hayProyectos) boardEdit(null); });
+      }
+      boardRenderBody();
+    }
+
+    function boardRenderBody() {
+      if (boardState.tab === 'proyectos') renderProyectos();
+      else if (boardState.tab === 'tablero') renderTablero();
+      else renderCronograma();
+    }
+
+    /* ---- Proyectos (admin) ---- */
+    function renderProyectos(edit) {
+      var cols = boardState.meta.colaboradores || [];
+      var projects = boardState.meta.projects || [];
+      var memByProj = boardState.meta.membersByProject || {};
+      var p = edit || null;
+
+      var checks = function (selectedIds) {
+        return '<div style="display:flex;flex-direction:column;gap:6px;">' + cols.map(function (u) {
+          var on = selectedIds.indexOf(u.id) !== -1;
+          return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
+            '<input type="checkbox" value="' + u.id + '"' + (on ? ' checked' : '') + '> ' + esc(u.name) +
+            (u.position ? ' <span class="text-gray text-xs">— ' + esc(u.position) + '</span>' : '') + '</label>';
+        }).join('') + '</div>';
+      };
+
+      var form = '<div class="glass-panel" style="padding:22px;margin-bottom:20px;max-width:620px;">' +
+        '<div class="section-heading" style="text-align:left;margin-bottom:14px;">' + (p ? 'Editar proyecto' : 'Nuevo proyecto') + '</div>' +
+        '<form id="pjForm">' +
+          '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input id="pj_nombre" class="form-input" required value="' + esc(p ? p.nombre : '') + '"></div>' +
+          '<div class="form-group"><label>Descripción</label><textarea id="pj_desc" class="form-input" rows="2">' + esc(p ? (p.descripcion || '') : '') + '</textarea></div>' +
+          '<div class="form-group"><label>Miembros del proyecto</label>' + checks(p ? (memByProj[p.id] || []).map(function (m) { return m.id; }) : []) + '</div>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<button type="submit" class="btn btn-primary" id="pj_save">' + (p ? 'Guardar' : 'Crear proyecto') + '</button>' +
+            (p ? '<button type="button" class="btn btn-secondary btn-small" id="pj_cancel">Cancelar</button>' +
+                 '<div style="flex:1;"></div><button type="button" class="btn btn-error btn-small" id="pj_del">Eliminar</button>' : '') +
+          '</div>' +
+        '</form></div>';
+
+      var lista = '<div class="glass-panel" style="padding:22px;"><div class="section-heading" style="text-align:left;margin-bottom:14px;">Proyectos (' + projects.length + ')</div>' +
+        (projects.map(function (pr) {
+          var ms = (memByProj[pr.id] || []).map(function (m) { return esc(m.name); }).join(', ') || '<span class="text-gray">sin miembros</span>';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);">' +
+            '<div><div style="color:#fff;font-weight:600;font-size:14px;">' + esc(pr.nombre) + '</div><div class="text-gray text-xs">' + ms + '</div></div>' +
+            '<button class="btn btn-secondary btn-small" data-pj-edit="' + pr.id + '">Editar</button></div>';
+        }).join('') || '<p class="text-gray text-center" style="padding:20px 0;">Aún no hay proyectos.</p>') + '</div>';
+
+      el('boardBody').innerHTML = form + lista;
+
+      document.querySelectorAll('[data-pj-edit]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var pr = projects.filter(function (x) { return String(x.id) === b.getAttribute('data-pj-edit'); })[0];
+          if (pr) renderProyectos(pr);
+        });
+      });
+      if (el('pj_cancel')) el('pj_cancel').addEventListener('click', function () { renderProyectos(null); });
+      if (el('pj_del')) el('pj_del').addEventListener('click', function () {
+        if (!confirm('¿Eliminar el proyecto "' + p.nombre + '"? (debe estar sin actividades)')) return;
+        API.request('/api/board/projects/' + p.id, { method: 'DELETE' })
+          .then(function () { showAlert('Proyecto eliminado.', 'success'); viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+      el('pjForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var miembros = Array.prototype.map.call(el('pjForm').querySelectorAll('input[type=checkbox]:checked'), function (c) { return Number(c.value); });
+        var body = { nombre: el('pj_nombre').value.trim(), descripcion: el('pj_desc').value.trim(), miembros: miembros };
+        var btn = el('pj_save'); btn.disabled = true; btn.textContent = 'Guardando...';
+        var req = p
+          ? API.request('/api/board/projects/' + p.id, { method: 'PUT', body: JSON.stringify(body) })
+          : API.request('/api/board/projects', { method: 'POST', body: JSON.stringify(body) });
+        req.then(function () { showAlert(p ? 'Proyecto actualizado.' : 'Proyecto creado.', 'success'); viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = p ? 'Guardar' : 'Crear proyecto'; });
+      });
+    }
+
+    /* ---- Cronograma (Gantt) ---- */
+    function renderCronograma() {
+      var list = boardFiltered();
+      var all = [];
+      list.forEach(function (t) { if (t.fecha) all.push(dstr(t.fecha)); if (t.fecha_fin) all.push(dstr(t.fecha_fin)); });
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var minD = all.length ? new Date(all.reduce(function (a, b) { return a < b ? a : b; })) : new Date(today);
+      var maxD = all.length ? new Date(all.reduce(function (a, b) { return a > b ? a : b; })) : new Date(today);
+      var start = new Date(minD.getFullYear(), minD.getMonth(), 1);
+      var end = new Date(maxD.getFullYear(), maxD.getMonth() + 1, 0);
+      // asegurar al menos 7 meses de ventana
+      var minEnd = new Date(start.getFullYear(), start.getMonth() + 7, 0);
+      if (end < minEnd) end = minEnd;
+
+      var months = [], cur = new Date(start);
+      while (cur <= end) {
+        var dim = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate();
+        var lbl = cur.toLocaleDateString('es-EC', { month: 'long' });
+        lbl = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+        if (cur.getFullYear() !== today.getFullYear()) lbl += " '" + String(cur.getFullYear()).slice(2);
+        months.push({ label: lbl, w: dim * PX_DAY });
+        cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+      }
+      var totalW = months.reduce(function (a, m) { return a + m.w; }, 0);
+      var off = function (d) { return Math.round((new Date(dstr(d)) - start) / 86400000); };
+      var todayLeft = off(today) * PX_DAY;
+
+      var groups = {};
+      list.forEach(function (t) { var p = t.proyecto || 'Sin proyecto'; (groups[p] = groups[p] || []).push(t); });
+
+      var body = '';
+      Object.keys(groups).forEach(function (proj) {
+        var items = groups[proj];
+        var coll = !!boardState.collapsed[proj];
+        var gs = items.filter(function (t) { return t.fecha; }).map(function (t) { return dstr(t.fecha); });
+        var ge = items.filter(function (t) { return t.fecha_fin || t.fecha; }).map(function (t) { return dstr(t.fecha_fin || t.fecha); });
+        var gbar = '';
+        if (gs.length) {
+          var a = off(gs.reduce(function (x, y) { return x < y ? x : y; }));
+          var b = off(ge.reduce(function (x, y) { return x > y ? x : y; }));
+          gbar = '<div class="gt-bar gt-groupbar" style="left:' + (a * PX_DAY) + 'px;width:' + ((b - a + 1) * PX_DAY) + 'px;"></div>';
+        }
+        body += '<div class="gt-row gt-grouprow" data-proj="' + esc(proj) + '">' +
+          '<div class="gt-cell gt-act"><span class="gt-caret">' + (coll ? '&#9656;' : '&#9662;') + '</span><strong>' + esc(proj) + '</strong><span class="text-gray text-xs">&nbsp;(' + items.length + ')</span></div>' +
+          '<div class="gt-cell gt-est"></div><div class="gt-cell gt-per"></div>' +
+          '<div class="gt-track" style="width:' + totalW + 'px;">' + gbar + '</div>' +
+        '</div>';
+        if (coll) return;
+        items.forEach(function (t) {
+          var bar = '';
+          if (t.fecha) {
+            var s = off(t.fecha), fn = t.fecha_fin ? off(t.fecha_fin) : s;
+            if (fn < s) fn = s;
+            var w = Math.max((fn - s + 1) * PX_DAY, 10);
+            bar = '<div class="gt-bar est-' + ESTADO_SLUG[t.estado] + '" style="left:' + (s * PX_DAY) + 'px;width:' + w + 'px;" title="' + esc(t.titulo) + '"><span>' + esc(t.titulo) + '</span></div>';
+          }
+          var estSel = '<select class="gt-estsel est-' + ESTADO_SLUG[t.estado] + '" data-id="' + t.id + '">' +
+            BOARD_ESTADOS.map(function (e) { return '<option' + (e === t.estado ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>';
+          var per = t.responsable
+            ? '<span class="bt-resp" title="' + esc(t.responsable) + '">' + esc(initials(t.responsable)) + '</span><span class="text-xs" style="margin-left:6px;">' + esc(t.responsable) + '</span>'
+            : '<span class="text-gray text-xs">Sin asignar</span>';
+          body += '<div class="gt-row">' +
+            '<div class="gt-cell gt-act gt-tasktitle" data-id="' + t.id + '" title="' + esc(t.titulo) + '">' + esc(t.titulo) + '</div>' +
+            '<div class="gt-cell gt-est">' + estSel + '</div>' +
+            '<div class="gt-cell gt-per">' + per + '</div>' +
+            '<div class="gt-track" style="width:' + totalW + 'px;">' + bar + '</div>' +
+          '</div>';
+        });
+      });
+
+      var monthHead = months.map(function (m) { return '<div class="gt-month" style="width:' + m.w + 'px;">' + esc(m.label) + '</div>'; }).join('');
+      var todayMark = (todayLeft >= 0 && todayLeft <= totalW)
+        ? '<div class="gt-today" style="left:' + todayLeft + 'px;"></div>' : '';
+
+      el('boardBody').innerHTML =
+        '<div class="gantt">' +
+          '<div class="gt-row gt-head">' +
+            '<div class="gt-cell gt-act">Actividad</div>' +
+            '<div class="gt-cell gt-est">Estado</div>' +
+            '<div class="gt-cell gt-per">Persona asignada</div>' +
+            '<div class="gt-track" style="width:' + totalW + 'px;">' + monthHead + todayMark + '</div>' +
+          '</div>' +
+          body +
+        '</div>' +
+        (list.length ? '' : '<p class="text-gray text-center" style="padding:30px 0;">No hay actividades con estos filtros.</p>');
+
+      document.querySelectorAll('.gt-grouprow .gt-act').forEach(function (c) {
+        c.addEventListener('click', function () {
+          var p = c.parentNode.getAttribute('data-proj');
+          boardState.collapsed[p] = !boardState.collapsed[p];
+          renderCronograma();
+        });
+      });
+      document.querySelectorAll('.gt-estsel').forEach(function (s) {
+        s.addEventListener('change', function () {
+          var id = this.getAttribute('data-id'), estado = this.value;
+          var t = boardState.tasks.filter(function (x) { return String(x.id) === id; })[0];
+          if (t) t.estado = estado;
+          this.className = 'gt-estsel est-' + ESTADO_SLUG[estado];
+          API.request('/api/board/tasks/' + id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: estado }) })
+            .then(function () { renderCronograma(); })
+            .catch(function (err) { showAlert(err.message, 'error'); viewBoard(); });
+        });
+      });
+      document.querySelectorAll('.gt-tasktitle').forEach(function (c) {
+        c.addEventListener('click', function () {
+          var t = boardState.tasks.filter(function (x) { return String(x.id) === c.getAttribute('data-id'); })[0];
+          if (t) boardEdit(t);
+        });
+      });
+    }
+
+    /* ---- Tablero (Kanban) ---- */
+    function boardCard(t) {
+      var resp = t.responsable ? '<span class="bt-resp" title="' + esc(t.responsable) + '">' + esc(initials(t.responsable)) + '</span>' : '';
+      var tipoCls = 'bt-tag tipo-' + (t.tipo || '').toLowerCase().replace(/[^a-z]/g, '');
+      return '<div class="bt-card" draggable="true" data-id="' + t.id + '">' +
+        '<div class="bt-title">' + esc(t.titulo) + '</div>' +
+        '<div class="bt-meta">' +
+          (t.proyecto ? '<span class="bt-tag bt-proj">' + esc(t.proyecto.length > 24 ? t.proyecto.slice(0, 22) + '…' : t.proyecto) + '</span>' : '') +
+          (t.tipo ? '<span class="' + tipoCls + '">' + esc(t.tipo) + '</span>' : '') +
+        '</div>' +
+        '<div class="bt-foot"><span class="text-gray text-xs">' + (t.fecha ? fmtDate(t.fecha) : '') + (t.horas ? ' &middot; ' + t.horas + 'h' : '') + '</span>' + resp + '</div>' +
+      '</div>';
+    }
+
+    function renderTablero() {
+      var list = boardFiltered();
+      var cols = BOARD_ESTADOS.map(function (e) {
+        var items = list.filter(function (t) { return t.estado === e; });
+        return '<div class="bt-col"><div class="bt-col-head"><span>' + e + '</span><span class="bt-count">' + items.length + '</span></div>' +
+          '<div class="bt-col-body" data-estado="' + esc(e) + '">' + items.map(boardCard).join('') + '</div></div>';
+      }).join('');
+      el('boardBody').innerHTML = '<div class="bt-board">' + cols + '</div>';
+
+      document.querySelectorAll('.bt-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          if (card.classList.contains('dragging')) return;
+          var t = boardState.tasks.filter(function (x) { return String(x.id) === card.getAttribute('data-id'); })[0];
+          if (t) boardEdit(t);
+        });
+        card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', card.getAttribute('data-id')); card.classList.add('dragging'); });
+        card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
+      });
+      document.querySelectorAll('.bt-col-body').forEach(function (bodyEl) {
+        bodyEl.addEventListener('dragover', function (e) { e.preventDefault(); bodyEl.classList.add('drop-hover'); });
+        bodyEl.addEventListener('dragleave', function () { bodyEl.classList.remove('drop-hover'); });
+        bodyEl.addEventListener('drop', function (e) {
+          e.preventDefault(); bodyEl.classList.remove('drop-hover');
+          var id = e.dataTransfer.getData('text/plain'), estado = bodyEl.getAttribute('data-estado');
+          var t = boardState.tasks.filter(function (x) { return String(x.id) === id; })[0];
+          if (!t || t.estado === estado) return;
+          t.estado = estado; renderTablero();
+          API.request('/api/board/tasks/' + id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: estado }) })
+            .catch(function (err) { showAlert(err.message, 'error'); viewBoard(); });
+        });
+      });
+    }
+
+    /* ---- Editor de actividad ---- */
+    function boardEdit(t) {
+      var isNew = !t;
+      t = t || { titulo: '', project_id: '', assignee_id: '', tipo: 'Tarea', estado: 'Tareas por hacer', fecha: '', fecha_fin: '', horas: '', observaciones: '' };
+      var m = boardState.meta;
+      var projs = m.projects || [];
+      var memByProj = m.membersByProject || {};
+      var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
+      var curProj = t.project_id ? Number(t.project_id) : (projs[0] ? projs[0].id : '');
+
+      var projOpts = projs.map(function (p) { return '<option value="' + p.id + '"' + (p.id === curProj ? ' selected' : '') + '>' + esc(p.nombre) + '</option>'; }).join('');
+      var respOptsFor = function (pid) {
+        var ms = memByProj[pid] || [];
+        return '<option value="">— Sin asignar —</option>' + ms.map(function (u) {
+          return '<option value="' + u.id + '"' + (String(u.id) === String(t.assignee_id) ? ' selected' : '') + '>' + esc(u.name) + '</option>';
+        }).join('');
+      };
+
+      el('view').innerHTML =
+        '<button class="btn btn-secondary btn-small" id="bt_back"><i class="fa-solid fa-arrow-left"></i> Volver</button>' +
+        '<div class="glass-panel" style="padding:28px;max-width:640px;margin-top:14px;">' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? 'Nueva actividad' : 'Editar actividad') + '</div>' +
+          '<form id="btForm">' +
+            '<div class="form-group"><label>Título / descripción <span class="form-required-marker">*</span></label>' +
+              '<textarea id="bt_titulo" class="form-input" rows="2" required>' + esc(t.titulo) + '</textarea></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+              '<div class="form-group"><label>Proyecto <span class="form-required-marker">*</span></label><select id="bt_f_proj" class="form-input" required>' + projOpts + '</select></div>' +
+              '<div class="form-group"><label>Responsable</label><select id="bt_f_resp" class="form-input">' + respOptsFor(curProj) + '</select></div>' +
+              '<div class="form-group"><label>Tipo</label><select id="bt_f_tipo" class="form-input">' + opt(m.tipos || ['Tarea'], t.tipo) + '</select></div>' +
+              '<div class="form-group"><label>Estado</label><select id="bt_f_estado" class="form-input">' + opt(BOARD_ESTADOS, t.estado) + '</select></div>' +
+              '<div class="form-group"><label>Inicio</label><input type="date" id="bt_f_fecha" class="form-input" value="' + esc(dstr(t.fecha) || '') + '"></div>' +
+              '<div class="form-group"><label>Fin</label><input type="date" id="bt_f_fin" class="form-input" value="' + esc(dstr(t.fecha_fin) || '') + '"></div>' +
+              '<div class="form-group"><label>Horas</label><input type="number" step="0.5" min="0" id="bt_f_horas" class="form-input" value="' + esc(t.horas != null ? t.horas : '') + '"></div>' +
+            '</div>' +
+            '<div class="form-group"><label>Observaciones</label><textarea id="bt_f_obs" class="form-input" rows="2">' + esc(t.observaciones || '') + '</textarea></div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+              '<button type="submit" class="btn btn-primary" id="bt_save">' + (isNew ? 'Crear actividad' : 'Guardar') + '</button>' +
+              (isNew ? '' : '<button type="button" class="btn btn-error btn-small" id="bt_del">Eliminar</button>') +
+            '</div>' +
+          '</form>' +
+        '</div>';
+
+      el('bt_back').addEventListener('click', boardRender);
+      el('bt_f_proj').addEventListener('change', function () {
+        el('bt_f_resp').innerHTML = respOptsFor(Number(this.value));
+      });
+      el('btForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = el('bt_save'); btn.disabled = true; btn.textContent = 'Guardando...';
+        var body = {
+          titulo: el('bt_titulo').value.trim(), project_id: el('bt_f_proj').value || null,
+          assignee_id: el('bt_f_resp').value || null, tipo: el('bt_f_tipo').value, estado: el('bt_f_estado').value,
+          fecha: el('bt_f_fecha').value || null, fecha_fin: el('bt_f_fin').value || null,
+          horas: el('bt_f_horas').value, observaciones: el('bt_f_obs').value.trim()
+        };
+        var req = isNew
+          ? API.request('/api/board/tasks', { method: 'POST', body: JSON.stringify(body) })
+          : API.request('/api/board/tasks/' + t.id, { method: 'PUT', body: JSON.stringify(body) });
+        req.then(function () { showAlert(isNew ? 'Actividad creada.' : 'Actividad actualizada.', 'success'); viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear actividad' : 'Guardar'; });
+      });
+      var del = el('bt_del');
+      if (del) del.addEventListener('click', function () {
+        if (!confirm('¿Eliminar esta actividad?')) return;
+        API.request('/api/board/tasks/' + t.id, { method: 'DELETE' })
+          .then(function () { showAlert('Actividad eliminada.', 'success'); viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+    }
+
+    /* ===== Prospectos: Matriz de Prospección B2B Ecuador ===== */
+    var SECTORES = window.SECTORES || [];
+    var PILARES = window.PILARES || ['RPA', 'IA', 'BI', 'Software a la Medida', 'App Móvil Offline'];
+    var FUENTES = window.FUENTES || ['LinkedIn', 'PBX', 'Referido'];
+    var FASES_SOP = window.FASES_SOP || [];
+    var PATRONES_EMAIL = window.PATRONES_EMAIL || [];
+    var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
+    var PROS = { list: [], tab: 'ficha', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '' } };
+    var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
+
+    function personalizarScript(s, vend, cont, emp) {
+      var out = String(s || '');
+      out = out.replace('[Nombre]', (cont || '').trim() || '[Nombre]');
+      out = out.replace('[Nombre]', (vend || '').trim() || '[Nombre]');
+      out = out.split('[Empresa]').join((emp || '').trim() || '[Empresa]');
+      return out;
+    }
+
+    function viewProspectos() {
+      return API.request('/api/prospectos').then(function (r) {
+        PROS.list = r.prospectos || [];
+        prosRender();
+      });
+    }
+
+    function prosRender() {
+      var tabs = [['ficha', 'Ficha del sector'], ['registrar', 'Registrar prospecto'], ['sop', 'SOP de contactos'], ['registros', 'Registros (' + PROS.list.length + ')']];
+      el('view').innerHTML =
+        '<div class="tabs" style="margin-bottom:16px;flex-wrap:wrap;">' +
+          tabs.map(function (t) { return '<button class="tab ' + (PROS.tab === t[0] ? 'active' : '') + '" data-pt="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') +
+        '</div><div id="prosBody"></div>';
+      document.querySelectorAll('.tab[data-pt]').forEach(function (b) {
+        b.addEventListener('click', function () { PROS.tab = this.getAttribute('data-pt'); prosRender(); });
+      });
+      ({ ficha: prosFicha, registrar: prosRegistrar, sop: prosSop, registros: prosRegistros })[PROS.tab]();
+    }
+
+    function sectorSelectHtml(id, sel) {
+      return '<select id="' + id + '" class="form-input">' +
+        '<option value="">— Selecciona un sector —</option>' +
+        SECTORES.map(function (s) { return '<option value="' + s.id + '"' + (s.id === sel ? ' selected' : '') + '>' + esc(s.icono + ' ' + s.nombre) + '</option>'; }).join('') +
+        '</select>';
+    }
+
+    function prosFicha() {
+      var s = sectorById(PROS.sectorId);
+      var html = '<div class="glass-panel" style="padding:20px;margin-bottom:18px;max-width:520px;">' +
+        '<label class="text-gray text-sm" style="display:block;margin-bottom:6px;">Sector objetivo</label>' +
+        sectorSelectHtml('fx_sector', PROS.sectorId) + '</div>';
+      if (s) {
+        var tags = function (arr) { return '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + arr.map(function (x) { return '<span class="badge badge-secondary" style="font-weight:500;">' + esc(x) + '</span>'; }).join('') + '</div>'; };
+        var card = function (title, inner) { return '<div class="glass-panel" style="padding:18px;"><div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">' + title + '</div>' + inner + '</div>'; };
+        var scriptPers = personalizarScript(s.script, PROS.sc.vend, PROS.sc.cont, PROS.sc.emp);
+        html +=
+          '<h2 style="color:#fff;font-size:20px;font-weight:800;margin-bottom:14px;">' + esc(s.icono + ' ' + s.nombre) + '</h2>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">' +
+            card('🏢 Cuentas objetivo', tags(s.cuentas)) +
+            card('😣 Dolor principal', '<p class="text-sm">' + esc(s.dolor) + '</p>') +
+            card('🧩 Pilar a vender', '<p class="text-sm text-accent">' + esc(s.pilar) + '</p>') +
+            card('👤 Decisor a contactar', '<p class="text-sm">' + esc(s.decisor) + '</p>') +
+            card('🔎 Cargos para filtro LinkedIn', tags(s.cargosLinkedIn)) +
+          '</div>' +
+          card('💬 Script de abordaje',
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">' +
+              '<input id="sc_vend" class="form-input" placeholder="Tu nombre (vendedor)" value="' + esc(PROS.sc.vend) + '">' +
+              '<input id="sc_cont" class="form-input" placeholder="Nombre del contacto" value="' + esc(PROS.sc.cont) + '">' +
+              '<input id="sc_emp" class="form-input" placeholder="Empresa (opcional)" value="' + esc(PROS.sc.emp) + '">' +
+            '</div>' +
+            '<blockquote class="pros-script" id="sc_preview">' + esc(scriptPers) + '</blockquote>' +
+            '<div style="display:flex;gap:8px;margin-top:10px;">' +
+              '<button class="btn btn-primary btn-small" id="sc_copy">📋 Copiar mensaje</button>' +
+              '<button class="btn btn-secondary btn-small" id="sc_copy_orig">Copiar original</button>' +
+              '<button class="btn btn-secondary btn-small" id="sc_go">Registrar prospecto en este sector →</button>' +
+            '</div>'
+          );
+      } else {
+        html += '<p class="text-gray text-center" style="padding:30px 0;">Selecciona un sector para ver su ficha completa.</p>';
+      }
+      el('prosBody').innerHTML = html;
+
+      el('fx_sector').addEventListener('change', function () { PROS.sectorId = this.value; prosFicha(); });
+      if (s) {
+        ['vend', 'cont', 'emp'].forEach(function (k) {
+          var inp = el('sc_' + k);
+          inp.addEventListener('input', function () {
+            PROS.sc[k] = this.value;
+            el('sc_preview').textContent = personalizarScript(s.script, PROS.sc.vend, PROS.sc.cont, PROS.sc.emp);
+          });
+        });
+        el('sc_copy').addEventListener('click', function () { navigator.clipboard.writeText(el('sc_preview').textContent); showAlert('Mensaje copiado.', 'success'); });
+        el('sc_copy_orig').addEventListener('click', function () { navigator.clipboard.writeText(s.script); showAlert('Script original copiado.', 'success'); });
+        el('sc_go').addEventListener('click', function () { PROS.tab = 'registrar'; prosRender(); });
+      }
+    }
+
+    function prosRegistrar(pros) {
+      var isEdit = !!pros;
+      pros = pros || {};
+      var s = sectorById(pros.sector_id || PROS.sectorId);
+      var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
+      var faseOpts = '<option value="">—</option>' + FASES_SOP.map(function (f) { return '<option value="' + f.id + '"' + (String(pros.fase_sop) === String(f.id) ? ' selected' : '') + '>' + esc(f.nombre) + '</option>'; }).join('');
+      var cargos = s ? '<datalist id="dl_cargos">' + s.cargosLinkedIn.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>' : '';
+
+      el('prosBody').innerHTML =
+        (isEdit ? '<button class="btn btn-secondary btn-small" id="px_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a registros</button>' : '') +
+        '<div class="glass-panel" style="padding:26px;max-width:820px;"><form id="prosForm">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">' +
+            '<div class="form-group"><label>Sector <span class="form-required-marker">*</span></label>' + sectorSelectHtml('px_sector', pros.sector_id || PROS.sectorId) + '</div>' +
+            '<div class="form-group"><label>Empresa <span class="form-required-marker">*</span></label><input id="px_empresa" class="form-input" required value="' + esc(pros.empresa || '') + '"></div>' +
+            '<div class="form-group"><label>RUC</label><input id="px_ruc" class="form-input" value="' + esc(pros.ruc || '') + '"></div>' +
+            '<div class="form-group"><label>Página web</label><input id="px_web" class="form-input" placeholder="https://..." value="' + esc(pros.web || '') + '"></div>' +
+            '<div class="form-group"><label>Contacto — nombre</label><input id="px_cn" class="form-input" value="' + esc(pros.contacto_nombre || '') + '"></div>' +
+            '<div class="form-group"><label>Contacto — apellido</label><input id="px_ca" class="form-input" value="' + esc(pros.contacto_apellido || '') + '"></div>' +
+            '<div class="form-group"><label>Cargo</label><input id="px_cargo" class="form-input" list="dl_cargos" value="' + esc(pros.cargo || '') + '">' + cargos + '</div>' +
+            '<div class="form-group"><label>Email corporativo</label><input id="px_email" type="email" class="form-input" value="' + esc(pros.email || '') + '"></div>' +
+            '<div class="form-group"><label>Teléfono / extensión</label><input id="px_tel" class="form-input" value="' + esc(pros.telefono || '') + '"></div>' +
+            '<div class="form-group"><label>LinkedIn</label><input id="px_li" class="form-input" placeholder="https://linkedin.com/in/..." value="' + esc(pros.linkedin || '') + '"></div>' +
+            '<div class="form-group"><label>Fuente</label><select id="px_fuente" class="form-input"><option value="">—</option>' + opt(FUENTES, pros.fuente) + '</select></div>' +
+            '<div class="form-group"><label>Pilar</label><select id="px_pilar" class="form-input"><option value="">—</option>' + opt(PILARES, pros.pilar) + '</select></div>' +
+            '<div class="form-group"><label>Fase del SOP</label><select id="px_fase" class="form-input">' + faseOpts + '</select></div>' +
+            '<div class="form-group"><label>Fecha de la fase</label><input type="date" id="px_fecha" class="form-input" value="' + esc((pros.fecha_fase || '').slice ? (pros.fecha_fase || '').slice(0, 10) : '') + '"></div>' +
+            '<div class="form-group"><label>Extensión PBX</label><input id="px_ext" class="form-input" value="' + esc(pros.extension_pbx || '') + '"></div>' +
+            '<div class="form-group"><label>Horario preferido</label><input id="px_hora" class="form-input" value="' + esc(pros.horario_preferido || '') + '"></div>' +
+          '</div>' +
+          '<div class="form-group" style="margin-top:14px;"><label>Notas</label><textarea id="px_notas" class="form-input" rows="3">' + esc(pros.notas || '') + '</textarea></div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<button type="submit" class="btn btn-primary" id="px_save">' + (isEdit ? 'Guardar cambios' : '💾 Guardar prospecto') + '</button>' +
+            (isEdit ? '<button type="button" class="btn btn-error btn-small" id="px_del">Eliminar</button>' : '') +
+          '</div>' +
+        '</form></div>';
+
+      if (isEdit) el('px_back').addEventListener('click', function () { PROS.tab = 'registros'; prosRender(); });
+      el('px_sector').addEventListener('change', function () { PROS.sectorId = this.value; prosRegistrar(isEdit ? Object.assign({}, pros, collectPros()) : null); });
+
+      function collectPros() {
+        var sec = sectorById(el('px_sector').value);
+        return {
+          sector_id: el('px_sector').value, sector_nombre: sec ? sec.nombre : '',
+          empresa: el('px_empresa').value.trim(), ruc: el('px_ruc').value.trim(), web: el('px_web').value.trim(),
+          contacto_nombre: el('px_cn').value.trim(), contacto_apellido: el('px_ca').value.trim(), cargo: el('px_cargo').value.trim(),
+          email: el('px_email').value.trim(), telefono: el('px_tel').value.trim(), linkedin: el('px_li').value.trim(),
+          fuente: el('px_fuente').value, pilar: el('px_pilar').value, fase_sop: el('px_fase').value,
+          fecha_fase: el('px_fecha').value || null, extension_pbx: el('px_ext').value.trim(), horario_preferido: el('px_hora').value.trim(),
+          notas: el('px_notas').value.trim()
+        };
+      }
+
+      el('prosForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var b = collectPros();
+        if (!b.empresa) { showAlert('El nombre de la empresa es obligatorio.', 'warning'); return; }
+        var btn = el('px_save'); btn.disabled = true; btn.textContent = 'Guardando...';
+        var req = isEdit
+          ? API.request('/api/prospectos/' + pros.id, { method: 'PUT', body: JSON.stringify(b) })
+          : API.request('/api/prospectos', { method: 'POST', body: JSON.stringify(b) });
+        req.then(function () { showAlert(isEdit ? 'Prospecto actualizado.' : 'Prospecto guardado.', 'success'); PROS.tab = 'registros'; viewProspectos(); })
+          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isEdit ? 'Guardar cambios' : '💾 Guardar prospecto'; });
+      });
+      var pd = el('px_del');
+      if (pd) pd.addEventListener('click', function () {
+        if (!confirm('¿Eliminar este prospecto?')) return;
+        API.request('/api/prospectos/' + pros.id, { method: 'DELETE' })
+          .then(function () { showAlert('Prospecto eliminado.', 'success'); PROS.tab = 'registros'; viewProspectos(); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+    }
+
+    function prosSop() {
+      var fases = FASES_SOP.map(function (f) {
+        return '<div class="glass-panel" style="padding:16px;"><div style="color:var(--color-accent);font-weight:700;font-size:13px;">' + esc(f.nombre) + '</div>' +
+          '<p class="text-sm text-gray" style="margin-top:6px;">' + esc(f.desc) + '</p></div>';
+      }).join('');
+      var patrones = PATRONES_EMAIL.map(function (p) { return '<span class="badge badge-secondary" style="font-family:monospace;font-weight:500;">' + esc(p) + '</span>'; }).join(' ');
+      var ejemplos = EJEMPLOS_EMAIL.map(function (e) { return '<tr><td>' + esc(e.empresa) + '</td><td style="font-family:monospace;">' + esc(e.patron) + '</td></tr>'; }).join('');
+      el('prosBody').innerHTML =
+        '<h2 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:6px;">SOP de Inteligencia e Investigación de Contactos</h2>' +
+        '<p class="text-gray text-sm mb-3">Procedimiento para encontrar nombres, cargos y correos de decisores B2B en Ecuador, validando la información antes del primer contacto.</p>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:18px;">' + fases + '</div>' +
+        '<div class="glass-panel" style="padding:18px;margin-bottom:14px;"><div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">📧 Patrones de correo corporativo ecuatoriano</div>' +
+          '<p class="text-gray text-xs mb-2">Probar las variantes más comunes. Descartar correos genéricos como info@…</p><div style="display:flex;flex-wrap:wrap;gap:6px;">' + patrones + '</div></div>' +
+        '<div class="glass-panel" style="padding:18px;margin-bottom:14px;"><div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">📚 Ejemplos reales por empresa</div>' +
+          '<div class="table-container"><table class="table"><thead><tr><th>Empresa</th><th>Patrón</th></tr></thead><tbody>' + ejemplos + '</tbody></table></div></div>' +
+        '<div class="glass-panel" style="padding:18px;border-left:3px solid var(--color-warning);"><div style="color:var(--color-warning);font-weight:700;font-size:13px;">⚠️ Regla de oro</div>' +
+          '<p class="text-sm" style="margin-top:6px;">Nunca se realiza un primer contacto comercial sin haber confirmado el nombre completo del decisor, su cargo y su correo corporativo.</p></div>' +
+        '<div class="glass-panel" style="padding:18px;margin-top:14px;border-left:3px solid var(--color-info);"><div style="color:var(--color-info);font-weight:700;font-size:13px;">🛡️ Cumplimiento LOPDP Ecuador</div>' +
+          '<p class="text-sm" style="margin-top:6px;">Toda prospección se realiza bajo modalidad B2B, usando exclusivamente información de contacto corporativa y perfiles profesionales públicos (Ley Orgánica de Protección de Datos Personales).</p></div>';
+    }
+
+    function prosRegistros() {
+      var f = PROS.filtro;
+      var secs = Array.from(new Set(PROS.list.map(function (p) { return p.sector_nombre; }).filter(Boolean))).sort();
+      var list = PROS.list.filter(function (p) {
+        if (f.sector && p.sector_nombre !== f.sector) return false;
+        if (f.q) {
+          var hay = (p.empresa + ' ' + (p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '') + ' ' + (p.email || '') + ' ' + (p.cargo || '')).toLowerCase();
+          if (hay.indexOf(f.q.toLowerCase()) === -1) return false;
+        }
+        return true;
+      });
+      var rows = list.map(function (p) {
+        return '<tr data-id="' + p.id + '" style="cursor:pointer;">' +
+          '<td>' + fmtDate(p.ts) + '</td>' +
+          '<td>' + esc(p.sector_nombre || '—') + '</td>' +
+          '<td style="color:#fff;">' + esc(p.empresa) + '</td>' +
+          '<td>' + esc(((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim() || '—') + '</td>' +
+          '<td>' + esc(p.cargo || '—') + '</td>' +
+          '<td>' + esc(p.email || '—') + '</td>' +
+          '<td>' + esc(p.telefono || '—') + '</td>' +
+          '<td>' + esc(p.pilar || '—') + '</td>' +
+          '<td>' + esc(p.fase_sop || '—') + '</td>' +
+        '</tr>';
+      }).join('') || '<tr><td colspan="9" class="text-gray text-center" style="padding:28px 0;">Sin registros.</td></tr>';
+
+      el('prosBody').innerHTML =
+        '<div class="bt-toolbar">' +
+          '<input id="pr_q" class="form-input" placeholder="Buscar empresa, contacto, email..." style="max-width:240px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
+          '<select id="pr_sec" class="form-input" style="width:auto;min-width:160px;padding:8px 10px;font-size:13px;"><option value="">Todos los sectores</option>' +
+            secs.map(function (o) { return '<option' + (o === f.sector ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>' +
+          '<div style="flex:1;"></div>' +
+          '<button class="btn btn-secondary btn-small" id="pr_export"><i class="fa-solid fa-download"></i> Exportar .txt</button>' +
+          '<button class="btn btn-primary btn-small" id="pr_new"><i class="fa-solid fa-plus"></i> Nuevo</button>' +
+        '</div>' +
+        '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table">' +
+          '<thead><tr><th>Fecha</th><th>Sector</th><th>Empresa</th><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Pilar</th><th>Fase</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div></div>';
+
+      el('pr_q').addEventListener('input', function () { f.q = this.value; prosRegistros(); setTimeout(function () { var q = el('pr_q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 0); });
+      el('pr_sec').addEventListener('change', function () { f.sector = this.value; prosRegistros(); });
+      el('pr_new').addEventListener('click', function () { PROS.tab = 'registrar'; prosRender(); });
+      el('pr_export').addEventListener('click', function () {
+        var btn = this; btn.disabled = true;
+        fetch('/api/prospectos/export', { headers: { Authorization: 'Bearer ' + API.token } })
+          .then(function (r) { if (!r.ok) throw new Error('No se pudo exportar'); return r.blob(); })
+          .then(function (b) {
+            var u = URL.createObjectURL(b), a = document.createElement('a');
+            a.href = u; a.download = 'prospeccion_ecuador.txt'; document.body.appendChild(a); a.click();
+            a.remove(); URL.revokeObjectURL(u);
+          })
+          .catch(function (err) { showAlert(err.message, 'error'); })
+          .then(function () { btn.disabled = false; });
+      });
+      document.querySelectorAll('#prosBody tbody tr[data-id]').forEach(function (tr) {
+        tr.addEventListener('click', function () {
+          var p = PROS.list.filter(function (x) { return String(x.id) === tr.getAttribute('data-id'); })[0];
+          if (p) prosRegistrar(p);
+        });
+      });
+    }
+
+    /* ===== Humanizador de texto ===== */
+    var HUM = { version: 'v2', text: '', filename: '', docx_base64: null, result: null, stats: null, busy: false };
+
+    function viewHumanizador() {
+      humRender();
+      return Promise.resolve();
+    }
+
+    function humRender() {
+      el('view').innerHTML =
+        '<div class="glass-panel" style="padding:24px;margin-bottom:18px;">' +
+          '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">' +
+            '<span class="text-gray text-sm">Versión:</span>' +
+            '<div class="tabs" style="margin:0;border:none;">' +
+              '<button class="tab ' + (HUM.version === 'v1' ? 'active' : '') + '" data-hv="v1">v1 · Original</button>' +
+              '<button class="tab ' + (HUM.version === 'v2' ? 'active' : '') + '" data-hv="v2">v2 · Mejorada</button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' +
+            '<input type="file" id="hm_file" accept=".txt,.md,.markdown,.text,.docx" style="display:none;">' +
+            '<button class="btn btn-secondary btn-small" id="hm_pick"><i class="fa-solid fa-file-arrow-up"></i> Insertar archivo (.txt, .md, .docx)</button>' +
+            '<span class="text-gray text-xs" id="hm_fname">' + (HUM.filename ? esc(HUM.filename) : 'o pega el texto abajo') + '</span>' +
+          '</div>' +
+          '<textarea id="hm_text" class="form-input" rows="9" placeholder="Pega aquí el texto a humanizar...">' + esc(HUM.text) + '</textarea>' +
+          '<div style="margin-top:14px;display:flex;gap:10px;align-items:center;">' +
+            '<button class="btn btn-primary" id="hm_run" ' + (HUM.busy ? 'disabled' : '') + '><i class="fa-solid fa-wand-magic-sparkles"></i> ' + (HUM.busy ? 'Procesando...' : 'Humanizar') + '</button>' +
+            '<button class="btn btn-secondary btn-small" id="hm_clear">Limpiar</button>' +
+          '</div>' +
+          '<div id="hm_prog" class="hm-progress" style="display:none;">' +
+            '<div class="hm-prog-bar"><div class="hm-prog-fill" id="hm_prog_fill"></div></div>' +
+            '<div class="hm-prog-label"><span id="hm_prog_stage">Procesando…</span><span id="hm_prog_pct">0%</span></div>' +
+          '</div>' +
+        '</div>' +
+        '<div id="hm_out"></div>';
+
+      document.querySelectorAll('[data-hv]').forEach(function (b) {
+        b.addEventListener('click', function () { HUM.version = this.getAttribute('data-hv'); humRender(); });
+      });
+      el('hm_pick').addEventListener('click', function () { el('hm_file').click(); });
+      el('hm_text').addEventListener('input', function () { HUM.text = this.value; HUM.filename = ''; HUM.docx_base64 = null; });
+      el('hm_clear').addEventListener('click', function () { HUM = { version: HUM.version, text: '', filename: '', docx_base64: null, result: null, stats: null, busy: false }; humRender(); });
+      el('hm_file').addEventListener('change', function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        HUM.filename = f.name;
+        var isDocx = /\.docx$/i.test(f.name);
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          if (isDocx) {
+            var dataUrl = String(ev.target.result || '');
+            HUM.docx_base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+            HUM.text = '';
+            el('hm_text').value = ''; el('hm_text').placeholder = '(.docx cargado: ' + f.name + ')';
+          } else {
+            HUM.text = ev.target.result; HUM.docx_base64 = null;
+            el('hm_text').value = HUM.text;
+          }
+          el('hm_fname').textContent = f.name;
+        };
+        reader.onerror = function () { showAlert('No se pudo leer el archivo.', 'error'); };
+        if (isDocx) reader.readAsDataURL(f); else reader.readAsText(f);
+      });
+      el('hm_run').addEventListener('click', humRun);
+      if (HUM.result != null) humRenderOut();
+    }
+
+    function humRun() {
+      if (!HUM.docx_base64 && !el('hm_text').value.trim()) { showAlert('Inserta un archivo o pega texto.', 'warning'); return; }
+      HUM.text = el('hm_text').value;
+      HUM.busy = true; HUM.result = null; humRender();
+
+      var prog = el('hm_prog'), fill = el('hm_prog_fill'), stg = el('hm_prog_stage'), pct = el('hm_prog_pct');
+      prog.style.display = 'block';
+      var setProg = function (f, s) {
+        var p = Math.round(f * 100);
+        fill.style.width = p + '%'; pct.textContent = p + '%';
+        if (s) stg.textContent = s;
+      };
+      setProg(0.02, 'Enviando…');
+
+      fetch('/api/humanizer?stream=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API.token },
+        body: JSON.stringify({ version: HUM.version, text: HUM.docx_base64 ? undefined : HUM.text, docx_base64: HUM.docx_base64 || undefined })
+      }).then(function (resp) {
+        if (!resp.ok || !resp.body || !resp.body.getReader) {
+          return resp.json().then(function (j) {
+            if (j.error) throw new Error(j.error);
+            if (j.result != null) { HUM.result = j.result; HUM.stats = j.stats; setProg(1, 'Listo'); return; }
+            throw new Error('Respuesta no válida');
+          });
+        }
+        var reader = resp.body.getReader(), dec = new TextDecoder(), buf = '';
+        function pump() {
+          return reader.read().then(function (res) {
+            if (res.value) buf += dec.decode(res.value, { stream: true });
+            var lines = buf.split('\n'); buf = lines.pop();
+            lines.forEach(function (ln) {
+              if (!ln.trim()) return;
+              var evt; try { evt = JSON.parse(ln); } catch (e) { return; }
+              if (evt.error) throw new Error(evt.error);
+              if (evt.done) { HUM.result = evt.result; HUM.stats = evt.stats; setProg(1, 'Listo'); }
+              else if (typeof evt.progress === 'number') setProg(evt.progress, evt.stage);
+            });
+            if (res.done) return;
+            return pump();
+          });
+        }
+        return pump();
+      }).then(function () {
+        HUM.busy = false;
+        setTimeout(function () { humRender(); }, 250);
+      }).catch(function (err) {
+        HUM.busy = false;
+        showAlert(err.message, 'error');
+        humRender();
+      });
+    }
+
+    function humRenderOut() {
+      var s = HUM.stats || {};
+      el('hm_out').innerHTML =
+        '<div class="glass-panel" style="padding:24px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
+            '<div class="section-heading" style="text-align:left;margin:0;">Resultado (texto plano)</div>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<button class="btn btn-primary btn-small" id="hm_dl"><i class="fa-solid fa-download"></i> Descargar .txt</button>' +
+              '<button class="btn btn-secondary btn-small" id="hm_copy">Copiar</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="text-gray text-xs mb-2">' + esc(s.version || '') + ' · ' + (s.in_chars || 0).toLocaleString() + ' → ' + (s.out_chars || 0).toLocaleString() + ' caracteres · ' + (s.ms || 0) + ' ms</div>' +
+          '<textarea class="form-input" id="hm_result" rows="16" readonly style="font-family:ui-monospace,monospace;font-size:12.5px;">' + esc(HUM.result) + '</textarea>' +
+        '</div>';
+      el('hm_copy').addEventListener('click', function () { navigator.clipboard.writeText(HUM.result); showAlert('Copiado.', 'success'); });
+      el('hm_dl').addEventListener('click', function () {
+        var base = (HUM.filename || 'texto').replace(/\.[^.]+$/, '');
+        var blob = new Blob([HUM.result], { type: 'text/plain;charset=utf-8' });
+        var u = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = u; a.download = base + '_humanizado.txt'; document.body.appendChild(a); a.click();
+        a.remove(); URL.revokeObjectURL(u);
+      });
+    }
+
+    function viewSolicitar() {
+      // Asistente estilo AWS/Azure: 1) tipo de crédito  2) detalles  3) revisar y enviar
+      var w = { step: 1, typeId: null, pkgId: null, credits: '', project: '', prioridad: 'Media', inicio: '', justificacion: '' };
+      var typeOf = function () { return CREDIT_TYPES.filter(function (t) { return t.id === w.typeId; })[0]; };
+
+      function steps() {
+        var labels = ['Tipo de crédito', 'Detalles de la solicitud', 'Revisar y enviar'];
+        return '<div class="wizard-steps">' + labels.map(function (l, i) {
+          var n = i + 1, cls = n === w.step ? 'active' : (n < w.step ? 'done' : '');
+          return (i ? '<span class="wizard-step sep">/</span>' : '') +
+            '<div class="wizard-step ' + cls + '"><span class="num">' + (n < w.step ? '<i class="fa-solid fa-check"></i>' : n) + '</span>' + l + '</div>';
+        }).join('') + '</div>';
+      }
+
+      function render() {
+        var html = steps();
+        if (w.step === 1) {
+          html += '<div class="glass-panel" style="padding:24px;">' +
+            '<div class="section-heading" style="text-align:left;margin-bottom:16px;">¿Para qué tipo de servicio necesitas créditos?</div>' +
+            '<div class="choice-grid">' + CREDIT_TYPES.map(function (t) {
+              return '<button type="button" class="choice-card ' + (w.typeId === t.id ? 'selected' : '') + '" data-type="' + t.id + '">' +
+                '<div class="cc-icon"><i class="fa-solid ' + t.icon + '"></i></div>' +
+                '<div class="cc-name">' + esc(t.name) + '</div><div class="cc-desc">' + esc(t.desc) + '</div></button>';
+            }).join('') + '</div>' +
+            '<div style="margin-top:20px;display:flex;justify-content:flex-end;">' +
+              '<button class="btn btn-primary" id="w_next" ' + (w.typeId ? '' : 'disabled') + '>Continuar <i class="fa-solid fa-arrow-right"></i></button>' +
+            '</div></div>';
+        } else if (w.step === 2) {
+          html += '<div class="glass-panel" style="padding:24px;max-width:640px;">' +
+            '<div class="text-gray text-sm mb-2">Servicio: <strong class="text-accent">' + esc(typeOf().name) + '</strong></div>' +
+            '<div class="form-group"><label>Paquete de créditos</label><div class="pkg-row">' +
+              PACKAGES.map(function (p) {
+                return '<div class="pkg-card ' + (w.pkgId === p.id ? 'selected' : '') + '" data-pkg="' + p.id + '">' +
+                  '<div class="pk-label">' + esc(p.label) + '</div><div class="pk-credits">' + (p.credits ? p.credits.toLocaleString() : '—') + '</div></div>';
+              }).join('') + '</div></div>' +
+            '<div class="form-group"><label>Créditos solicitados <span class="form-required-marker">*</span></label>' +
+              '<input type="number" id="w_credits" class="form-input" min="1" placeholder="500" value="' + esc(w.credits) + '"></div>' +
+            '<div class="form-group"><label>Nombre del proyecto / caso de uso <span class="form-required-marker">*</span></label>' +
+              '<input type="text" id="w_project" class="form-input" placeholder="Automatización de conciliaciones bancarias" value="' + esc(w.project) + '"></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+              '<div class="form-group"><label>Prioridad</label><select id="w_prio" class="form-input">' +
+                PRIORIDADES.map(function (p) { return '<option ' + (w.prioridad === p ? 'selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div>' +
+              '<div class="form-group"><label>Inicio estimado</label><input type="date" id="w_inicio" class="form-input" value="' + esc(w.inicio) + '"></div>' +
+            '</div>' +
+            '<div class="form-group"><label>Justificación / alcance <span class="form-required-marker">*</span></label>' +
+              '<textarea id="w_just" class="form-input" rows="4" placeholder="Describe el alcance, los procesos involucrados y el resultado esperado...">' + esc(w.justificacion) + '</textarea></div>' +
+            '<div style="display:flex;justify-content:space-between;">' +
+              '<button class="btn btn-secondary" id="w_back"><i class="fa-solid fa-arrow-left"></i> Atrás</button>' +
+              '<button class="btn btn-primary" id="w_next">Revisar <i class="fa-solid fa-arrow-right"></i></button>' +
+            '</div></div>';
+        } else {
+          html += '<div class="glass-panel" style="padding:24px;max-width:640px;">' +
+            '<div class="section-heading" style="text-align:left;margin-bottom:14px;">Revisa tu solicitud</div>' +
+            '<div class="summary-box">' +
+              row('Tipo de crédito', typeOf().name) +
+              row('Créditos solicitados', parseInt(w.credits, 10).toLocaleString()) +
+              row('Proyecto / caso de uso', w.project) +
+              row('Prioridad', w.prioridad) +
+              row('Inicio estimado', w.inicio || 'Sin definir') +
+              row('Justificación', w.justificacion) +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;margin-top:20px;">' +
+              '<button class="btn btn-secondary" id="w_back"><i class="fa-solid fa-arrow-left"></i> Atrás</button>' +
+              '<button class="btn btn-primary" id="w_submit"><i class="fa-solid fa-paper-plane"></i> Enviar solicitud</button>' +
+            '</div></div>';
+        }
+        el('view').innerHTML = html;
+        wire();
+      }
+
+      function row(k, v) { return '<div class="sr"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>'; }
+
+      function collectStep2() {
+        w.credits = el('w_credits').value;
+        w.project = el('w_project').value.trim();
+        w.prioridad = el('w_prio').value;
+        w.inicio = el('w_inicio').value;
+        w.justificacion = el('w_just').value.trim();
+      }
+
+      function wire() {
+        var next = el('w_next'), back = el('w_back');
+        document.querySelectorAll('[data-type]').forEach(function (b) {
+          b.addEventListener('click', function () { w.typeId = this.getAttribute('data-type'); render(); });
+        });
+        document.querySelectorAll('[data-pkg]').forEach(function (c) {
+          c.addEventListener('click', function () {
+            w.pkgId = this.getAttribute('data-pkg');
+            var p = PACKAGES.filter(function (x) { return x.id === w.pkgId; })[0];
+            if (p.credits) el('w_credits').value = p.credits;
+            document.querySelectorAll('[data-pkg]').forEach(function (n) { n.classList.remove('selected'); });
+            this.classList.add('selected');
+          });
+        });
+        if (back) back.addEventListener('click', function () { if (w.step === 2) collectStep2(); w.step--; render(); });
+        if (next) next.addEventListener('click', function () {
+          if (w.step === 1) { if (!w.typeId) return; w.step = 2; render(); return; }
+          if (w.step === 2) {
+            collectStep2();
+            if (!w.credits || parseInt(w.credits, 10) < 1) return showAlert('Indica cuántos créditos solicitas.', 'warning');
+            if (!w.project) return showAlert('Indica el nombre del proyecto.', 'warning');
+            if (!w.justificacion) return showAlert('Agrega una justificación.', 'warning');
+            w.step = 3; render();
+          }
+        });
+        var submit = el('w_submit');
+        if (submit) submit.addEventListener('click', function () {
+          submit.disabled = true; submit.textContent = 'Enviando...';
+          var desc = '[' + typeOf().name + '] ' + w.project +
+            ' — Prioridad: ' + w.prioridad +
+            (w.inicio ? ' — Inicio estimado: ' + w.inicio : '') +
+            '\n\n' + w.justificacion;
+          API.requestCredits(desc, parseInt(w.credits, 10)).then(function () {
+            showAlert('Tu solicitud será revisada en los próximos minutos.', 'success');
+            location.hash = '#/solicitudes';
+            return loadDashboard(true);
+          }).catch(function (err) {
+            showAlert(err.message, 'error');
+            submit.disabled = false; submit.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar solicitud';
+          });
+        });
+      }
+
+      render();
+      return Promise.resolve();
+    }
+
+    function viewSolicitudes() {
+      return loadDashboard(true).then(function (d) {
+        var rows = (d.requests || []).map(function (r) {
+          return '<tr><td>' + esc(r.project_description) + '</td><td>' + (r.requested_credits || 0).toLocaleString() +
+            '</td><td><span class="status-pill ' + r.status + '">' + (statusLabel[r.status] || r.status) + '</span></td><td>' +
+            fmtDate(r.created_at) + '</td><td>' + esc(r.admin_notes || '—') + '</td></tr>';
+        }).join('') || '<tr><td colspan="5" class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</td></tr>';
+        el('view').innerHTML = '<div class="glass-panel" style="padding:24px;"><div class="table-container"><table class="table">' +
+          '<thead><tr><th>Proyecto</th><th>Créditos</th><th>Estado</th><th>Fecha</th><th>Notas del admin</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      });
+    }
+
+    function viewHistorial() {
+      return API.request('/api/credits/transactions').then(function (r) {
+        var txns = r.transactions || [];
+        var rows = txns.map(function (t) {
+          return '<tr><td>' + esc(t.description) + '</td><td>' + esc(t.type) + '</td><td style="color:' +
+            (t.amount > 0 ? 'var(--color-success)' : 'var(--color-error)') + ';font-weight:700;">' +
+            (t.amount > 0 ? '+' : '') + t.amount + '</td><td>' + fmtDate(t.created_at) + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</td></tr>';
+        el('view').innerHTML = '<div class="glass-panel" style="padding:24px;"><div class="table-container"><table class="table">' +
+          '<thead><tr><th>Descripción</th><th>Tipo</th><th>Monto</th><th>Fecha</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      });
+    }
+
+    function viewNotificaciones() {
+      return API.getNotifications().then(function (r) {
+        var list = r.notifications || [];
+        el('view').innerHTML = '<div class="glass-panel" style="padding:24px;"><div id="notifWrap" style="display:flex;flex-direction:column;gap:10px;">' +
+          (list.map(function (n) {
+            return '<div class="notification-item ' + (n.is_read ? '' : 'unread') + '" data-id="' + n.id + '">' +
+              '<div class="notif-content"><h4 style="color:#fff;font-size:14px;margin:0 0 4px;">' + esc(n.title) + '</h4>' +
+              '<p style="color:var(--color-text);font-size:13px;margin:0;">' + esc(n.message) + '</p>' +
+              '<div class="notif-time">' + fmtDateTime(n.created_at) + '</div></div></div>';
+          }).join('') || '<p class="text-gray text-center" style="padding:28px 0;">Sin notificaciones.</p>') +
+          '</div></div>';
+        var items = document.querySelectorAll('#notifWrap .notification-item.unread');
+        for (var i = 0; i < items.length; i++) {
+          items[i].addEventListener('click', function () {
+            var id = this.getAttribute('data-id'); var node = this;
+            API.markNotificationRead(id).then(function () { node.classList.remove('unread'); refreshBell(); }).catch(function () {});
+          });
+        }
+      });
+    }
+
+    /* ---------- Admin ---------- */
+    function viewAdminSolicitudes() {
+      var current = viewAdminSolicitudes._status || 'pending';
+      function load(status) {
+        viewAdminSolicitudes._status = status;
+        el('view').innerHTML = '<div class="tabs" style="margin-bottom:16px;">' +
+          ['pending', 'approved', 'rejected'].map(function (s) {
+            return '<button class="tab ' + (s === status ? 'active' : '') + '" data-s="' + s + '">' + statusLabel[s] + '</button>';
+          }).join('') + '</div><div id="reqList"><p class="text-gray text-center" style="padding:24px 0;">Cargando...</p></div>';
+        document.querySelectorAll('.tab[data-s]').forEach(function (t) {
+          t.addEventListener('click', function () { load(this.getAttribute('data-s')); });
+        });
+        return API.getAdminRequests(status).then(function (r) {
+          var list = r.requests || [];
+          el('reqList').innerHTML = list.map(function (rq) {
+            var actions = status === 'pending'
+              ? '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-success btn-small" data-approve="' + rq.id + '">Aprobar</button>' +
+                '<button class="btn btn-error btn-small" data-reject="' + rq.id + '">Rechazar</button></div>' : '';
+            return '<div class="glass-panel" style="padding:18px;margin-bottom:12px;">' +
+              '<div style="color:#fff;font-weight:700;">' + esc(rq.project_description) + '</div>' +
+              '<div class="text-gray text-sm" style="margin-top:6px;">' + esc(rq.user_name) + ' (' + esc(rq.user_email) + ')' +
+              (rq.user_company ? ' &middot; ' + esc(rq.user_company) : '') + '</div>' +
+              '<div class="text-sm" style="margin-top:4px;">Créditos: <strong class="text-accent">' + (rq.requested_credits || 0).toLocaleString() + '</strong>' +
+              ' &middot; ' + fmtDate(rq.created_at) + '</div>' + actions + '</div>';
+          }).join('') || '<p class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</p>';
+          document.querySelectorAll('[data-approve]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              API.approveRequest(this.getAttribute('data-approve')).then(function () {
+                showAlert('Solicitud aprobada.', 'success'); state.users = null; state.dashboard = null; refreshBell(); load('pending');
+              }).catch(function (e) { showAlert(e.message, 'error'); });
+            });
+          });
+          document.querySelectorAll('[data-reject]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var notes = prompt('Motivo del rechazo (opcional):') || '';
+              API.rejectRequest(this.getAttribute('data-reject'), notes).then(function () {
+                showAlert('Solicitud rechazada.', 'success'); state.dashboard = null; refreshBell(); load('pending');
+              }).catch(function (e) { showAlert(e.message, 'error'); });
+            });
+          });
+        });
+      }
+      return load(current);
+    }
+
+    function userCard(u) {
+      var inactive = u.active === false;
+      var badge = u.role === 'admin' ? '<span class="badge badge-accent" style="font-size:10px;margin-left:6px;">ADMIN</span>' : '';
+      var offBadge = inactive ? '<span class="badge badge-error" style="font-size:10px;margin-left:6px;">DESACTIVADO</span>' : '';
+      var pend = Number(u.pending_requests) > 0 ? '<span class="badge badge-info" style="font-size:10px;margin-left:6px;">' + u.pending_requests + ' pend.</span>' : '';
+      var toggleCls = inactive ? 'btn-success' : 'btn-error';
+      var toggleTxt = inactive ? 'Activar' : 'Desactivar';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;' + (inactive ? 'opacity:0.6;' : '') + '">' +
+        '<div style="flex:1;min-width:200px;"><div style="color:#fff;font-weight:600;font-size:14px;">' + esc(u.name) + badge + offBadge + pend + '</div>' +
+        '<div class="text-gray text-xs">' + esc(u.email) + (u.position ? ' | ' + esc(u.position) : '') + ' | ' + esc(u.company || 'Sin empresa') + ' | ' + (u.account_type === 'colaborador' ? 'Colaborador' : 'Cliente') + '</div></div>' +
+        '<div style="text-align:right;">' +
+          '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.credits || 0).toLocaleString() + ' <span class="text-gray text-xs" style="font-weight:400;">créditos</span></div>' +
+          '<div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap;">' +
+            '<button class="btn btn-secondary btn-small" data-edit="' + u.id + '">Modificar</button>' +
+            '<button class="btn ' + toggleCls + ' btn-small" data-toggle="' + u.id + '" data-make="' + (inactive ? '1' : '0') + '">' + toggleTxt + '</button>' +
+          '</div>' +
+        '</div></div>';
+    }
+
+    function wireUserActions() {
+      document.querySelectorAll('[data-toggle]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var id = this.getAttribute('data-toggle');
+          var make = this.getAttribute('data-make') === '1';
+          API.request('/api/admin/users/' + id + '/active', { method: 'PATCH', body: JSON.stringify({ active: make }) })
+            .then(function () { showAlert(make ? 'Usuario activado.' : 'Usuario desactivado.', 'success'); state.users = null; viewAdminUsuarios(); })
+            .catch(function (e) { showAlert(e.message, 'error'); });
+        });
+      });
+      document.querySelectorAll('[data-edit]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var id = this.getAttribute('data-edit');
+          var u = (state.users || []).filter(function (x) { return String(x.id) === String(id); })[0];
+          if (u) viewAdminUsuarioEdit(u);
+        });
+      });
+    }
+
+    function viewAdminUsuarioEdit(u) {
+      el('view').innerHTML =
+        '<button class="btn btn-secondary btn-small" id="euBack"><i class="fa-solid fa-arrow-left"></i> Volver a usuarios</button>' +
+        '<div class="glass-panel" style="padding:28px;max-width:600px;margin-top:14px;">' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Modificar: ' + esc(u.name) + '</div>' +
+          '<form id="euForm"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+            '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input id="eu_name" class="form-input" value="' + esc(u.name) + '" required></div>' +
+            '<div class="form-group"><label>Email <span class="form-required-marker">*</span></label><input id="eu_email" type="email" class="form-input" value="' + esc(u.email) + '" required></div>' +
+            '<div class="form-group"><label>Tipo de cuenta</label><select id="eu_type" class="form-input">' +
+              '<option value="cliente"' + (u.account_type !== 'colaborador' ? ' selected' : '') + '>Cliente (portal de créditos)</option>' +
+              '<option value="colaborador"' + (u.account_type === 'colaborador' ? ' selected' : '') + '>Colaborador TURINGTECH (portal RRHH)</option>' +
+            '</select></div>' +
+            '<div class="form-group"><label>Rol</label><select id="eu_role" class="form-input">' +
+              '<option value="user"' + (u.role !== 'admin' ? ' selected' : '') + '>Usuario</option>' +
+              '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Administrador</option>' +
+            '</select></div>' +
+            '<div class="form-group"><label>Cargo</label><input id="eu_position" class="form-input" value="' + esc(u.position || '') + '"></div>' +
+            '<div class="form-group"><label>Empresa</label><input id="eu_company" class="form-input" value="' + esc(u.company || '') + '"></div>' +
+            '<div class="form-group"><label>Teléfono</label><input id="eu_phone" class="form-input" value="' + esc(u.phone || '') + '"></div>' +
+            '<div class="form-group"><label>Nueva contraseña</label><input id="eu_pass" type="text" class="form-input" placeholder="vacío = no cambiar" minlength="6"></div>' +
+            '<div class="form-group eu-col"><label>Días de vacaciones (total)</label><input id="eu_vt" type="number" min="0" class="form-input" value="' + (u.vacation_total || 0) + '"></div>' +
+            '<div class="form-group eu-col"><label>Vacaciones gozadas</label><input id="eu_vu" type="number" min="0" class="form-input" value="' + (u.vacation_used || 0) + '"></div>' +
+            '<div class="form-group eu-col"><label>Turingcoins</label><input id="eu_hc" type="number" min="0" class="form-input" value="' + (u.handycoins || 0) + '"></div>' +
+          '</div>' +
+          '<button type="submit" class="btn btn-primary" id="eu_btn">Guardar cambios</button></form>' +
+        '</div>';
+
+      el('euBack').addEventListener('click', function () { viewAdminUsuarios(); });
+      el('euForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = el('eu_btn'); btn.disabled = true; btn.textContent = 'Guardando...';
+        if (el('eu_type').value === 'colaborador' && !el('eu_position').value.trim()) {
+          showAlert('El cargo es obligatorio para colaboradores.', 'warning');
+          btn.disabled = false; btn.textContent = 'Guardar cambios'; return;
+        }
+        var body = {
+          name: el('eu_name').value.trim(), email: el('eu_email').value.trim(),
+          role: el('eu_role').value, account_type: el('eu_type').value,
+          position: el('eu_position').value.trim(),
+          company: el('eu_company').value.trim(), phone: el('eu_phone').value.trim(),
+          vacation_total: parseInt(el('eu_vt').value, 10) || 0,
+          vacation_used: parseInt(el('eu_vu').value, 10) || 0,
+          handycoins: parseInt(el('eu_hc').value, 10) || 0
+        };
+        var pass = el('eu_pass').value;
+        API.request('/api/admin/users/' + u.id, { method: 'PUT', body: JSON.stringify(body) })
+          .then(function () {
+            if (pass && pass.length >= 6) {
+              return API.request('/api/admin/users/' + u.id + '/password', { method: 'PUT', body: JSON.stringify({ password: pass }) });
+            }
+          })
+          .then(function () {
+            showAlert('Usuario actualizado.', 'success');
+            state.users = null; state.dashboard = null;
+            viewAdminUsuarios();
+          })
+          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = 'Guardar cambios'; });
+      });
+    }
+
+    function viewAdminUsuarios() {
+      return loadUsers(true).then(function (users) {
+        var staff = users.filter(isTuringtech);
+        var clients = users.filter(function (u) { return !isTuringtech(u); });
+        var block = function (title, icon, arr) {
+          return '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
+            '<h2 style="color:#fff;font-size:18px;font-weight:700;"><i class="fa-solid ' + icon + '" style="color:var(--color-accent);margin-right:8px;"></i>' + title + '</h2>' +
+            '<span class="badge badge-secondary">' + arr.length + '</span></div>' +
+            '<div style="display:flex;flex-direction:column;gap:10px;">' +
+            (arr.map(userCard).join('') || '<p class="text-gray text-center" style="padding:24px 0;">Sin usuarios.</p>') + '</div></div>';
+        };
+
+        var form =
+          '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+              '<h2 style="color:#fff;font-size:18px;font-weight:700;"><i class="fa-solid fa-user-plus" style="color:var(--color-accent);margin-right:8px;"></i>Crear usuario</h2>' +
+              '<button class="btn btn-secondary btn-small" id="nuToggle">Nuevo usuario</button>' +
+            '</div>' +
+            '<form id="nuForm" style="display:none;margin-top:18px;">' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+                '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input type="text" id="nu_name" class="form-input" required></div>' +
+                '<div class="form-group"><label>Email <span class="form-required-marker">*</span></label><input type="email" id="nu_email" class="form-input" placeholder="nombre@turingtech.com.ec" required></div>' +
+                '<div class="form-group"><label>Contraseña <span class="form-required-marker">*</span></label><input type="text" id="nu_pass" class="form-input" placeholder="mín. 6 caracteres" required minlength="6"></div>' +
+                '<div class="form-group"><label>Tipo de cuenta <span class="form-required-marker">*</span></label><select id="nu_type" class="form-input">' +
+                  '<option value="cliente">Cliente (portal de créditos)</option>' +
+                  '<option value="colaborador">Colaborador TURINGTECH (portal RRHH)</option>' +
+                '</select></div>' +
+                '<div class="form-group"><label>Rol <span class="form-required-marker">*</span></label><select id="nu_role" class="form-input">' +
+                  '<option value="user">Usuario</option>' +
+                  '<option value="admin">Administrador (panel completo)</option>' +
+                '</select></div>' +
+                '<div class="form-group" id="nu_position_g"><label>Cargo <span class="form-required-marker" id="nu_pos_req" style="display:none;">*</span></label><input type="text" id="nu_position" class="form-input" placeholder="Data Engineer, Contadora..."></div>' +
+                '<div class="form-group"><label>Empresa</label><input type="text" id="nu_company" class="form-input" value="TURINGTECH Ecuador"></div>' +
+                '<div class="form-group"><label>Teléfono</label><input type="tel" id="nu_phone" class="form-input"></div>' +
+                '<div class="form-group nu-cli"><label>Créditos iniciales</label><input type="number" id="nu_credits" class="form-input" value="0" min="0"></div>' +
+                '<div class="form-group nu-col" style="display:none;"><label>Días de vacaciones (total)</label><input type="number" id="nu_vt" class="form-input" value="10" min="0"></div>' +
+                '<div class="form-group nu-col" style="display:none;"><label>Vacaciones gozadas</label><input type="number" id="nu_vu" class="form-input" value="0" min="0"></div>' +
+                '<div class="form-group nu-col" style="display:none;"><label>Turingcoins</label><input type="number" id="nu_hc" class="form-input" value="0" min="0"></div>' +
+              '</div>' +
+              '<button type="submit" class="btn btn-primary" id="nu_btn"><i class="fa-solid fa-check"></i> Crear usuario</button>' +
+            '</form>' +
+          '</div>';
+
+        el('view').innerHTML = form + block('Clientes', 'fa-briefcase', clients) + block('Usuarios TURINGTECH', 'fa-shield-halved', staff);
+
+        wireUserActions();
+
+        var nuSync = function () {
+          var col = el('nu_type').value === 'colaborador';
+          el('nu_pos_req').style.display = col ? 'inline' : 'none';
+          document.querySelectorAll('.nu-col').forEach(function (n) { n.style.display = col ? 'block' : 'none'; });
+          document.querySelectorAll('.nu-cli').forEach(function (n) { n.style.display = col ? 'none' : 'block'; });
+        };
+        el('nu_type').addEventListener('change', nuSync); nuSync();
+
+        el('nuToggle').addEventListener('click', function () {
+          var f = el('nuForm');
+          f.style.display = f.style.display === 'none' ? 'block' : 'none';
+        });
+        el('nuForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          if (el('nu_type').value === 'colaborador' && !el('nu_position').value.trim()) {
+            showAlert('El cargo es obligatorio para colaboradores.', 'warning'); return;
+          }
+          var btn = el('nu_btn'); btn.disabled = true; btn.textContent = 'Creando...';
+          API.request('/api/admin/users', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: el('nu_name').value.trim(),
+              email: el('nu_email').value.trim(),
+              password: el('nu_pass').value,
+              role: el('nu_role').value,
+              account_type: el('nu_type').value,
+              position: el('nu_position').value.trim(),
+              company: el('nu_company').value.trim(),
+              phone: el('nu_phone').value.trim(),
+              credits: parseInt(el('nu_credits').value, 10) || 0,
+              vacation_total: parseInt(el('nu_vt').value, 10) || 0,
+              vacation_used: parseInt(el('nu_vu').value, 10) || 0,
+              handycoins: parseInt(el('nu_hc').value, 10) || 0
+            })
+          }).then(function () {
+            showAlert('Usuario creado.', 'success');
+            state.users = null;
+            viewAdminUsuarios();
+          }).catch(function (err) {
+            showAlert(err.message, 'error');
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Crear usuario';
+          });
+        });
+      });
+    }
+
+    function viewAdminCreditos() {
+      return loadUsers().then(function (users) {
+        var opts = users.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + ' — ' + esc(u.email) + ' (' + (u.credits || 0).toLocaleString() + ')</option>'; }).join('');
+        el('view').innerHTML = '<div class="glass-panel" style="padding:28px;max-width:520px;"><form id="mcForm">' +
+          '<div class="form-group"><label>Usuario <span class="form-required-marker">*</span></label><select id="mc_user" class="form-input" required>' + opts + '</select></div>' +
+          '<div class="form-group"><label>Cantidad (positivo o negativo) <span class="form-required-marker">*</span></label><input type="number" id="mc_amount" class="form-input" placeholder="500" required></div>' +
+          '<div class="form-group"><label>Motivo <span class="form-required-marker">*</span></label><input type="text" id="mc_reason" class="form-input" placeholder="Bonificación por proyecto" required></div>' +
+          '<button type="submit" class="btn btn-primary btn-block" id="mc_btn">Aplicar</button></form></div>';
+        el('mcForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = el('mc_btn'); btn.disabled = true; btn.textContent = 'Aplicando...';
+          API.adjustUserCredits(el('mc_user').value, parseInt(el('mc_amount').value, 10), el('mc_reason').value).then(function () {
+            showAlert('Créditos actualizados.', 'success'); state.users = null; state.dashboard = null; refreshBell(); location.hash = '#/admin-usuarios';
+          }).catch(function (err) { showAlert(err.message, 'error'); })
+            .then(function () { btn.disabled = false; btn.textContent = 'Aplicar'; });
+        });
+      });
+    }
+
+    function viewAdminConfig() {
+      return API.getAdminConfig().then(function (r) {
+        var cfg = r.config || r || {};
+        var me = state.me;
+        el('view').innerHTML =
+          '<div class="glass-panel" style="padding:28px;max-width:520px;margin-bottom:22px;">' +
+            '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Mi foto</div>' +
+            '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">' +
+              '<div id="cfgPhoto" style="width:76px;height:76px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:24px;">' + avatarHtml(me.name, me.photo) + '</div>' +
+              '<div><input type="file" id="cfg_file" accept="image/png,image/jpeg,image/webp" style="display:none;">' +
+                '<button class="btn btn-secondary btn-small" id="cfg_pick"><i class="fa-solid fa-upload"></i> Subir foto</button> ' +
+                (me.photo ? '<button class="btn btn-error btn-small" id="cfg_rmphoto">Quitar</button>' : '') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="glass-panel" style="padding:28px;max-width:520px;margin-bottom:22px;">' +
+            '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Email de notificaciones</div>' +
+            '<form id="cfgForm">' +
+              '<div class="form-group"><label>Email <span class="form-required-marker">*</span></label>' +
+              '<input type="email" id="cfg_email" class="form-input" value="' + esc(cfg.notification_email || '') + '" required></div>' +
+              '<p class="text-gray text-sm mb-2">Las solicitudes de créditos se enviarán a este correo.</p>' +
+              '<button type="submit" class="btn btn-primary" id="cfg_btn">Guardar</button>' +
+            '</form>' +
+          '</div>' +
+          '<div class="glass-panel" style="padding:28px;max-width:520px;">' +
+            '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Cambiar mi contraseña</div>' +
+            '<form id="pwForm">' +
+              '<div class="form-group"><label>Contraseña actual <span class="form-required-marker">*</span></label>' +
+              '<input type="password" id="pw_cur" class="form-input" required autocomplete="current-password"></div>' +
+              '<div class="form-group"><label>Nueva contraseña <span class="form-required-marker">*</span></label>' +
+              '<input type="password" id="pw_new" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
+              '<div class="form-group"><label>Repetir nueva contraseña <span class="form-required-marker">*</span></label>' +
+              '<input type="password" id="pw_new2" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
+              '<button type="submit" class="btn btn-primary" id="pw_btn">Actualizar contraseña</button>' +
+            '</form>' +
+          '</div>';
+
+        function savePhoto(dataUrl) {
+          return API.request('/api/hr/profile', { method: 'POST', body: JSON.stringify({ photo: dataUrl }) })
+            .then(function () { state.me.photo = dataUrl || null; paintTopbarAvatar(); showAlert(dataUrl ? 'Foto actualizada.' : 'Foto quitada.', 'success'); viewAdminConfig(); })
+            .catch(function (e) { showAlert(e.message, 'error'); });
+        }
+        el('cfg_pick').addEventListener('click', function () { el('cfg_file').click(); });
+        el('cfg_file').addEventListener('change', function () {
+          var f = this.files && this.files[0]; if (!f) return;
+          var reader = new FileReader();
+          reader.onload = function (ev) {
+            var img = new Image();
+            img.onload = function () {
+              var size = 256, c = document.createElement('canvas'); c.width = size; c.height = size;
+              var ctx = c.getContext('2d'), s = Math.min(img.width, img.height);
+              ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+              savePhoto(c.toDataURL('image/jpeg', 0.85));
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(f);
+        });
+        var rmp = el('cfg_rmphoto');
+        if (rmp) rmp.addEventListener('click', function () { savePhoto(''); });
+
+        el('cfgForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = el('cfg_btn'); btn.disabled = true; btn.textContent = 'Guardando...';
+          API.updateAdminConfig('notification_email', el('cfg_email').value).then(function () {
+            showAlert('Configuración guardada.', 'success');
+          }).catch(function (err) { showAlert(err.message, 'error'); })
+            .then(function () { btn.disabled = false; btn.textContent = 'Guardar'; });
+        });
+
+        el('pwForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          if (el('pw_new').value !== el('pw_new2').value) { showAlert('Las contraseñas nuevas no coinciden.', 'warning'); return; }
+          var btn = el('pw_btn'); btn.disabled = true; btn.textContent = 'Actualizando...';
+          API.request('/api/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ current_password: el('pw_cur').value, new_password: el('pw_new').value })
+          }).then(function () {
+            showAlert('Contraseña actualizada.', 'success');
+            el('pwForm').reset();
+          }).catch(function (err) { showAlert(err.message, 'error'); })
+            .then(function () { btn.disabled = false; btn.textContent = 'Actualizar contraseña'; });
+        });
+      });
+    }
+
+    /* ---------- Interacciones del shell ---------- */
+    el('navToggle').addEventListener('click', function () {
+      var shell = el('shell');
+      if (window.matchMedia('(max-width: 1024px)').matches) shell.classList.toggle('nav-open');
+      else shell.classList.toggle('collapsed');
+    });
+    el('navBackdrop').addEventListener('click', function () { el('shell').classList.remove('nav-open'); });
+    // Al cruzar el breakpoint, limpiar estados de menú que no aplican
+    var _wasMobile = window.matchMedia('(max-width: 1024px)').matches;
+    window.addEventListener('resize', function () {
+      var isMobile = window.matchMedia('(max-width: 1024px)').matches;
+      if (isMobile !== _wasMobile) {
+        el('shell').classList.remove('nav-open');
+        if (isMobile) el('shell').classList.remove('collapsed');
+        _wasMobile = isMobile;
+      }
+      el('userMenu').classList.remove('show');
+    });
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { el('shell').classList.remove('nav-open'); el('userMenu').classList.remove('show'); }
+    });
+    el('bell').addEventListener('click', function () { location.hash = '#/notificaciones'; });
+    el('userChip').addEventListener('click', function (e) {
+      if (e.target.closest('#userMenu')) return;
+      el('userMenu').classList.toggle('show');
+    });
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('#userChip')) el('userMenu').classList.remove('show');
+    });
+    el('logoutLink').addEventListener('click', function (e) { e.preventDefault(); API.logout(); });
+    el('navSearch').addEventListener('input', function () {
+      var q = this.value.toLowerCase().trim();
+      document.querySelectorAll('.nav-item').forEach(function (it) {
+        it.style.display = (!q || it.textContent.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
+      });
+    });
+    window.addEventListener('hashchange', router);
+
+    /* ---------- Init ---------- */
+    API.getMe().then(function (data) {
+      state.me = data.user;
+      state.menu = buildMenu();
+      el('userChipName').textContent = data.user.name;
+      el('userChipRole').textContent = data.user.role === 'admin'
+        ? 'Administrador TURINGTECH'
+        : (data.user.account_type === 'colaborador' ? (data.user.position || 'Colaborador TURINGTECH') : 'Cliente');
+      paintTopbarAvatar();
+      buildSidebar();
+      if (!location.hash || location.hash === '#') location.hash = '#/inicio';
+      router();
+      refreshBell();
+      setInterval(refreshBell, 60000);
+    }).catch(function () { window.location.href = '/login.html'; });
+  })();
+  </script>
+</body>
+</html>

@@ -31,39 +31,14 @@
     <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#050C1F]/20 to-[#050C1F]/40 pointer-events-none"></div>
   </div>
 
-  <header class="sticky top-0 z-50 glass-panel border-b border-white/5">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-      <a href="/" class="flex items-center space-x-3 cursor-pointer">
-        <img src="logo-turingtech-nuevo.png" alt="Turing Tech Logo" class="w-10 h-10 rounded-xl object-cover shadow-neon-orange">
-        <div>
-          <span class="text-white font-extrabold text-xl tracking-wider">TURING</span>
-          <span class="text-accentOrange font-medium text-xs block -mt-1 tracking-widest">TECH ECUADOR</span>
-        </div>
-      </a>
-      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
-        <a href="/" class="text-gray-300 hover:text-accentOrange transition-colors">Inicio</a>
-        <a href="/#servicios" class="text-gray-300 hover:text-accentOrange transition-colors">Servicios</a>
-        <a href="/#metodo" class="text-gray-300 hover:text-accentOrange transition-colors">Método Turing</a>
-        <a href="/#casos" class="text-gray-300 hover:text-accentOrange transition-colors">Casos de Éxito</a>
-        <a href="/login.html" class="text-accentOrange hover:text-white transition-colors flex items-center gap-1">
-          <i class="fa-solid fa-user text-xs"></i><span>Iniciar Sesión</span>
-        </a>
-      </nav>
-      <div class="hidden md:flex items-center space-x-4">
-        <a href="https://wa.me/593990686162?text=Hola%20TURINGTECH,%20me%20interesa%20solicitar%20un%20diagnóstico%20técnico%20gratuito" target="_blank" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold text-sm transition-all shadow-md hover:shadow-neon-orange duration-300 flex items-center space-x-2">
-          <i class="fa-solid fa-calendar-check text-xs"></i>
-          <span>Diagnóstico Técnico Gratuito</span>
-        </a>
-      </div>
-    </div>
-  </header>
+  <div id="site-header"></div>
 
   <div class="auth-wrapper">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="logo-turingtech-nuevo.png" alt="TURINGTECH">
-        <h1>TURINGTECH</h1>
-        <p>Ecuador</p>
+        <img src="/logo-turingtech-mark.svg" alt="TURINGTECH">
+        <h1>TURING<span style="color:var(--color-accent)">TECH</span></h1>
+        <p>Tu visión. <span style="color:var(--color-accent)">Nuestro código.</span></p>
       </div>
       <div id="alert-container"></div>
       <div id="loading" style="text-align: center; padding: 40px 0;">
@@ -76,7 +51,7 @@
         </div>
         <h2 class="auth-title" style="text-align: center;">¡Email Verificado!</h2>
         <p style="color: var(--color-text); margin-bottom: 24px;">
-          Tu cuenta ha sido verificada y has recibido <strong style="color: var(--color-accent);">200 créditos TURINGTECH</strong>.
+          Tu cuenta ha sido verificada y has recibido <strong style="color: var(--color-accent);">créditos TURINGTECH</strong>.
         </p>
         <a href="/login.html" class="btn btn-primary btn-block btn-large">Iniciar Sesión</a>
       </div>
@@ -121,5 +96,6 @@
     }
     verifyEmail();
   </script>
+  <script src="/js/site-header.js"></script>
 </body>
 </html>

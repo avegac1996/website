@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Gantt preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/css/app.css"></head>
+<body class="antialiased" style="padding:24px;">
+<div class="bg-grid"></div>
+<h1 class="page-title">Cronograma (preview)</h1>
+<div class="tabs" style="margin-bottom:14px;">
+  <button class="tab active"><i class="fa-solid fa-chart-gantt"></i> Cronograma</button>
+  <button class="tab"><i class="fa-solid fa-table-columns"></i> Tablero</button>
+</div>
+<div id="mount"></div>
+<script>
+var PX_DAY=3, ESTADO_SLUG={'Tareas por hacer':'todo','En curso':'prog','Client Review':'review','Control de calidad':'qa','Finalizada':'done','Bloqueado':'blocked'};
+var BOARD_ESTADOS=Object.keys(ESTADO_SLUG);
+var esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+var initials=n=>String(n||'').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+var fmtDate=d=>new Date(d).toLocaleDateString('es-EC',{day:'numeric',month:'short'});
+var tasks=[
+ {id:1,titulo:'Análisis del script entregado',proyecto:'RESOLUCIÓN DE RUTAS',responsable:'JHOSSUA VEGA',estado:'Finalizada',fecha:'2026-08-04',fecha_fin:'2026-08-08'},
+ {id:2,titulo:'Identificación de rutas, dependencias y conexiones',proyecto:'RESOLUCIÓN DE RUTAS',responsable:'JHOSSUA VEGA',estado:'En curso',fecha:'2026-08-09',fecha_fin:'2026-08-20'},
+ {id:3,titulo:'Adaptación de rutas al Data Lake',proyecto:'RESOLUCIÓN DE RUTAS',responsable:'JHOSSUA VEGA',estado:'Client Review',fecha:'2026-08-18',fecha_fin:'2026-09-05'},
+ {id:4,titulo:'Validación de estructuras, tipos de datos',proyecto:'RESOLUCIÓN DE RUTAS',responsable:null,estado:'Tareas por hacer',fecha:'2026-09-01',fecha_fin:'2026-09-20'},
+ {id:5,titulo:'PAGINA WEB PUBLICACIÓN Y SEO',proyecto:'Turingtech',responsable:'WENDY',estado:'En curso',fecha:'2026-08-04',fecha_fin:'2026-08-30'},
+ {id:6,titulo:'DISEÑO DE CREDENCIALES',proyecto:'Turingtech',responsable:'ANTHONY',estado:'Control de calidad',fecha:'2026-08-25',fecha_fin:'2026-09-10'},
+ {id:7,titulo:'REUNION DE AVANCES',proyecto:'Turingtech',responsable:'TODOS',estado:'Bloqueado',fecha:'2026-08-30',fecha_fin:'2026-08-30'}
+];
+function render(){
+ var dstr=d=>d?String(d).slice(0,10):null;
+ var all=[];tasks.forEach(t=>{if(t.fecha)all.push(dstr(t.fecha));if(t.fecha_fin)all.push(dstr(t.fecha_fin));});
+ var today=new Date();today.setHours(0,0,0,0);
+ var minD=new Date(all.reduce((a,b)=>a<b?a:b)),maxD=new Date(all.reduce((a,b)=>a>b?a:b));
+ var start=new Date(minD.getFullYear(),minD.getMonth(),1),end=new Date(maxD.getFullYear(),maxD.getMonth()+1,0);
+ var minEnd=new Date(start.getFullYear(),start.getMonth()+7,0); if(end<minEnd)end=minEnd;
+ var months=[],cur=new Date(start);
+ while(cur<=end){var dim=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
+  var lbl=cur.toLocaleDateString('es-EC',{month:'long'});lbl=lbl[0].toUpperCase()+lbl.slice(1);
+  if(cur.getFullYear()!==today.getFullYear())lbl+=" '"+String(cur.getFullYear()).slice(2);
+  months.push({label:lbl,w:dim*PX_DAY});cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+ var totalW=months.reduce((a,m)=>a+m.w,0);
+ var off=d=>Math.round((new Date(dstr(d))-start)/86400000);
+ var groups={};tasks.forEach(t=>{var p=t.proyecto||'Sin proyecto';(groups[p]=groups[p]||[]).push(t);});
+ var body='';
+ Object.keys(groups).forEach(proj=>{
+  var items=groups[proj];
+  var gs=items.map(t=>dstr(t.fecha)),ge=items.map(t=>dstr(t.fecha_fin||t.fecha));
+  var a=off(gs.reduce((x,y)=>x<y?x:y)),b=off(ge.reduce((x,y)=>x>y?x:y));
+  body+='<div class="gt-row gt-grouprow"><div class="gt-cell gt-act"><span class="gt-caret">&#9662;</span><strong>'+esc(proj)+'</strong><span class="text-gray text-xs">&nbsp;('+items.length+')</span></div><div class="gt-cell gt-est"></div><div class="gt-cell gt-per"></div><div class="gt-track" style="width:'+totalW+'px;"><div class="gt-bar gt-groupbar" style="left:'+(a*PX_DAY)+'px;width:'+((b-a+1)*PX_DAY)+'px;"></div></div></div>';
+  items.forEach(t=>{
+   var s=off(t.fecha),fn=off(t.fecha_fin||t.fecha),w=Math.max((fn-s+1)*PX_DAY,10);
+   var bar='<div class="gt-bar est-'+ESTADO_SLUG[t.estado]+'" style="left:'+(s*PX_DAY)+'px;width:'+w+'px;"><span>'+esc(t.titulo)+'</span></div>';
+   var estSel='<select class="gt-estsel est-'+ESTADO_SLUG[t.estado]+'">'+BOARD_ESTADOS.map(e=>'<option'+(e===t.estado?' selected':'')+'>'+esc(e)+'</option>').join('')+'</select>';
+   var per=t.responsable?'<span class="bt-resp">'+esc(initials(t.responsable))+'</span><span class="text-xs" style="margin-left:6px;">'+esc(t.responsable)+'</span>':'<span class="text-gray text-xs">Sin asignar</span>';
+   body+='<div class="gt-row"><div class="gt-cell gt-act gt-tasktitle" title="'+esc(t.titulo)+'">'+esc(t.titulo)+'</div><div class="gt-cell gt-est">'+estSel+'</div><div class="gt-cell gt-per">'+per+'</div><div class="gt-track" style="width:'+totalW+'px;">'+bar+'</div></div>';
+  });
+ });
+ var mh=months.map(m=>'<div class="gt-month" style="width:'+m.w+'px;">'+esc(m.label)+'</div>').join('');
+ var tl=off(today)*PX_DAY;
+ document.getElementById('mount').innerHTML='<div class="gantt"><div class="gt-row gt-head"><div class="gt-cell gt-act">Actividad</div><div class="gt-cell gt-est">Estado</div><div class="gt-cell gt-per">Persona asignada</div><div class="gt-track" style="width:'+totalW+'px;">'+mh+'<div class="gt-today" style="left:'+tl+'px;"></div></div></div>'+body+'</div>';
+ document.querySelectorAll('.gt-estsel').forEach(s=>s.addEventListener('change',function(){this.className='gt-estsel est-'+ESTADO_SLUG[this.value];}));
+}
+render();
+</script>
+</body></html>

@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "seed": "node scripts/seed.js",
     "init-db": "node scripts/init-db.js",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "db:restore": "node scripts/restore-db.js"
   },
   "keywords": [
     "turingtech",

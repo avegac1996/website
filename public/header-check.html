@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Header check - mismo menú en todas las páginas</title>
+  <style>
+    body { margin:0; background:#0a1020; color:#cbd5e1; font-family:system-ui,sans-serif; padding:24px; }
+    h1 { font-size:16px; color:#fff; margin:0 0 4px; }
+    p { font-size:13px; color:#64748b; margin:0 0 20px; }
+    .stack { display:flex; flex-direction:column; gap:22px; }
+    .item h2 { font-size:12px; color:#94a3b8; margin:0 0 6px; letter-spacing:.5px; }
+    iframe { width:100%; height:190px; border:1px solid #1e293b; border-radius:12px; background:#050C1F; }
+  </style>
+</head>
+<body>
+  <h1>Mismo menú en todas las páginas públicas</h1>
+  <p>Cada marco muestra la parte superior de una página distinta. El header ahora viene de <code>/js/site-header.js</code>.</p>
+  <div class="stack">
+    <div class="item"><h2>/ (inicio)</h2><iframe src="/"></iframe></div>
+    <div class="item"><h2>/login.html</h2><iframe src="/login.html"></iframe></div>
+    <div class="item"><h2>/register.html</h2><iframe src="/register.html"></iframe></div>
+    <div class="item"><h2>/automatizacion-rpa.html</h2><iframe src="/automatizacion-rpa.html"></iframe></div>
+    <div class="item"><h2>/facturacion-electronica-sri.html</h2><iframe src="/facturacion-electronica-sri.html"></iframe></div>
+  </div>
+</body>
+</html>

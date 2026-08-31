@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/database');
 const { generateToken } = require('../utils/jwt');
+const { authMiddleware } = require('../middleware/auth');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../services/email.service');
 
 const router = express.Router();
@@ -79,8 +80,8 @@ router.get('/verify', async (req, res) => {
     );
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type)
-       VALUES ($1, '¡Bienvenido a TURINGTECH!', 'Tu cuenta ha sido verificada y has recibido $2 créditos iniciales. ¡Úsalos en tu próximo proyecto!', 'credit_approved')`,
-      [user.id, initialCredits]
+       VALUES ($1, '¡Bienvenido a TURINGTECH!', $2, 'credit_approved')`,
+      [user.id, `Tu cuenta ha sido verificada y has recibido ${initialCredits} créditos iniciales. ¡Úsalos en tu próximo proyecto!`]
     );
     await db.query('COMMIT');
 
@@ -108,7 +109,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await db.query(
-      'SELECT id, name, email, password_hash, role, credits, email_verified FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, role, credits, email_verified, active FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -120,6 +121,10 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    }
+
+    if (user.active === false) {
+      return res.status(403).json({ error: 'Tu cuenta está desactivada. Contacta al administrador.' });
     }
 
     if (!user.email_verified && user.role !== 'admin') {
@@ -155,17 +160,54 @@ router.get('/me', async (req, res) => {
     const { verifyToken } = require('../utils/jwt');
     const decoded = verifyToken(header.split(' ')[1]);
     const result = await db.query(
-      'SELECT id, name, email, role, credits, email_verified, company, phone FROM users WHERE id = $1',
+      `SELECT id, name, email, role, account_type, position, credits, email_verified, active, company, phone,
+              photo, vacation_total, vacation_used, handycoins
+       FROM users WHERE id = $1`,
       [decoded.id]
     );
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Usuario no encontrado' });
     }
+    if (result.rows[0].active === false) {
+      return res.status(403).json({ error: 'Tu cuenta está desactivada' });
+    }
 
     res.json({ user: result.rows[0] });
   } catch (err) {
     res.status(401).json({ error: 'Token inválido' });
+  }
+});
+
+// POST /api/auth/change-password  -> el usuario autenticado cambia su propia contraseña
+router.post('/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Contraseña actual y nueva son requeridas' });
+    }
+    if (String(new_password).length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const result = await db.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const valid = await bcrypt.compare(current_password, result.rows[0].password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: 'La contraseña actual no es correcta' });
+    }
+
+    const hash = await bcrypt.hash(new_password, 10);
+    await db.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [hash, req.user.id]);
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (err) {
+    console.error('Error en change-password:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { sendApprovedEmail, sendRejectedEmail, sendCreditModifiedEmail } = require('../services/email.service');
@@ -8,11 +9,58 @@ const router = express.Router();
 // Todas las rutas requieren auth + admin
 router.use(authMiddleware, adminMiddleware);
 
+const ROLES = ['admin', 'user'];
+const ACCOUNT_TYPES = ['cliente', 'colaborador'];
+
+// POST /api/admin/users  -> crear usuario (p. ej. personal TURINGTECH) con rol
+router.post('/users', async (req, res) => {
+  try {
+    const { name, email, password, role, account_type, position, company, phone, credits,
+            vacation_total, vacation_used, handycoins } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos' });
+    }
+    if (String(password).length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+    const finalRole = ROLES.includes(role) ? role : 'user';
+    const finalType = ACCOUNT_TYPES.includes(account_type) ? account_type : (finalRole === 'admin' ? 'colaborador' : 'cliente');
+    if (finalType === 'colaborador' && !String(position || '').trim()) {
+      return res.status(400).json({ error: 'El cargo es obligatorio para colaboradores' });
+    }
+    const email_ = String(email).toLowerCase().trim();
+
+    const existing = await db.query('SELECT id FROM users WHERE email = $1', [email_]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Ya existe una cuenta con este email' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const int = (v) => (Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : 0);
+
+    const result = await db.query(
+      `INSERT INTO users (name, email, password_hash, role, account_type, position, credits, email_verified, company, phone,
+                          vacation_total, vacation_used, handycoins)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10, $11, $12)
+       RETURNING id, name, email, role, account_type, position, credits, email_verified, company, phone, created_at`,
+      [name, email_, hash, finalRole, finalType, position || null, int(credits), company || null, phone || null,
+       int(vacation_total), int(vacation_used), int(handycoins)]
+    );
+
+    res.status(201).json({ message: 'Usuario creado', user: result.rows[0] });
+  } catch (err) {
+    console.error('Error creando usuario:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // GET /api/admin/users
 router.get('/users', async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT u.id, u.name, u.email, u.role, u.credits, u.email_verified, u.company, u.phone, u.created_at,
+      `SELECT u.id, u.name, u.email, u.role, u.account_type, u.position, u.credits, u.email_verified, u.active, u.company, u.phone, u.created_at,
+              u.photo, u.vacation_total, u.vacation_used, u.handycoins,
               (SELECT COUNT(*) FROM credit_requests WHERE user_id = u.id AND status = 'pending') as pending_requests
        FROM users u
        ORDER BY u.created_at DESC`
@@ -20,6 +68,94 @@ router.get('/users', async (req, res) => {
     res.json({ users: result.rows });
   } catch (err) {
     console.error('Error en admin users:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PUT /api/admin/users/:id  -> editar datos del usuario
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { name, email, role, account_type, position, company, phone,
+            vacation_total, vacation_used, handycoins } = req.body;
+    const id = req.params.id;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Nombre y email son requeridos' });
+    }
+    const finalRole = ROLES.includes(role) ? role : 'user';
+    const finalType = ACCOUNT_TYPES.includes(account_type) ? account_type : (finalRole === 'admin' ? 'colaborador' : 'cliente');
+    if (finalType === 'colaborador' && !String(position || '').trim()) {
+      return res.status(400).json({ error: 'El cargo es obligatorio para colaboradores' });
+    }
+    const email_ = String(email).toLowerCase().trim();
+    const int = (v) => (Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : 0);
+
+    const dup = await db.query('SELECT id FROM users WHERE email = $1 AND id <> $2', [email_, id]);
+    if (dup.rows.length > 0) {
+      return res.status(409).json({ error: 'Otro usuario ya usa ese email' });
+    }
+
+    const result = await db.query(
+      `UPDATE users SET name = $1, email = $2, role = $3, account_type = $4, position = $5, company = $6, phone = $7,
+              vacation_total = $8, vacation_used = $9, handycoins = $10, updated_at = NOW()
+       WHERE id = $11
+       RETURNING id, name, email, role, account_type, position, credits, email_verified, active, company, phone,
+                 vacation_total, vacation_used, handycoins`,
+      [name, email_, finalRole, finalType, position || null, company || null, phone || null,
+       int(vacation_total), int(vacation_used), int(handycoins), id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({ message: 'Usuario actualizado', user: result.rows[0] });
+  } catch (err) {
+    console.error('Error actualizando usuario:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PATCH /api/admin/users/:id/active  -> activar / desactivar
+router.patch('/users/:id/active', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const active = !!req.body.active;
+
+    if (id === req.user.id && !active) {
+      return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
+    }
+
+    const result = await db.query(
+      'UPDATE users SET active = $1, updated_at = NOW() WHERE id = $2 RETURNING id, active',
+      [active, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({ message: active ? 'Usuario activado' : 'Usuario desactivado', user: result.rows[0] });
+  } catch (err) {
+    console.error('Error cambiando estado de usuario:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PUT /api/admin/users/:id/password  -> el admin resetea la contraseña de un usuario
+router.put('/users/:id/password', async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const result = await db.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING id',
+      [hash, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({ message: 'Contraseña actualizada' });
+  } catch (err) {
+    console.error('Error reseteando contraseña:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -89,8 +225,8 @@ router.post('/users/:id/credits', async (req, res) => {
     );
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type)
-       VALUES ($1, 'Créditos actualizados', 'El administrador ha ajustado tus créditos en $2. Motivo: $3', 'credit_modified')`,
-      [userId, `${parseInt(amount) >= 0 ? '+' : ''}${parseInt(amount)}`, reason || 'Ajuste manual']
+       VALUES ($1, 'Créditos actualizados', $2, 'credit_modified')`,
+      [userId, `El administrador ha ajustado tus créditos en ${parseInt(amount) >= 0 ? '+' : ''}${parseInt(amount)}. Motivo: ${reason || 'Ajuste manual'}`]
     );
     await db.query('COMMIT');
 
@@ -169,8 +305,8 @@ router.post('/requests/:id/approve', async (req, res) => {
     );
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type)
-       VALUES ($1, '¡Solicitud aprobada!', 'Tu solicitud de $2 créditos ha sido aprobada. Ya están disponibles en tu cuenta.', 'credit_approved')`,
-      [request.user_id, credits]
+       VALUES ($1, '¡Solicitud aprobada!', $2, 'credit_approved')`,
+      [request.user_id, `Tu solicitud de ${credits} créditos ha sido aprobada. Ya están disponibles en tu cuenta.`]
     );
     await db.query('COMMIT');
 
@@ -217,8 +353,8 @@ router.post('/requests/:id/reject', async (req, res) => {
     );
     await db.query(
       `INSERT INTO notifications (user_id, title, message, type)
-       VALUES ($1, 'Solicitud no aprobada', 'Tu solicitud de créditos no fue aprobada en esta ocasión. $2', 'credit_rejected')`,
-      [request.user_id, notes ? `Notas: ${notes}` : 'Contáctanos para más información.']
+       VALUES ($1, 'Solicitud no aprobada', $2, 'credit_rejected')`,
+      [request.user_id, `Tu solicitud de créditos no fue aprobada en esta ocasión. ${notes ? `Notas: ${notes}` : 'Contáctanos para más información.'}`]
     );
     await db.query('COMMIT');
 
@@ -231,6 +367,80 @@ router.post('/requests/:id/reject', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
+// ===== Solicitudes RRHH (colaboradores TURINGTECH) =====
+const HR_LABELS = {
+  certificado_laboral: 'Certificado laboral',
+  rol_pagos: 'Rol de pagos',
+  vacaciones: 'Vacaciones',
+  permiso: 'Permiso',
+  adelanto: 'Adelanto de sueldo',
+};
+
+// GET /api/admin/hr-requests?status=pending
+router.get('/hr-requests', async (req, res) => {
+  try {
+    const status = req.query.status || 'pending';
+    const result = await db.query(
+      `SELECT h.id, h.user_id, h.type, h.details, h.start_date, h.end_date, h.status, h.admin_notes,
+              h.created_at, h.reviewed_at, u.name as user_name, u.email as user_email, u.position as user_position
+       FROM hr_requests h
+       JOIN users u ON h.user_id = u.id
+       WHERE h.status = $1
+       ORDER BY h.created_at DESC`,
+      [status]
+    );
+    res.json({ requests: result.rows });
+  } catch (err) {
+    console.error('Error en admin hr-requests:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+async function reviewHrRequest(req, res, newStatus) {
+  try {
+    const { notes } = req.body;
+    const id = req.params.id;
+
+    const found = await db.query(
+      `SELECT h.id, h.user_id, h.type, h.status FROM hr_requests h WHERE h.id = $1`,
+      [id]
+    );
+    if (found.rows.length === 0) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+    if (found.rows[0].status !== 'pending') {
+      return res.status(400).json({ error: 'Esta solicitud ya fue revisada' });
+    }
+    const hr = found.rows[0];
+    const label = HR_LABELS[hr.type] || hr.type;
+
+    await db.query('BEGIN');
+    await db.query(
+      `UPDATE hr_requests SET status = $1, admin_notes = $2, reviewed_at = NOW(), reviewed_by = $3 WHERE id = $4`,
+      [newStatus, notes || null, req.user.id, id]
+    );
+    const msg = newStatus === 'approved'
+      ? `Tu solicitud de ${label} fue aprobada.${notes ? ' Notas: ' + notes : ''}`
+      : `Tu solicitud de ${label} no fue aprobada.${notes ? ' Notas: ' + notes : ''}`;
+    await db.query(
+      `INSERT INTO notifications (user_id, title, message, type)
+       VALUES ($1, $2, $3, $4)`,
+      [hr.user_id, newStatus === 'approved' ? 'Solicitud aprobada' : 'Solicitud no aprobada', msg,
+       newStatus === 'approved' ? 'hr_approved' : 'hr_rejected']
+    );
+    await db.query('COMMIT');
+
+    res.json({ message: newStatus === 'approved' ? 'Solicitud aprobada' : 'Solicitud rechazada' });
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error('Error revisando hr request:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+router.post('/hr-requests/:id/approve', (req, res) => reviewHrRequest(req, res, 'approved'));
+router.post('/hr-requests/:id/reject', (req, res) => reviewHrRequest(req, res, 'rejected'));
 
 // GET /api/admin/config
 router.get('/config', async (req, res) => {
