@@ -9,6 +9,9 @@
  *      tablero, RRHH, créditos, config...) desde scripts/db-backup.sql.
  *   3. Si no hay snapshot, cae a init-db.js + seed.js (base vacía + admin).
  *
+ *   --fresh   (o RECREATE=1)  ->  ELIMINA la base y la vuelve a crear de cero
+ *                                 antes de cargar el snapshot.
+ *
  * No necesita `psql` instalado: usa el cliente `pg`.
  * db-backup.sql se genera con --clean --if-exists, así que es idempotente:
  * puedes correrlo en una base nueva o re-sincronizar una existente.
@@ -46,12 +49,27 @@ if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(DB)) {
   process.exit(1);
 }
 
+const FRESH = process.argv.includes('--fresh') || /^(1|true|yes)$/i.test(process.env.RECREATE || '');
+
 async function crearBaseSiNoExiste() {
   const admin = new Client({ ...cfg, database: 'postgres' });
   await admin.connect();
   try {
     const r = await admin.query('SELECT 1 FROM pg_database WHERE datname = $1', [DB]);
-    if (r.rows.length) {
+    const existe = r.rows.length > 0;
+
+    if (existe && FRESH) {
+      console.log(`[1/2] --fresh: eliminando la base "${DB}"...`);
+      // cortar conexiones abiertas antes de soltar la base
+      await admin.query(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+           WHERE datname = $1 AND pid <> pg_backend_pid()`,
+        [DB]
+      );
+      await admin.query(`DROP DATABASE IF EXISTS "${DB}"`);
+      await admin.query(`CREATE DATABASE "${DB}"`);
+      console.log(`[1/2] Base "${DB}" recreada de cero.`);
+    } else if (existe) {
       console.log(`[1/2] Base "${DB}" ya existe.`);
     } else {
       await admin.query(`CREATE DATABASE "${DB}"`);
@@ -84,7 +102,7 @@ function correr(script) {
 }
 
 (async () => {
-  console.log(`\nConfigurando base "${DB}" en ${cfg.host}:${cfg.port} (usuario ${cfg.user})\n`);
+  console.log(`\nConfigurando base "${DB}" en ${cfg.host}:${cfg.port} (usuario ${cfg.user})${FRESH ? '  [--fresh: se recrea de cero]' : ''}\n`);
   await crearBaseSiNoExiste();
 
   if (fs.existsSync(DUMP)) {
