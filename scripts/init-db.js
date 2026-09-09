@@ -156,9 +156,23 @@ async function initDatabase() {
       ['prioridad', "VARCHAR(10) NOT NULL DEFAULT 'media'"],  // baja | media | alta | urgente
       ['parent_id', 'INTEGER REFERENCES board_tasks(id) ON DELETE CASCADE'],  // subtarea (estilo Jira)
       ['recompensa_dada', 'BOOLEAN NOT NULL DEFAULT false'],  // +2 turingcoins ya otorgado por terminar a tiempo
+      ['recompensa_revertida', 'BOOLEAN NOT NULL DEFAULT false'],  // se reabrió tras finalizar: sin +2 nunca más
+      ['en_backlog', 'BOOLEAN NOT NULL DEFAULT false'],  // sacada del sprint a propósito: la automatización no la re-mete
     ]) {
       await db.query(`ALTER TABLE board_tasks ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
     }
+    // Automatización de sprints semanales (config editable por admin, fila única id=1)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS board_auto_sprint (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        activo BOOLEAN NOT NULL DEFAULT true,
+        project_ids INTEGER[] NOT NULL DEFAULT '{}',
+        dia_inicio SMALLINT NOT NULL DEFAULT 1,       -- 0=domingo .. 6=sábado (getDay)
+        prefijo VARCHAR(40) NOT NULL DEFAULT 'Sprint semanal',
+        ultima_revision TIMESTAMP
+      );
+    `);
+    await db.query("INSERT INTO board_auto_sprint (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
     // Adjuntos de tareas (imágenes / PDF de observaciones), guardados como data URL
     await db.query(`
       CREATE TABLE IF NOT EXISTS board_task_files (

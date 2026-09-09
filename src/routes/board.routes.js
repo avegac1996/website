@@ -10,9 +10,12 @@ const PRIORIDADES = ['baja', 'media', 'alta', 'urgente'];
 const SPRINT_ESTADOS = ['planificado', 'activo', 'cerrado'];
 const ESTADO_FINAL = 'Finalizada';
 
-// Turingcoins por cumplimiento de fechas
+// Turingcoins por cumplimiento
 const COIN_PREMIO = 2;   // terminar a tiempo
-const COIN_CASTIGO = 3;  // extender la fecha de fin sin haber terminado
+const COIN_CASTIGO = 3;  // no finalizar (extensión de fecha o cierre de semana)
+const COIN_REABRIR = 1;  // penalización extra por reabrir una tarea ya premiada
+
+const MESES_ABREV = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 // Adjuntos de tareas (data URL en la BD)
 const FILE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf'];
@@ -282,20 +285,26 @@ router.delete('/sprints/:id', async (req, res) => {
 // GET /api/board/tasks  -> tareas de los proyectos visibles + meta
 router.get('/tasks', async (req, res) => {
   try {
+    await asegurarSprintsSemanales();
+
     const ids = await proyectosVisibles(req);
+    const admin = isAdmin(req);
+    // no-admin: solo sus tareas (asignadas a él o sin asignar). admin: todas.
+    const filtroMio = admin ? '' : ' AND (t.assignee_id = $2 OR t.assignee_id IS NULL)';
+    const params = admin ? [ids] : [ids, req.user.id];
     const rows = ids.length
       ? (await db.query(
           `SELECT t.id, t.titulo, t.tipo, t.estado, t.fecha, t.fecha_fin, t.horas, t.observaciones, t.orden,
                   t.project_id, bp.nombre AS proyecto, t.assignee_id, t.sprint_id, t.puntos, t.prioridad,
-                  t.parent_id, t.recompensa_dada,
+                  t.parent_id, t.recompensa_dada, t.recompensa_revertida, t.en_backlog,
                   u.name AS assignee_nombre, COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable,
                   (SELECT COUNT(*) FROM board_task_files f WHERE f.task_id = t.id)::int AS files_count,
                   t.created_at, t.updated_at
            FROM board_tasks t
            LEFT JOIN board_projects bp ON bp.id = t.project_id
            LEFT JOIN users u ON u.id = t.assignee_id
-           WHERE t.project_id = ANY($1)
-           ORDER BY bp.nombre NULLS LAST, t.orden, t.id`, [ids])).rows
+           WHERE t.project_id = ANY($1)${filtroMio}
+           ORDER BY bp.nombre NULLS LAST, t.orden, t.id`, params)).rows
       : [];
 
     // meta: proyectos visibles con miembros (para el editor)
@@ -331,7 +340,8 @@ router.get('/tasks', async (req, res) => {
         tipos: TIPOS,
         prioridades: PRIORIDADES,
         estadoFinal: ESTADO_FINAL,
-        isAdmin: isAdmin(req),
+        isAdmin: admin,
+        miId: req.user.id,
         projects,
         membersByProject,
         sprints,
@@ -412,32 +422,40 @@ async function ajustarTuringcoins(userId, delta, tipo, descripcion, notifTitulo,
   );
 }
 
-// Aplica las reglas de turingcoins dada la tarea ANTES del cambio (old) y los valores nuevos.
-//   +COIN_PREMIO  : la tarea pasa a "Finalizada" en o antes de fecha_fin (una sola vez, marca recompensa_dada)
-//   -COIN_CASTIGO : se mueve fecha_fin a una posterior sin haber finalizado (cada vez)
-// Solo aplica a tareas con responsable + fecha inicio + fecha fin.
+// Reglas de turingcoins dada la tarea ANTES del cambio (old) y los valores nuevos.
+//   +COIN_PREMIO           : pasa a "Finalizada" a tiempo (una sola vez; deadline = fecha_fin propia o, si no, la del sprint)
+//   -(COIN_PREMIO+REABRIR)  : se reabre una tarea que ya recibió el premio (se revierte + penaliza; nunca más +2)
+//   -COIN_CASTIGO           : se extiende fecha_fin propia sin finalizar
 async function reglaTuringcoins(old, nuevoEstado, nuevaFechaFin) {
-  if (!old || !old.assignee_id || !old.fecha || !old.fecha_fin) return;
-  const finPrevio = soloFecha(old.fecha_fin);
-  const finNuevo = nuevaFechaFin ? soloFecha(nuevaFechaFin) : finPrevio;
+  if (!old || !old.assignee_id) return;
   const eraFinal = old.estado === ESTADO_FINAL;
   const esFinal = nuevoEstado === ESTADO_FINAL;
+  const finPrevio = soloFecha(old.fecha_fin);
+  const finNuevo = nuevaFechaFin ? soloFecha(nuevaFechaFin) : finPrevio;
+  const limite = finNuevo || soloFecha(old.sprint_fin);   // deadline efectivo
 
-  if (esFinal && !eraFinal && !old.recompensa_dada && hoyISO() <= finNuevo) {
+  if (esFinal && !eraFinal && !old.recompensa_dada && !old.recompensa_revertida && (!limite || hoyISO() <= limite)) {
     await ajustarTuringcoins(
       old.assignee_id, COIN_PREMIO, 'reward',
-      `Reto cumplido: ${old.titulo}`,
-      'Reto cumplido 🎉',
-      `Terminaste "${old.titulo}" en fecha. Ganaste +${COIN_PREMIO} Turingcoins.`
+      `Reto cumplido: ${old.titulo}`, 'Reto cumplido 🎉',
+      `Terminaste "${old.titulo}" a tiempo. Ganaste +${COIN_PREMIO} Turingcoins.`
     );
     await db.query('UPDATE board_tasks SET recompensa_dada = true WHERE id = $1', [old.id]);
   }
 
-  if (finNuevo > finPrevio && !esFinal && !eraFinal) {
+  if (eraFinal && !esFinal && old.recompensa_dada && !old.recompensa_revertida) {
+    await ajustarTuringcoins(
+      old.assignee_id, -(COIN_PREMIO + COIN_REABRIR), 'penalty',
+      `Tarea reabierta: ${old.titulo}`, 'Tarea reabierta',
+      `Volviste "${old.titulo}" a proceso después de finalizarla: se revierten los +${COIN_PREMIO} y −${COIN_REABRIR} de penalización.`
+    );
+    await db.query('UPDATE board_tasks SET recompensa_revertida = true WHERE id = $1', [old.id]);
+  }
+
+  if (finPrevio && finNuevo > finPrevio && !esFinal && !eraFinal) {
     await ajustarTuringcoins(
       old.assignee_id, -COIN_CASTIGO, 'penalty',
-      `Extensión de fecha: ${old.titulo}`,
-      'No lo lograste a tiempo',
+      `Extensión de fecha: ${old.titulo}`, 'No lo lograste a tiempo',
       `Se movió la fecha de fin de "${old.titulo}". Perdiste -${COIN_CASTIGO} Turingcoins.`
     );
   }
@@ -446,10 +464,119 @@ async function reglaTuringcoins(old, nuevoEstado, nuevaFechaFin) {
 // trae la tarea con todo lo que necesita reglaTuringcoins
 async function tareaParaRegla(id) {
   const r = await db.query(
-    'SELECT id, titulo, estado, fecha, fecha_fin, assignee_id, recompensa_dada, project_id, sprint_id FROM board_tasks WHERE id = $1',
+    `SELECT t.id, t.titulo, t.estado, t.fecha, t.fecha_fin, t.assignee_id, t.recompensa_dada, t.recompensa_revertida,
+            t.project_id, t.sprint_id, s.fecha_fin AS sprint_fin
+     FROM board_tasks t LEFT JOIN board_sprints s ON s.id = t.sprint_id
+     WHERE t.id = $1`,
     [id]
   );
   return r.rows[0] || null;
+}
+
+/* ---- Sprints semanales automáticos ---- */
+
+function rangoSemana(diaInicio) {
+  const ec = new Date(Date.now() - 5 * 3600 * 1000);
+  const base = new Date(Date.UTC(ec.getUTCFullYear(), ec.getUTCMonth(), ec.getUTCDate()));
+  const diff = (base.getUTCDay() - diaInicio + 7) % 7;
+  const ini = new Date(base); ini.setUTCDate(base.getUTCDate() - diff);
+  const fin = new Date(ini); fin.setUTCDate(ini.getUTCDate() + 6);
+  const iso = (d) => d.toISOString().slice(0, 10);
+  return { inicio: iso(ini), fin: iso(fin) };
+}
+function nombreSprintSemanal(prefijo, ini, fin) {
+  const [iy, im, id] = ini.split('-').map(Number);
+  const [fy, fm, fd] = fin.split('-').map(Number);
+  let r = im === fm ? `${id}–${fd} ${MESES_ABREV[fm - 1]}` : `${id} ${MESES_ABREV[im - 1]} – ${fd} ${MESES_ABREV[fm - 1]}`;
+  if (iy !== fy) r += ` ${fy}`;
+  return `${prefijo} · ${r}`;
+}
+async function proyectosAutoSprint(cfg) {
+  if (cfg.project_ids && cfg.project_ids.length) return cfg.project_ids;
+  return (await db.query("SELECT id FROM board_projects WHERE nombre IN ('Turingtech', 'Prospectos')")).rows.map((x) => x.id);
+}
+
+let _autoSprintRunning = false;
+async function asegurarSprintsSemanales() {
+  if (_autoSprintRunning) return;
+  let cfg;
+  try {
+    cfg = (await db.query('SELECT * FROM board_auto_sprint WHERE id = 1')).rows[0];
+  } catch (e) { return; } // tabla aún no migrada
+  if (!cfg || !cfg.activo) return;
+  if (cfg.ultima_revision && Date.now() - new Date(cfg.ultima_revision).getTime() < 10 * 60 * 1000) return;
+
+  _autoSprintRunning = true;
+  try {
+    await db.query('UPDATE board_auto_sprint SET ultima_revision = NOW() WHERE id = 1');
+    const { inicio, fin } = rangoSemana(cfg.dia_inicio);
+    const proys = await proyectosAutoSprint(cfg);
+
+    for (const pid of proys) {
+      const ya = await db.query(
+        "SELECT id FROM board_sprints WHERE project_id = $1 AND fecha_inicio = $2 AND estado <> 'cerrado'",
+        [pid, inicio]
+      );
+      let sprintId;
+      if (ya.rows.length) {
+        sprintId = ya.rows[0].id;
+        await db.query("UPDATE board_sprints SET estado = 'activo' WHERE id = $1 AND estado <> 'activo'", [sprintId]);
+      } else {
+        await db.query('BEGIN');
+        try {
+          sprintId = (await db.query(
+            `INSERT INTO board_sprints (project_id, nombre, objetivo, fecha_inicio, fecha_fin, estado)
+             VALUES ($1,$2,'Sprint semanal generado automáticamente.',$3,$4,'activo') RETURNING id`,
+            [pid, nombreSprintSemanal(cfg.prefijo, inicio, fin), inicio, fin]
+          )).rows[0].id;
+
+          const prevs = (await db.query(
+            "SELECT id FROM board_sprints WHERE project_id = $1 AND estado = 'activo' AND id <> $2", [pid, sprintId]
+          )).rows.map((x) => x.id);
+
+          if (prevs.length) {
+            const pendientes = (await db.query(
+              'SELECT id, titulo, assignee_id FROM board_tasks WHERE sprint_id = ANY($1) AND estado <> $2',
+              [prevs, ESTADO_FINAL]
+            )).rows;
+            await db.query(
+              'UPDATE board_tasks SET sprint_id = $1, en_backlog = false, updated_at = NOW() WHERE sprint_id = ANY($2) AND estado <> $3',
+              [sprintId, prevs, ESTADO_FINAL]
+            );
+            await db.query("UPDATE board_sprints SET estado = 'cerrado', updated_at = NOW() WHERE id = ANY($1)", [prevs]);
+            for (const t of pendientes) {
+              if (t.assignee_id) {
+                await ajustarTuringcoins(
+                  t.assignee_id, -COIN_CASTIGO, 'penalty',
+                  `Semana cerrada sin finalizar: ${t.titulo}`, 'Se cerró la semana',
+                  `"${t.titulo}" no se finalizó esta semana. Perdiste -${COIN_CASTIGO} Turingcoins. Sigue en el sprint nuevo.`
+                );
+              }
+            }
+          }
+          // tareas sueltas del proyecto (no sacadas a propósito) -> sprint de la semana
+          await db.query(
+            'UPDATE board_tasks SET sprint_id = $1, updated_at = NOW() WHERE project_id = $2 AND sprint_id IS NULL AND en_backlog = false',
+            [sprintId, pid]
+          );
+          await db.query('COMMIT');
+        } catch (e) {
+          await db.query('ROLLBACK');
+          console.error('Error creando sprint semanal:', e.message);
+          continue;
+        }
+      }
+      // barrido continuo: tareas nuevas sin sprint -> sprint de la semana
+      await db.query(
+        'UPDATE board_tasks SET sprint_id = $1, updated_at = NOW() WHERE project_id = $2 AND sprint_id IS NULL AND en_backlog = false',
+        [sprintId, pid]
+      );
+    }
+  } catch (err) {
+    console.error('Error en asegurarSprintsSemanales:', err.message);
+  } finally {
+    _autoSprintRunning = false;
+  }
 }
 
 // siguiente orden dentro del bucket (proyecto + sprint + estado)
@@ -505,9 +632,13 @@ router.put('/tasks/:id', async (req, res) => {
     if (err) return res.status(400).json({ error: err });
 
     const resp = await nombreAsignado(t.assignee_id);
+    // en_backlog: si se le asigna sprint -> false; si se le QUITA el sprint a propósito -> true; si no, sin cambio
+    let enBacklogSql = 'en_backlog';
+    if (t.sprint_id) enBacklogSql = 'false';
+    else if (old.sprint_id && !t.sprint_id && !t.parent_id) enBacklogSql = 'true';
     const result = await db.query(
       `UPDATE board_tasks SET titulo=$1, project_id=$2, assignee_id=$3, responsable=$4, sprint_id=$5, parent_id=$6, tipo=$7, estado=$8,
-              prioridad=$9, fecha=$10, fecha_fin=$11, horas=$12, puntos=$13, observaciones=$14, updated_at=NOW()
+              prioridad=$9, fecha=$10, fecha_fin=$11, horas=$12, puntos=$13, observaciones=$14, en_backlog=${enBacklogSql}, updated_at=NOW()
        WHERE id=$15 RETURNING id`,
       [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.parent_id, t.tipo, t.estado, t.prioridad,
        t.fecha, t.fecha_fin, t.horas, t.puntos, t.observaciones, req.params.id]
@@ -562,16 +693,16 @@ router.patch('/tasks/:id/mover', async (req, res) => {
 
     const ordenIds = Array.isArray(req.body.orden_ids) ? req.body.orden_ids.map(Number).filter(Boolean) : [];
 
+    // mover a un sprint -> vuelve al flujo automático; sacar a backlog -> queda fija ahí
+    const enBacklog = !sprint_id;
     await db.query('BEGIN');
     if (ordenIds.length > 1) {
-      // reordenamiento explícito de todo el bucket destino
       if (ordenIds.indexOf(id) === -1) ordenIds.push(id);
       await db.query(
-        'UPDATE board_tasks SET sprint_id = $1, estado = $2, updated_at = NOW() WHERE id = $3',
-        [sprint_id, estado, id]
+        'UPDATE board_tasks SET sprint_id = $1, estado = $2, en_backlog = $3, updated_at = NOW() WHERE id = $4',
+        [sprint_id, estado, enBacklog, id]
       );
       const posiciones = ordenIds.map((_, i) => i + 1);
-      // reordena solo tarjetas del mismo proyecto (defensa ante ids ajenos)
       await db.query(
         `UPDATE board_tasks AS bt
          SET orden = v.ord, updated_at = NOW()
@@ -580,13 +711,14 @@ router.patch('/tasks/:id/mover', async (req, res) => {
         [ordenIds, posiciones, projectId]
       );
     } else {
-      // mover simple: al final del bucket destino
       const ord = await siguienteOrden(projectId, sprint_id, estado);
       await db.query(
-        'UPDATE board_tasks SET sprint_id = $1, estado = $2, orden = $3, updated_at = NOW() WHERE id = $4',
-        [sprint_id, estado, ord, id]
+        'UPDATE board_tasks SET sprint_id = $1, estado = $2, orden = $3, en_backlog = $4, updated_at = NOW() WHERE id = $5',
+        [sprint_id, estado, ord, enBacklog, id]
       );
     }
+    // las subtareas siguen a su tarea principal
+    await db.query('UPDATE board_tasks SET sprint_id = $1, en_backlog = $2, updated_at = NOW() WHERE parent_id = $3', [sprint_id, enBacklog, id]);
     await db.query('COMMIT');
     await reglaTuringcoins(old, estado, old.fecha_fin);
     res.json({ id, sprint_id, estado });
@@ -683,6 +815,57 @@ router.delete('/files/:id', async (req, res) => {
     res.json({ message: 'Adjunto eliminado' });
   } catch (err) {
     console.error('Error eliminando adjunto:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+/* ===================== AUTOMATIZACIÓN DE SPRINTS (config admin) ===================== */
+
+// GET /api/board/auto-sprint  -> config + proyectos disponibles
+router.get('/auto-sprint', async (req, res) => {
+  try {
+    const cfg = (await db.query('SELECT * FROM board_auto_sprint WHERE id = 1')).rows[0] || {};
+    const projects = (await db.query('SELECT id, nombre FROM board_projects ORDER BY nombre')).rows;
+    const efectivos = await proyectosAutoSprint(cfg);
+    res.json({ config: cfg, projects, project_ids_efectivos: efectivos });
+  } catch (err) {
+    console.error('Error leyendo auto-sprint:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PUT /api/board/auto-sprint  (solo admin)
+router.put('/auto-sprint', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'Solo un administrador puede cambiar esto' });
+  try {
+    const activo = req.body.activo !== false;
+    const project_ids = Array.isArray(req.body.project_ids) ? req.body.project_ids.map(Number).filter(Boolean) : [];
+    let dia = parseInt(req.body.dia_inicio, 10);
+    if (!(dia >= 0 && dia <= 6)) dia = 1;
+    const prefijo = String(req.body.prefijo || 'Sprint semanal').trim().slice(0, 40) || 'Sprint semanal';
+    const row = (await db.query(
+      `UPDATE board_auto_sprint SET activo = $1, project_ids = $2, dia_inicio = $3, prefijo = $4, ultima_revision = NULL
+       WHERE id = 1 RETURNING *`,
+      [activo, project_ids, dia, prefijo]
+    )).rows[0];
+    // aplicar de una
+    await asegurarSprintsSemanales();
+    res.json({ config: row });
+  } catch (err) {
+    console.error('Error guardando auto-sprint:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/board/auto-sprint/run  -> fuerza la revisión ahora (útil para probar)
+router.post('/auto-sprint/run', async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: 'Solo un administrador' });
+  try {
+    await db.query('UPDATE board_auto_sprint SET ultima_revision = NULL WHERE id = 1');
+    await asegurarSprintsSemanales();
+    res.json({ message: 'Sprints semanales revisados.' });
+  } catch (err) {
+    console.error('Error corriendo auto-sprint:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
