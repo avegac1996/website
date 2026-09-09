@@ -1989,6 +1989,26 @@ select.form-input option {
   .pros-form-wrap, .pros-gest-grid { grid-template-columns: 1fr; }
 }
 
+/* ===== Admin: catálogo de estados / tipos ===== */
+.cat-list { display: flex; flex-direction: column; gap: 8px; }
+.cat-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px; border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-md);
+  background: rgba(5,12,31,0.35);
+}
+.cat-row .form-input { padding: 6px 9px; font-size: 13px; }
+.cat-row .cat-label { flex: 1; min-width: 120px; }
+.cat-row .cat-be { width: auto; min-width: 130px; }
+.cat-row .cat-icono { width: 150px; }
+.cat-row .cat-orden { width: 60px; }
+.cat-color { width: 34px; height: 30px; border: 0; background: none; padding: 0; cursor: pointer; }
+.cat-icoprev {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,107,0,0.14); color: var(--color-accent);
+}
+.cat-act { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-gray); white-space: nowrap; }
+
 .status-pill {
   display: inline-block;
   padding: 3px 10px;
