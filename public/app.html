@@ -1852,7 +1852,7 @@
       };
     }
 
-    function prosGestionar(p) {
+    function prosGestionar(p, editarDatos) {
       var s = sectorById(p.sector_id);
       var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
       var owners = (PROS.meta.colaboradores || []);
@@ -1896,9 +1896,12 @@
         '</div>' +
 
         '<div class="glass-panel" style="padding:20px;margin-bottom:16px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">' +
             '<div class="section-heading" style="text-align:left;font-size:13px;margin:0;">Datos del prospecto</div>' +
-            '<button class="btn btn-primary btn-small" id="pg_savedatos" disabled><i class="fa-solid fa-floppy-disk"></i> Guardar datos</button>' +
+            (editarDatos
+              ? '<div style="display:flex;gap:8px;"><button class="btn btn-secondary btn-small" id="pg_canceldatos">Cancelar</button>' +
+                '<button class="btn btn-primary btn-small" id="pg_savedatos"><i class="fa-solid fa-floppy-disk"></i> Guardar datos</button></div>'
+              : '<button class="btn btn-secondary btn-small" id="pg_editdatos"><i class="fa-solid fa-pen"></i> Modificar</button>') +
           '</div>' +
           '<div id="pg_datos">' + prosCamposHTML(p) + '</div>' +
         '</div>' +
@@ -1943,33 +1946,37 @@
           .catch(function (err) { showAlert(err.message, 'error'); p.owner_id = prev; el('pg_owner').value = prev || ''; });
       });
 
-      // ---- datos editables — habilita "Guardar" al tocar algo ----
-      var sd = el('pg_savedatos');
-      function marcarSucio() { sd.disabled = false; }
-      function onSectorChange() {
-        // re-dibuja la grilla con el sector nuevo (datalist de cargos) preservando lo tipeado
-        var vals = prosCamposCollect();
-        el('pg_datos').innerHTML = prosCamposHTML(Object.assign({}, p, vals, { sector_id: el('pg_f_sector').value }));
-        marcarSucio();
-        el('pg_datos').addEventListener('input', marcarSucio);
-        el('pg_datos').addEventListener('change', marcarSucio);
-        el('pg_f_sector').addEventListener('change', onSectorChange);
+      // ---- datos del prospecto: bloqueados salvo que se pulse "Modificar" ----
+      function bloquearCampos(b) {
+        el('pg_datos').querySelectorAll('input, select, textarea').forEach(function (f) { f.disabled = b; });
       }
-      el('pg_datos').addEventListener('input', marcarSucio);
-      el('pg_datos').addEventListener('change', marcarSucio);
-      el('pg_f_sector').addEventListener('change', onSectorChange);
-      sd.addEventListener('click', function () {
-        var b = prosCamposCollect();
-        if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); return; }
-        sd.disabled = true; sd.textContent = 'Guardando...';
-        API.request('/api/prospectos/' + p.id, { method: 'PUT', body: JSON.stringify(b) })
-          .then(function (r) {
-            Object.assign(p, r.prospecto || b);
-            showAlert('Datos guardados.', 'success');
-            prosGestionar(p); // re-render seguro: no hay nada sin guardar
-          })
-          .catch(function (err) { showAlert(err.message, 'error'); sd.disabled = false; sd.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar datos'; });
-      });
+      if (!editarDatos) {
+        bloquearCampos(true);
+        el('pg_editdatos').addEventListener('click', function () { prosGestionar(p, true); });
+      } else {
+        var onSectorChange = function () {
+          // re-dibuja la grilla con el sector nuevo (datalist de cargos) preservando lo tipeado
+          var vals = prosCamposCollect();
+          el('pg_datos').innerHTML = prosCamposHTML(Object.assign({}, p, vals, { sector_id: el('pg_f_sector').value }));
+          bloquearCampos(false);
+          el('pg_f_sector').addEventListener('change', onSectorChange);
+        };
+        el('pg_f_sector').addEventListener('change', onSectorChange);
+        el('pg_canceldatos').addEventListener('click', function () { prosGestionar(p, false); });
+        el('pg_savedatos').addEventListener('click', function () {
+          var sd = this;
+          var b = prosCamposCollect();
+          if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); return; }
+          sd.disabled = true; sd.textContent = 'Guardando...';
+          API.request('/api/prospectos/' + p.id, { method: 'PUT', body: JSON.stringify(b) })
+            .then(function (r) {
+              Object.assign(p, r.prospecto || b);
+              showAlert('Datos guardados.', 'success');
+              prosGestionar(p, false);
+            })
+            .catch(function (err) { showAlert(err.message, 'error'); sd.disabled = false; sd.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar datos'; });
+        });
+      }
 
       if (el('pg_convertir')) el('pg_convertir').addEventListener('click', function () {
         var b = this; b.disabled = true;
