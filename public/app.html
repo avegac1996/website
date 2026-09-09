@@ -638,9 +638,10 @@
     };
     var PX_DAY = 3;
     var boardState = {
-      tasks: [], meta: {}, tab: 'sprint',
-      proyectoId: '',        // proyecto activo para Backlog / Sprint
-      sprintSel: {},          // { [projectId]: sprintId }
+      tasks: [], meta: {}, tab: 'tablero',
+      tableroMode: 'sprint',  // 'sprint' | 'backlog' (una sola pestaña "Tablero")
+      proyectoId: '',          // proyecto activo para el Tablero
+      sprintSel: {},            // { [projectId]: sprintId }
       filtros: { proyecto: '', responsable: '', tipo: '', q: '' },
       collapsed: {}
     };
@@ -648,6 +649,11 @@
     var boardSprintsDe = function (pid) {
       return (boardState.meta.sprints || []).filter(function (s) { return String(s.project_id) === String(pid); });
     };
+    // subtareas de una tarea (hijas directas)
+    var boardSubtareas = function (parentId) {
+      return boardState.tasks.filter(function (x) { return String(x.parent_id) === String(parentId); });
+    };
+    var boardEsPrincipal = function (t) { return !t.parent_id; };
     function boardCurrentProjectId() {
       var ps = boardState.meta.projects || [];
       if (!ps.length) return null;
@@ -702,8 +708,7 @@
       var t = boardState.tab;
 
       var tabs = '<button class="tab ' + (t === 'cronograma' ? 'active' : '') + '" data-tab="cronograma"><i class="fa-solid fa-chart-gantt"></i> Cronograma</button>' +
-        '<button class="tab ' + (t === 'backlog' ? 'active' : '') + '" data-tab="backlog"><i class="fa-solid fa-layer-group"></i> Backlog</button>' +
-        '<button class="tab ' + (t === 'sprint' ? 'active' : '') + '" data-tab="sprint"><i class="fa-solid fa-person-running"></i> Sprint</button>' +
+        '<button class="tab ' + (t === 'tablero' ? 'active' : '') + '" data-tab="tablero"><i class="fa-solid fa-table-columns"></i> Tablero</button>' +
         (isAdmin ? '<button class="tab ' + (t === 'proyectos' ? 'active' : '') + '" data-tab="proyectos"><i class="fa-solid fa-folder-open"></i> Proyectos</button>' : '');
 
       var toolbar = '';
@@ -714,15 +719,19 @@
           sel('bt_resp', 'Todos los responsables', boardResponsables(), f.responsable) +
           sel('bt_tipo', 'Todos los tipos', boardState.meta.tipos || [], f.tipo) +
         '</div>';
-      } else if (t === 'backlog' || t === 'sprint') {
+      } else if (t === 'tablero') {
         var pid = boardCurrentProjectId();
         var projOpts = projects.map(function (p) {
           return '<option value="' + p.id + '"' + (String(p.id) === String(pid) ? ' selected' : '') + '>' + esc(p.nombre) + '</option>';
         }).join('');
+        var mode = boardState.tableroMode;
         toolbar = '<div class="bt-toolbar">' +
-          '<label class="text-gray text-xs" style="align-self:center;">Proyecto</label>' +
+          '<div class="seg-toggle">' +
+            '<button class="seg ' + (mode === 'sprint' ? 'on' : '') + '" data-mode="sprint"><i class="fa-solid fa-person-running"></i> Sprint</button>' +
+            '<button class="seg ' + (mode === 'backlog' ? 'on' : '') + '" data-mode="backlog"><i class="fa-solid fa-layer-group"></i> Backlog</button>' +
+          '</div>' +
           '<select id="bt_proj_id" class="form-input" style="width:auto;min-width:180px;padding:8px 10px;font-size:13px;"' + (hayProyectos ? '' : ' disabled') + '>' + projOpts + '</select>' +
-          '<input id="bt_q" class="form-input" placeholder="Buscar tarea..." style="max-width:200px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
+          '<input id="bt_q" class="form-input" placeholder="Buscar tarea..." style="max-width:190px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
           '<div style="flex:1;"></div>' +
           '<button class="btn btn-primary btn-small" id="bt_new" ' + (hayProyectos ? '' : 'disabled') + '><i class="fa-solid fa-plus"></i> Nueva tarea</button>' +
         '</div>';
@@ -733,6 +742,9 @@
       document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
         b.addEventListener('click', function () { boardState.tab = this.getAttribute('data-tab'); boardRender(); });
       });
+      document.querySelectorAll('.seg-toggle .seg').forEach(function (b) {
+        b.addEventListener('click', function () { boardState.tableroMode = this.getAttribute('data-mode'); boardRender(); });
+      });
       if (el('bt_q')) el('bt_q').addEventListener('input', function () { f.q = this.value; boardRenderBody(); });
       if (el('bt_proj')) el('bt_proj').addEventListener('change', function () { f.proyecto = this.value; boardRenderBody(); });
       if (el('bt_resp')) el('bt_resp').addEventListener('change', function () { f.responsable = this.value; boardRenderBody(); });
@@ -740,7 +752,7 @@
       if (el('bt_proj_id')) el('bt_proj_id').addEventListener('change', function () { boardState.proyectoId = this.value; boardRenderBody(); });
       if (el('bt_new')) el('bt_new').addEventListener('click', function () {
         var pre = { project_id: boardCurrentProjectId() };
-        if (boardState.tab === 'sprint') pre.sprint_id = boardSprintSel(pre.project_id);
+        if (boardState.tableroMode === 'sprint') pre.sprint_id = boardSprintSel(pre.project_id);
         boardEdit(null, pre);
       });
       boardRenderBody();
@@ -748,8 +760,7 @@
 
     function boardRenderBody() {
       if (boardState.tab === 'proyectos') renderProyectos();
-      else if (boardState.tab === 'backlog') renderBacklog();
-      else if (boardState.tab === 'sprint') renderSprint();
+      else if (boardState.tab === 'tablero') { if (boardState.tableroMode === 'backlog') renderBacklog(); else renderSprint(); }
       else renderCronograma();
     }
 
@@ -1010,6 +1021,17 @@
         (boardState.meta.isAdmin ? 'Creá un proyecto en la pestaña Proyectos para empezar.' : 'Todavía no perteneces a ningún proyecto.') + '</p></div>';
     }
 
+    // etiqueta de fecha límite: verde si en plazo, roja si vencida y sin finalizar
+    function boardPlazoChip(t) {
+      if (!t.fecha_fin) return '';
+      var venc = fmtDate(t.fecha_fin);
+      var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      var fin = parseDateLocal(t.fecha_fin);
+      var vencida = fin && fin < hoy && t.estado !== ESTADO_FINAL;
+      var cls = t.estado === ESTADO_FINAL ? 'ok' : (vencida ? 'late' : '');
+      return '<span class="bt-plazo ' + cls + '" title="Fecha de fin"><i class="fa-regular fa-clock"></i> ' + venc + '</span>';
+    }
+
     /* ---- Tarjeta ---- */
     function boardCard(t) {
       var resp = t.responsable
@@ -1019,10 +1041,17 @@
       var pm = PRIO_META[t.prioridad] || PRIO_META.media;
       var prio = '<span class="bt-prio" title="Prioridad: ' + pm.t + '" style="color:' + pm.c + ';"><i class="fa-solid ' + pm.i + '"></i></span>';
       var pts = (t.puntos != null && t.puntos !== '') ? '<span class="bt-pts" title="Story points">' + esc(t.puntos) + '</span>' : '';
+      var subs = boardSubtareas(t.id);
+      var subBadge = subs.length
+        ? '<span class="bt-badge" title="Subtareas finalizadas"><i class="fa-solid fa-list-check"></i> ' +
+          subs.filter(function (s) { return s.estado === ESTADO_FINAL; }).length + '/' + subs.length + '</span>'
+        : '';
+      var fileBadge = t.files_count ? '<span class="bt-badge" title="Adjuntos"><i class="fa-solid fa-paperclip"></i> ' + t.files_count + '</span>' : '';
       return '<div class="bt-card dnd-card" data-id="' + t.id + '">' +
         '<div class="bt-title">' + prio + esc(t.titulo) + '</div>' +
         '<div class="bt-meta">' +
           (t.tipo ? '<span class="' + tipoCls + '">' + esc(t.tipo) + '</span>' : '') +
+          boardPlazoChip(t) + subBadge + fileBadge +
         '</div>' +
         '<div class="bt-foot">' +
           '<span class="text-gray text-xs">' + (t.fecha ? fmtDate(t.fecha) : '') + (t.horas ? ' &middot; ' + t.horas + 'h' : '') + '</span>' +
@@ -1037,7 +1066,7 @@
       if (!pid) { el('boardBody').innerHTML = emptyProjectsMsg(); return; }
       var q = (boardState.filtros.q || '').toLowerCase();
       var tasks = boardState.tasks.filter(function (t) {
-        return String(t.project_id) === String(pid) && !t.sprint_id &&
+        return String(t.project_id) === String(pid) && !t.sprint_id && boardEsPrincipal(t) &&
           (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
       }).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0) || a.id - b.id; });
 
@@ -1126,16 +1155,18 @@
       var sid = boardSprintSel(pid);
       var sprint = sprints.filter(function (s) { return String(s.id) === String(sid); })[0] || sprints[0];
       var q = (boardState.filtros.q || '').toLowerCase();
-      var tasks = boardState.tasks.filter(function (t) {
-        return String(t.sprint_id) === String(sprint.id) && (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
+      var enSprint = boardState.tasks.filter(function (t) { return String(t.sprint_id) === String(sprint.id); });
+      var tasks = enSprint.filter(function (t) {
+        return boardEsPrincipal(t) && (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
       });
 
+      // progreso: cuenta tareas principales + subtareas del sprint
       var totalPts = 0, donePts = 0, doneN = 0;
-      tasks.forEach(function (t) {
+      enSprint.forEach(function (t) {
         var p = Number(t.puntos) || 0; totalPts += p;
         if (t.estado === ESTADO_FINAL) { donePts += p; doneN++; }
       });
-      var pct = tasks.length ? Math.round((totalPts ? donePts / totalPts : doneN / tasks.length) * 100) : 0;
+      var pct = enSprint.length ? Math.round((totalPts ? donePts / totalPts : doneN / enSprint.length) * 100) : 0;
 
       var selOpts = sprints.map(function (s) {
         return '<option value="' + s.id + '"' + (String(s.id) === String(sprint.id) ? ' selected' : '') + '>' +
@@ -1158,7 +1189,7 @@
         '</div>' +
         (sprint.objetivo ? '<div class="spr-goal">' + esc(sprint.objetivo) + '</div>' : '') +
         '<div class="spr-meta"><span><i class="fa-regular fa-calendar"></i> ' + rango + '</span>' +
-          '<span>' + doneN + '/' + tasks.length + ' tareas</span>' +
+          '<span>' + doneN + '/' + enSprint.length + ' tareas</span>' +
           (totalPts ? '<span>' + donePts + '/' + totalPts + ' pts</span>' : '') + '</div>' +
         '<div class="spr-bar"><div class="spr-bar-fill" style="width:' + pct + '%;"></div></div>' +
       '</div>';
@@ -1231,15 +1262,25 @@
       });
     }
 
+    // recarga silenciosa de tareas (sin re-render), para refrescar subtareas/adjuntos
+    function reloadBoardTasks() {
+      return API.request('/api/board/tasks').then(function (r) {
+        boardState.tasks = r.tasks || [];
+        boardState.meta = r.meta || boardState.meta;
+      });
+    }
+
     /* ---- Editor de tarea ---- */
     function boardEdit(t, pre) {
       var isNew = !t;
       pre = pre || {};
-      t = t || { titulo: '', project_id: pre.project_id || '', assignee_id: '', sprint_id: pre.sprint_id || '', tipo: 'Tarea', estado: 'Tareas por hacer', prioridad: 'media', fecha: '', fecha_fin: '', horas: '', puntos: '', observaciones: '' };
+      t = t || { titulo: '', project_id: pre.project_id || '', assignee_id: '', sprint_id: pre.sprint_id || '', parent_id: pre.parent_id || null, tipo: 'Tarea', estado: 'Tareas por hacer', prioridad: 'media', fecha: '', fecha_fin: '', horas: '', puntos: '', observaciones: '' };
       var m = boardState.meta;
       var projs = m.projects || [];
       var memByProj = m.membersByProject || {};
       var prioridades = m.prioridades || ['baja', 'media', 'alta', 'urgente'];
+      var esSub = !!t.parent_id;
+      var padre = esSub ? boardTareaLocal(t.parent_id) : null;
       var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
       var curProj = t.project_id ? Number(t.project_id) : (projs[0] ? projs[0].id : '');
 
@@ -1263,16 +1304,22 @@
         '</div>';
       };
 
+      var banner = esSub
+        ? '<div class="bt-subbanner"><i class="fa-solid fa-diagram-project"></i> Subtarea de <strong>' + esc(padre ? padre.titulo : ('#' + t.parent_id)) + '</strong>' +
+          (padre ? ' <button type="button" class="linklike" id="bt_goparent">abrir principal</button>' : '') + '</div>'
+        : '';
+
       el('view').innerHTML =
         '<button class="btn btn-secondary btn-small" id="bt_back"><i class="fa-solid fa-arrow-left"></i> Volver</button>' +
-        '<div class="glass-panel" style="padding:28px;max-width:640px;margin-top:14px;">' +
-          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? 'Nueva tarea' : 'Editar tarea') + '</div>' +
+        '<div class="glass-panel" style="padding:28px;max-width:660px;margin-top:14px;">' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? (esSub ? 'Nueva subtarea' : 'Nueva tarea') : (esSub ? 'Editar subtarea' : 'Editar tarea')) + '</div>' +
+          banner +
           '<form id="btForm">' +
             '<div class="form-group"><label>Título / descripción <span class="form-required-marker">*</span></label>' +
               '<textarea id="bt_titulo" class="form-input" rows="2" required>' + esc(t.titulo) + '</textarea></div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-              '<div class="form-group"><label>Proyecto <span class="form-required-marker">*</span></label><select id="bt_f_proj" class="form-input" required>' + projOpts + '</select></div>' +
-              '<div class="form-group"><label>Sprint</label><select id="bt_f_sprint" class="form-input">' + sprintOptsFor(curProj) + '</select></div>' +
+              (esSub ? '' : '<div class="form-group"><label>Proyecto <span class="form-required-marker">*</span></label><select id="bt_f_proj" class="form-input" required>' + projOpts + '</select></div>' +
+                            '<div class="form-group"><label>Sprint</label><select id="bt_f_sprint" class="form-input">' + sprintOptsFor(curProj) + '</select></div>') +
               '<div class="form-group"><label>Responsable</label><select id="bt_f_resp" class="form-input">' + respOptsFor(curProj) + '</select></div>' +
               '<div class="form-group"><label>Tipo</label><select id="bt_f_tipo" class="form-input">' + opt(m.tipos || ['Tarea'], t.tipo) + '</select></div>' +
               '<div class="form-group"><label>Estado</label><select id="bt_f_estado" class="form-input">' + opt(BOARD_ESTADOS, t.estado) + '</select></div>' +
@@ -1281,18 +1328,22 @@
               '<div class="form-group"><label>Fin</label><input type="date" id="bt_f_fin" class="form-input" value="' + esc(dstr(t.fecha_fin) || '') + '"></div>' +
               '<div class="form-group"><label>Horas</label><input type="number" step="0.5" min="0" id="bt_f_horas" class="form-input" value="' + esc(t.horas != null ? t.horas : '') + '"></div>' +
             '</div>' +
+            '<div class="bt-cohint"><i class="fa-solid fa-trophy"></i> Con fecha de inicio y fin: terminá a tiempo y ganás <strong>+2 Turingcoins</strong>; mover la fecha de fin sin terminar cuesta <strong>−3</strong>.</div>' +
             '<div class="form-group"><label>Story points</label>' + chipsHtml(t.puntos) + '</div>' +
             '<div class="form-group"><label>Observaciones</label><textarea id="bt_f_obs" class="form-input" rows="2">' + esc(t.observaciones || '') + '</textarea></div>' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-              '<button type="submit" class="btn btn-primary" id="bt_save">' + (isNew ? 'Crear tarea' : 'Guardar') + '</button>' +
+              '<button type="submit" class="btn btn-primary" id="bt_save">' + (isNew ? 'Crear' : 'Guardar') + '</button>' +
               (isNew ? '' : '<button type="button" class="btn btn-error btn-small" id="bt_del">Eliminar</button>') +
             '</div>' +
           '</form>' +
-        '</div>';
+        '</div>' +
+        (!isNew && !esSub ? '<div class="glass-panel" id="bt_subs_panel" style="padding:24px;max-width:660px;margin-top:16px;"></div>' : '') +
+        (!isNew ? '<div class="glass-panel" id="bt_files_panel" style="padding:24px;max-width:660px;margin-top:16px;"></div>' : '');
 
       var puntosSel = (t.puntos != null ? String(t.puntos) : '');
       el('bt_back').addEventListener('click', boardRender);
-      el('bt_f_proj').addEventListener('change', function () {
+      if (el('bt_goparent')) el('bt_goparent').addEventListener('click', function () { if (padre) boardEdit(padre); });
+      if (el('bt_f_proj')) el('bt_f_proj').addEventListener('change', function () {
         el('bt_f_resp').innerHTML = respOptsFor(Number(this.value));
         el('bt_f_sprint').innerHTML = sprintOptsFor(Number(this.value));
       });
@@ -1306,8 +1357,10 @@
         e.preventDefault();
         var btn = el('bt_save'); btn.disabled = true; btn.textContent = 'Guardando...';
         var body = {
-          titulo: el('bt_titulo').value.trim(), project_id: el('bt_f_proj').value || null,
-          sprint_id: el('bt_f_sprint').value || null,
+          titulo: el('bt_titulo').value.trim(),
+          project_id: el('bt_f_proj') ? (el('bt_f_proj').value || null) : (esSub ? (padre ? padre.project_id : t.project_id) : t.project_id),
+          sprint_id: el('bt_f_sprint') ? (el('bt_f_sprint').value || null) : (esSub ? (padre ? padre.sprint_id : t.sprint_id) : t.sprint_id),
+          parent_id: t.parent_id || null,
           assignee_id: el('bt_f_resp').value || null, tipo: el('bt_f_tipo').value, estado: el('bt_f_estado').value,
           prioridad: el('bt_f_prio').value,
           fecha: el('bt_f_fecha').value || null, fecha_fin: el('bt_f_fin').value || null,
@@ -1317,15 +1370,138 @@
         var req = isNew
           ? API.request('/api/board/tasks', { method: 'POST', body: JSON.stringify(body) })
           : API.request('/api/board/tasks/' + t.id, { method: 'PUT', body: JSON.stringify(body) });
-        req.then(function () { showAlert(isNew ? 'Tarea creada.' : 'Tarea actualizada.', 'success'); viewBoard(); })
-          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear tarea' : 'Guardar'; });
+        req.then(function () {
+          showAlert(isNew ? 'Creado.' : 'Guardado.', 'success');
+          if (isNew && esSub && padre) { reloadBoardTasks().then(function () { boardEdit(boardTareaLocal(padre.id) || padre); }); }
+          else viewBoard();
+        }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear' : 'Guardar'; });
       });
       var del = el('bt_del');
       if (del) del.addEventListener('click', function () {
-        if (!confirm('¿Eliminar esta tarea?')) return;
+        if (!confirm(esSub ? '¿Eliminar esta subtarea?' : '¿Eliminar esta tarea y sus subtareas?')) return;
         API.request('/api/board/tasks/' + t.id, { method: 'DELETE' })
-          .then(function () { showAlert('Tarea eliminada.', 'success'); viewBoard(); })
+          .then(function () {
+            showAlert('Eliminado.', 'success');
+            if (esSub && padre) { reloadBoardTasks().then(function () { boardEdit(boardTareaLocal(padre.id) || padre); }); }
+            else viewBoard();
+          })
           .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+
+      if (!isNew && !esSub) renderSubtareasPanel(t);
+      if (!isNew) renderAdjuntosPanel(t);
+    }
+
+    /* ---- Panel de subtareas ---- */
+    function renderSubtareasPanel(t) {
+      var box = el('bt_subs_panel'); if (!box) return;
+      var subs = boardSubtareas(t.id).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0) || a.id - b.id; });
+      var hechas = subs.filter(function (s) { return s.estado === ESTADO_FINAL; }).length;
+      var pct = subs.length ? Math.round(hechas / subs.length * 100) : 0;
+      var members = (boardState.meta.membersByProject || {})[t.project_id] || [];
+      var respOpts = '<option value="">Responsable…</option>' + members.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + '</option>'; }).join('');
+
+      var lista = subs.map(function (s) {
+        var done = s.estado === ESTADO_FINAL;
+        return '<div class="sub-row">' +
+          '<button type="button" class="sub-check ' + (done ? 'on' : '') + '" data-toggle="' + s.id + '" title="' + (done ? 'Reabrir' : 'Marcar finalizada') + '"><i class="fa-solid ' + (done ? 'fa-circle-check' : 'fa-circle') + '"></i></button>' +
+          '<span class="sub-title ' + (done ? 'done' : '') + '" data-open="' + s.id + '">' + esc(s.titulo) + '</span>' +
+          (s.responsable ? '<span class="bt-resp" title="' + esc(s.responsable) + '">' + esc(initials(s.responsable)) + '</span>' : '') +
+          (s.fecha_fin ? '<span class="text-gray text-xs">' + fmtDate(s.fecha_fin) + '</span>' : '') +
+        '</div>';
+      }).join('') || '<p class="text-gray text-xs" style="margin:6px 0 10px;">Sin subtareas todavía.</p>';
+
+      box.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">' +
+          '<div class="section-heading" style="text-align:left;margin:0;">Subtareas ' + (subs.length ? '(' + hechas + '/' + subs.length + ')' : '') + '</div>' +
+        '</div>' +
+        (subs.length ? '<div class="spr-bar" style="margin-bottom:12px;"><div class="spr-bar-fill" style="width:' + pct + '%;"></div></div>' : '') +
+        '<div class="sub-list">' + lista + '</div>' +
+        '<form id="subAddForm" class="sub-add">' +
+          '<input id="sub_titulo" class="form-input" placeholder="Nueva subtarea…" required>' +
+          '<select id="sub_resp" class="form-input" style="max-width:150px;">' + respOpts + '</select>' +
+          '<input type="date" id="sub_fin" class="form-input" style="max-width:150px;" title="Fecha de fin">' +
+          '<button type="submit" class="btn btn-primary btn-small"><i class="fa-solid fa-plus"></i></button>' +
+        '</form>' +
+        '<div class="text-gray text-xs" style="margin-top:6px;">Tip: hacé clic en una subtarea para abrir su ficha completa (fechas, puntos, adjuntos).</div>';
+
+      box.querySelectorAll('[data-open]').forEach(function (n) {
+        n.addEventListener('click', function () { var s = boardTareaLocal(this.getAttribute('data-open')); if (s) boardEdit(s); });
+      });
+      box.querySelectorAll('[data-toggle]').forEach(function (n) {
+        n.addEventListener('click', function () {
+          var s = boardTareaLocal(this.getAttribute('data-toggle')); if (!s) return;
+          var nuevo = s.estado === ESTADO_FINAL ? 'En curso' : ESTADO_FINAL;
+          API.request('/api/board/tasks/' + s.id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: nuevo }) })
+            .then(function () { return reloadBoardTasks(); })
+            .then(function () { renderSubtareasPanel(boardTareaLocal(t.id) || t); refreshBell && refreshBell(); })
+            .catch(function (err) { showAlert(err.message, 'error'); });
+        });
+      });
+      el('subAddForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var body = {
+          titulo: el('sub_titulo').value.trim(), parent_id: t.id, project_id: t.project_id,
+          assignee_id: el('sub_resp').value || null, fecha_fin: el('sub_fin').value || null,
+          estado: 'Tareas por hacer', tipo: 'Tarea', prioridad: 'media'
+        };
+        if (!body.titulo) return;
+        API.request('/api/board/tasks', { method: 'POST', body: JSON.stringify(body) })
+          .then(function () { return reloadBoardTasks(); })
+          .then(function () { renderSubtareasPanel(boardTareaLocal(t.id) || t); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+    }
+
+    /* ---- Panel de adjuntos (imágenes / PDF) ---- */
+    function renderAdjuntosPanel(t) {
+      var box = el('bt_files_panel'); if (!box) return;
+      box.innerHTML = '<div class="section-heading" style="text-align:left;margin-bottom:10px;">Adjuntos</div><div id="bt_files_grid" class="files-grid"><span class="text-gray text-xs">Cargando…</span></div>' +
+        '<label class="btn btn-secondary btn-small" style="margin-top:12px;cursor:pointer;"><i class="fa-solid fa-paperclip"></i> Subir imagen o PDF' +
+        '<input type="file" id="bt_file_input" accept="image/*,application/pdf" multiple hidden></label>' +
+        '<div class="text-gray text-xs" style="margin-top:6px;">Máximo 5 MB por archivo.</div>';
+
+      function pintar(files) {
+        var g = el('bt_files_grid');
+        g.innerHTML = (files || []).map(function (f) {
+          var esImg = /^image\//.test(f.mime || '');
+          var vista = esImg
+            ? '<img src="' + f.data + '" alt="' + esc(f.nombre) + '">'
+            : '<div class="file-pdf"><i class="fa-solid fa-file-pdf"></i></div>';
+          return '<div class="file-card" data-file="' + f.id + '">' +
+            '<a href="' + f.data + '" target="_blank" rel="noopener" class="file-open">' + vista + '</a>' +
+            '<div class="file-cap"><span title="' + esc(f.nombre) + '">' + esc((f.nombre || '').slice(0, 22)) + '</span>' +
+              '<button type="button" class="file-del" data-del="' + f.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button></div>' +
+          '</div>';
+        }).join('') || '<span class="text-gray text-xs">Sin adjuntos.</span>';
+        g.querySelectorAll('[data-del]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (!confirm('¿Eliminar este adjunto?')) return;
+            API.request('/api/board/files/' + this.getAttribute('data-del'), { method: 'DELETE' })
+              .then(cargar).catch(function (err) { showAlert(err.message, 'error'); });
+          });
+        });
+      }
+      function cargar() {
+        return API.request('/api/board/tasks/' + t.id + '/files').then(function (r) { pintar(r.files); });
+      }
+      cargar();
+
+      el('bt_file_input').addEventListener('change', function () {
+        var files = Array.prototype.slice.call(this.files || []);
+        this.value = '';
+        (function next(i) {
+          if (i >= files.length) { cargar(); return; }
+          var file = files[i];
+          if (file.size > 5 * 1024 * 1024) { showAlert('"' + file.name + '" supera los 5 MB.', 'warning'); return next(i + 1); }
+          var reader = new FileReader();
+          reader.onload = function () {
+            API.request('/api/board/tasks/' + t.id + '/files', { method: 'POST', body: JSON.stringify({ nombre: file.name, data: reader.result }) })
+              .then(function () { next(i + 1); })
+              .catch(function (err) { showAlert(err.message, 'error'); next(i + 1); });
+          };
+          reader.readAsDataURL(file);
+        })(0);
       });
     }
 
