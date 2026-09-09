@@ -201,7 +201,27 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla prospectos');
+    // CRM: pipeline + responsable comercial + tarea vinculada en el tablero
+    for (const [col, ddl] of [
+      ['estado', "VARCHAR(24) NOT NULL DEFAULT 'nuevo'"],  // nuevo|contactado|en_seguimiento|reunion|propuesta|ganado|perdido|no_responde
+      ['owner_id', 'INTEGER REFERENCES users(id)'],
+      ['task_id', 'INTEGER REFERENCES board_tasks(id) ON DELETE SET NULL'],
+    ]) {
+      await db.query(`ALTER TABLE prospectos ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
+    }
+    // Historial de interacciones con cada prospecto
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS prospecto_interacciones (
+        id SERIAL PRIMARY KEY,
+        prospecto_id INTEGER NOT NULL REFERENCES prospectos(id) ON DELETE CASCADE,
+        tipo VARCHAR(20) NOT NULL,           -- llamada | email | whatsapp | reunion | nota
+        resultado VARCHAR(30),               -- contacto | no_contesto | agendo | propuesta | descartado | otro
+        nota TEXT,
+        user_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('[OK] Tabla prospectos / prospecto_interacciones');
 
     // ---------------- notificaciones ----------------
     await db.query(`
@@ -243,6 +263,8 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_board_sprints_project ON board_sprints(project_id)',
       'CREATE INDEX IF NOT EXISTS idx_board_task_files_task ON board_task_files(task_id)',
       'CREATE INDEX IF NOT EXISTS idx_prospectos_sector ON prospectos(sector_id)',
+      'CREATE INDEX IF NOT EXISTS idx_prospectos_estado ON prospectos(estado)',
+      'CREATE INDEX IF NOT EXISTS idx_prosp_inter_prospecto ON prospecto_interacciones(prospecto_id)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
     ];
     for (const q of indices) await db.query(q);
