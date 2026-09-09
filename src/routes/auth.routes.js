@@ -1,14 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const db = require('../config/database');
 const { generateToken } = require('../utils/jwt');
 const { authMiddleware } = require('../middleware/auth');
-const { sendVerificationEmail, sendWelcomeEmail } = require('../services/email.service');
 
 const router = express.Router();
 
 // POST /api/auth/register
+// El cliente entra directo (sin verificación de email) y con 0 créditos:
+// los créditos se piden después según el proyecto a desarrollar.
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, company, phone } = req.body;
@@ -23,20 +23,27 @@ router.post('/register', async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const token = crypto.randomBytes(32).toString('hex');
 
     const result = await db.query(
-      `INSERT INTO users (name, email, password_hash, role, credits, email_verified, verification_token, company, phone)
-       VALUES ($1, $2, $3, 'user', 0, false, $4, $5, $6)
+      `INSERT INTO users (name, email, password_hash, role, credits, email_verified, company, phone)
+       VALUES ($1, $2, $3, 'user', 0, true, $4, $5)
        RETURNING id, name, email, role, credits, email_verified`,
-      [name, email.toLowerCase(), hash, token, company || null, phone || null]
+      [name, email.toLowerCase(), hash, company || null, phone || null]
+    );
+    const user = result.rows[0];
+
+    await db.query(
+      `INSERT INTO notifications (user_id, title, message, type)
+       VALUES ($1, 'Bienvenido a TURINGTECH', $2, 'welcome')`,
+      [user.id, 'Tu cuenta ya está activa. Solicita créditos según el proyecto que quieras desarrollar y nuestro equipo los aprobará.']
     );
 
-    await sendVerificationEmail(email, token);
+    const token = generateToken(user);
 
     res.status(201).json({
-      message: 'Cuenta creada. Revisa tu email para verificar tu cuenta.',
-      user: result.rows[0],
+      message: 'Cuenta creada. Ya puedes ingresar.',
+      token,
+      user,
     });
   } catch (err) {
     console.error('Error en register:', err.message);
@@ -44,7 +51,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// GET /api/auth/verify?token=xxx
+// GET /api/auth/verify?token=xxx  (legado: enlaces viejos de verificación; ya no otorga créditos)
 router.get('/verify', async (req, res) => {
   try {
     const { token } = req.query;
@@ -53,47 +60,20 @@ router.get('/verify', async (req, res) => {
     }
 
     const result = await db.query(
-      'SELECT id, name, email, credits, email_verified FROM users WHERE verification_token = $1',
+      'SELECT id FROM users WHERE verification_token = $1',
       [token]
     );
-
     if (result.rows.length === 0) {
       return res.status(400).json({ error: 'Token inválido o ya utilizado' });
     }
 
-    const user = result.rows[0];
-    if (user.email_verified) {
-      return res.json({ message: 'Email ya verificado', verified: true });
-    }
-
-    const initialCredits = parseInt(process.env.INITIAL_CREDITS || '2000');
-
-    await db.query('BEGIN');
     await db.query(
-      'UPDATE users SET email_verified = true, verification_token = NULL, credits = credits + $1 WHERE id = $2',
-      [initialCredits, user.id]
+      'UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1',
+      [result.rows[0].id]
     );
-    await db.query(
-      `INSERT INTO credit_transactions (user_id, amount, type, description)
-       VALUES ($1, $2, 'initial', 'Créditos iniciales por verificación de email')`,
-      [user.id, initialCredits]
-    );
-    await db.query(
-      `INSERT INTO notifications (user_id, title, message, type)
-       VALUES ($1, '¡Bienvenido a TURINGTECH!', $2, 'credit_approved')`,
-      [user.id, `Tu cuenta ha sido verificada y has recibido ${initialCredits} créditos iniciales. ¡Úsalos en tu próximo proyecto!`]
-    );
-    await db.query('COMMIT');
 
-    await sendWelcomeEmail(user.email, user.name, initialCredits);
-
-    res.json({
-      message: 'Email verificado correctamente. Créditos asignados.',
-      verified: true,
-      credits: user.credits + initialCredits,
-    });
+    res.json({ message: 'Cuenta confirmada.', verified: true });
   } catch (err) {
-    await db.query('ROLLBACK');
     console.error('Error en verify:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -125,10 +105,6 @@ router.post('/login', async (req, res) => {
 
     if (user.active === false) {
       return res.status(403).json({ error: 'Tu cuenta está desactivada. Contacta al administrador.' });
-    }
-
-    if (!user.email_verified && user.role !== 'admin') {
-      return res.status(403).json({ error: 'Debes verificar tu email antes de iniciar sesión' });
     }
 
     const token = generateToken(user);

@@ -5,6 +5,16 @@ const { sendCreditRequestAdminEmail } = require('../services/email.service');
 
 const router = express.Router();
 
+// Paquetes de créditos que puede pedir un cliente (escalonado, tope 2000).
+// Debe coincidir con CREDIT_TIERS en public/app.html.
+const CREDIT_TIERS = [200, 500, 1000, 1500, 2000];
+const CREDIT_MAX = 2000;
+
+// GET /api/credits/tiers
+router.get('/tiers', (req, res) => {
+  res.json({ tiers: CREDIT_TIERS, max: CREDIT_MAX });
+});
+
 // GET /api/credits/dashboard
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
@@ -46,16 +56,22 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 router.post('/request', authMiddleware, async (req, res) => {
   try {
     const { project_description, requested_credits } = req.body;
+    const credits = parseInt(requested_credits, 10);
 
-    if (!project_description || !requested_credits) {
+    if (!project_description || !credits) {
       return res.status(400).json({ error: 'Descripción del proyecto y créditos solicitados son requeridos' });
+    }
+    if (!CREDIT_TIERS.includes(credits)) {
+      return res.status(400).json({
+        error: `Monto de créditos no válido. Opciones: ${CREDIT_TIERS.join(', ')} (máximo ${CREDIT_MAX}).`,
+      });
     }
 
     const result = await db.query(
       `INSERT INTO credit_requests (user_id, project_description, requested_credits, status)
        VALUES ($1, $2, $3, 'pending')
        RETURNING id, status, created_at`,
-      [req.user.id, project_description, parseInt(requested_credits)]
+      [req.user.id, project_description, credits]
     );
 
     // Obtener email de notificaciones del admin_config
@@ -71,7 +87,7 @@ router.post('/request', authMiddleware, async (req, res) => {
       req.user.name,
       req.user.email,
       project_description,
-      parseInt(requested_credits)
+      credits
     );
 
     res.status(201).json({

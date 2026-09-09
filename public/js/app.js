@@ -56,10 +56,12 @@ const API = {
   },
 
   async register(name, email, password, company, phone) {
-    return this.request('/api/auth/register', {
+    const data = await this.request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, company, phone }),
     });
+    if (data.token) this.setToken(data.token);
+    return data;
   },
 
   async getDashboard() {

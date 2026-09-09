@@ -43,10 +43,10 @@
         <p>Tu visión. <span style="color:var(--color-accent)">Nuestro código.</span></p>
       </div>
       <h2 class="auth-title">Crear Cuenta</h2>
-      <p class="auth-subtitle">Regístrate para obtener créditos TuringTech</p>
+      <p class="auth-subtitle">Crea tu cuenta y solicita créditos para tu proyecto</p>
       <div class="auth-incentive">
-        <div class="credits">Obtén créditos TuringTech</div>
-        <div class="text">de regalo al verificar tu email</div>
+        <div class="credits">Acceso inmediato</div>
+        <div class="text">Sin esperas: entra y solicita créditos según lo que quieras desarrollar</div>
       </div>
       <div id="alert-container"></div>
       <form id="registerForm" onsubmit="handleRegister(event)">
@@ -106,8 +106,8 @@
         document.getElementById('registerForm').style.display = 'none';
         document.querySelector('.auth-incentive').style.display = 'none';
         document.querySelector('.auth-footer').style.display = 'none';
-        showAlert('Cuenta creada. Revisa tu email para verificar tu cuenta y recibir tus créditos.', 'success');
-        setTimeout(() => { window.location.href = '/login.html'; }, 5000);
+        showAlert('¡Cuenta creada! Entrando a tu espacio...', 'success');
+        setTimeout(() => { window.location.href = '/app.html'; }, 900);
       } catch (err) {
         showAlert(err.message, 'error');
         btn.disabled = false;

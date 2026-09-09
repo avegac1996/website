@@ -125,11 +125,13 @@
       { id: 'zerolicense', name: 'Consultoría Zero-License',   icon: 'fa-scale-balanced',   desc: 'Reducción de costos de licenciamiento.' },
       { id: 'ia',          name: 'Agentes de IA y WhatsApp',   icon: 'fa-comment-dots',     desc: 'Asistentes inteligentes y chatbots.' }
     ];
-    var PACKAGES = [
-      { id: 'starter', label: 'Starter', credits: 500 },
-      { id: 'growth',  label: 'Growth',  credits: 1500 },
-      { id: 'scale',   label: 'Scale',   credits: 5000 },
-      { id: 'custom',  label: 'Personalizado', credits: null }
+    // Paquetes de créditos (escalonado, tope 2000). Debe coincidir con CREDIT_TIERS en src/routes/credit.routes.js
+    var CREDIT_TIERS = [
+      { credits: 200,  label: 'Automatización puntual', desc: 'Un script o bot simple, una sola tarea.' },
+      { credits: 500,  label: 'Bot RPA / BI básico',    desc: 'Proceso con integración o dashboard.' },
+      { credits: 1000, label: 'Módulo a medida',        desc: 'Integración de sistemas o app acotada.' },
+      { credits: 1500, label: 'Sistema mediano',        desc: 'Varios procesos o módulos conectados.' },
+      { credits: 2000, label: 'Proyecto completo',      desc: 'Plataforma o solución integral.' }
     ];
     var PRIORIDADES = ['Baja', 'Media', 'Alta'];
 
@@ -1720,7 +1722,7 @@
 
     function viewSolicitar() {
       // Asistente estilo AWS/Azure: 1) tipo de crédito  2) detalles  3) revisar y enviar
-      var w = { step: 1, typeId: null, pkgId: null, credits: '', project: '', prioridad: 'Media', inicio: '', justificacion: '' };
+      var w = { step: 1, typeId: null, credits: '', project: '', prioridad: 'Media', inicio: '', justificacion: '' };
       var typeOf = function () { return CREDIT_TYPES.filter(function (t) { return t.id === w.typeId; })[0]; };
 
       function steps() {
@@ -1746,15 +1748,16 @@
               '<button class="btn btn-primary" id="w_next" ' + (w.typeId ? '' : 'disabled') + '>Continuar <i class="fa-solid fa-arrow-right"></i></button>' +
             '</div></div>';
         } else if (w.step === 2) {
-          html += '<div class="glass-panel" style="padding:24px;max-width:640px;">' +
+          html += '<div class="glass-panel" style="padding:24px;max-width:680px;">' +
             '<div class="text-gray text-sm mb-2">Servicio: <strong class="text-accent">' + esc(typeOf().name) + '</strong></div>' +
-            '<div class="form-group"><label>Paquete de créditos</label><div class="pkg-row">' +
-              PACKAGES.map(function (p) {
-                return '<div class="pkg-card ' + (w.pkgId === p.id ? 'selected' : '') + '" data-pkg="' + p.id + '">' +
-                  '<div class="pk-label">' + esc(p.label) + '</div><div class="pk-credits">' + (p.credits ? p.credits.toLocaleString() : '—') + '</div></div>';
-              }).join('') + '</div></div>' +
-            '<div class="form-group"><label>Créditos solicitados <span class="form-required-marker">*</span></label>' +
-              '<input type="number" id="w_credits" class="form-input" min="1" placeholder="500" value="' + esc(w.credits) + '"></div>' +
+            '<div class="form-group"><label>¿Cuántos créditos necesitas? <span class="form-required-marker">*</span></label>' +
+              '<div class="tier-grid">' + CREDIT_TIERS.map(function (t) {
+                return '<button type="button" class="tier-card ' + (String(w.credits) === String(t.credits) ? 'selected' : '') + '" data-tier="' + t.credits + '">' +
+                  '<div class="tier-credits">' + t.credits.toLocaleString() + '</div>' +
+                  '<div class="tier-label">' + esc(t.label) + '</div>' +
+                  '<div class="tier-desc">' + esc(t.desc) + '</div></button>';
+              }).join('') + '</div>' +
+              '<div class="text-gray text-xs" style="margin-top:8px;">El equipo ajusta el monto final al aprobar, según el alcance real del proyecto.</div></div>' +
             '<div class="form-group"><label>Nombre del proyecto / caso de uso <span class="form-required-marker">*</span></label>' +
               '<input type="text" id="w_project" class="form-input" placeholder="Automatización de conciliaciones bancarias" value="' + esc(w.project) + '"></div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
@@ -1791,7 +1794,6 @@
       function row(k, v) { return '<div class="sr"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>'; }
 
       function collectStep2() {
-        w.credits = el('w_credits').value;
         w.project = el('w_project').value.trim();
         w.prioridad = el('w_prio').value;
         w.inicio = el('w_inicio').value;
@@ -1803,12 +1805,10 @@
         document.querySelectorAll('[data-type]').forEach(function (b) {
           b.addEventListener('click', function () { w.typeId = this.getAttribute('data-type'); render(); });
         });
-        document.querySelectorAll('[data-pkg]').forEach(function (c) {
+        document.querySelectorAll('[data-tier]').forEach(function (c) {
           c.addEventListener('click', function () {
-            w.pkgId = this.getAttribute('data-pkg');
-            var p = PACKAGES.filter(function (x) { return x.id === w.pkgId; })[0];
-            if (p.credits) el('w_credits').value = p.credits;
-            document.querySelectorAll('[data-pkg]').forEach(function (n) { n.classList.remove('selected'); });
+            w.credits = this.getAttribute('data-tier');
+            document.querySelectorAll('[data-tier]').forEach(function (n) { n.classList.remove('selected'); });
             this.classList.add('selected');
           });
         });
@@ -1817,7 +1817,7 @@
           if (w.step === 1) { if (!w.typeId) return; w.step = 2; render(); return; }
           if (w.step === 2) {
             collectStep2();
-            if (!w.credits || parseInt(w.credits, 10) < 1) return showAlert('Indica cuántos créditos solicitas.', 'warning');
+            if (!w.credits || parseInt(w.credits, 10) < 200) return showAlert('Elige un paquete de créditos.', 'warning');
             if (!w.project) return showAlert('Indica el nombre del proyecto.', 'warning');
             if (!w.justificacion) return showAlert('Agrega una justificación.', 'warning');
             w.step = 3; render();
