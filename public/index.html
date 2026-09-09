@@ -276,6 +276,76 @@
             opacity: 1;
             margin-top: 1rem;
         }
+
+        /* ===== Turingcoin flotante (esquinas derechas) ===== */
+        .tc-fx {
+            position: fixed; right: 22px; top: 100px; z-index: 40;
+            width: 88px;
+            opacity: 0; transform: translateY(16px) scale(.65);
+            transition: opacity .55s ease, transform .55s cubic-bezier(.18,.9,.32,1.35);
+            pointer-events: none; cursor: pointer;
+            filter: drop-shadow(0 12px 26px rgba(0,0,0,.5));
+        }
+        .tc-fx.tc-show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        .tc-bob { animation: tc-float 3.2s ease-in-out infinite; }
+        .tc-fx.tc-show:hover .tc-bob { animation-play-state: paused; }
+        .tc-coin {
+            position: relative; width: 88px; height: 88px;
+            transform-style: preserve-3d;
+            animation: tc-spin 3.6s cubic-bezier(.55,.1,.45,.9) infinite;
+        }
+        .tc-fx.tc-show:hover .tc-coin { animation-duration: 1.4s; }
+        .tc-face {
+            position: absolute; inset: 0; border-radius: 50%;
+            backface-visibility: hidden; -webkit-backface-visibility: hidden;
+            overflow: hidden;
+        }
+        .tc-face.tc-back { transform: rotateY(180deg); }
+        .tc-face svg { width: 100%; height: 100%; display: block; }
+        .tc-face::after {
+            content: ""; position: absolute; inset: 4%; border-radius: 50%;
+            background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.6) 49%, transparent 60%);
+            mix-blend-mode: screen; animation: tc-sheen 3.6s linear infinite;
+        }
+        .tc-msg {
+            position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+            margin-right: 12px; white-space: nowrap;
+            background: rgba(11,21,40,.94); border: 1px solid rgba(255,107,0,.4);
+            color: #fff; font-family: 'Inter', Arial, sans-serif; font-size: 12px; font-weight: 700;
+            padding: 7px 13px; border-radius: 999px;
+            box-shadow: 0 10px 24px rgba(0,0,0,.45);
+            opacity: 0; transition: opacity .4s ease .25s;
+        }
+        .tc-fx.tc-show .tc-msg { opacity: 1; }
+        .tc-msg strong { color: #FF6B00; }
+        .tc-msg i { color: #FF6B00; margin-left: 5px; font-size: 10px; }
+        .tc-close {
+            position: absolute; top: -7px; left: -7px; width: 21px; height: 21px;
+            border-radius: 50%; background: rgba(11,21,40,.95); border: 1px solid rgba(255,255,255,.18);
+            color: #9aa4b2; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; opacity: 0; transition: opacity .25s ease;
+        }
+        .tc-fx.tc-show:hover .tc-close { opacity: 1; }
+        .tc-close:hover { color: #fff; }
+
+        @keyframes tc-spin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+        @keyframes tc-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes tc-sheen { 0%, 100% { transform: translateX(-45%); } 50% { transform: translateX(45%); } }
+
+        #creditos.tc-highlight { animation: tc-hl 2.6s ease; }
+        @keyframes tc-hl {
+            0%, 100% { box-shadow: none; }
+            25%, 60% { box-shadow: inset 0 0 0 2px rgba(255,107,0,.5), 0 0 60px rgba(255,107,0,.22); }
+        }
+
+        @media (max-width: 640px) {
+            .tc-fx { width: 60px; right: 12px; }
+            .tc-coin { width: 60px; height: 60px; }
+            .tc-msg { font-size: 11px; padding: 5px 10px; margin-right: 9px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tc-coin, .tc-bob, .tc-face::after { animation: none !important; }
+        }
     </style>
     
     <!-- Primary Meta Tags -->
@@ -1089,10 +1159,10 @@
                 <span>Beneficio exclusivo TURINGTECH</span>
             </div>
             <h2 class="font-barlow text-3xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight mb-6">
-                ¿Tienes un proyecto en mente? <span class="text-accentOrange">Regístrate y obtén créditos</span> TURINGTECH
+                ¿Tienes un proyecto en mente? <span class="text-accentOrange">Regístrate y solicita créditos</span> TURINGTECH
             </h2>
             <p class="text-lg text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-                Al registrarte y verificar tu email, recibes <strong class="text-accentOrange">créditos gratuitos</strong> para usar en tu próximo proyecto de automatización, desarrollo o ingeniería de datos con nosotros.
+                Creas tu cuenta y entras al instante. Luego <strong class="text-accentOrange">solicitas créditos</strong> según el proyecto que quieras desarrollar &mdash; paquetes desde 200 hasta 2000 &mdash; y nuestro equipo los aprueba para tu próximo trabajo de automatización, desarrollo o ingeniería de datos.
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center mb-8">
                 <a href="register.html" class="px-10 py-4 rounded-xl bg-gradient-to-r from-accentOrange to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-bold text-lg transition-all shadow-lg hover:shadow-neon-orange duration-300 transform hover:scale-105 inline-flex items-center justify-center gap-2">
@@ -1107,15 +1177,15 @@
             <div class="flex flex-wrap justify-center gap-8 text-sm text-gray-400">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-circle-check text-green-500"></i>
-                    <span>Créditos gratuitos al verificar email</span>
+                    <span>Acceso inmediato, sin verificación</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-green-500"></i>
+                    <span>Paquetes de 200 a 2000 créditos</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-circle-check text-green-500"></i>
                     <span>Úsalos en cualquier servicio</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-circle-check text-green-500"></i>
-                    <span>Sin compromiso</span>
                 </div>
             </div>
         </div>
@@ -1250,6 +1320,79 @@
         <button onclick="toggleWhatsappChat()" class="w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-300">
             <i class="fa-brands fa-whatsapp text-2xl"></i>
         </button>
+    </div>
+
+    <!-- TURINGCOIN FLOTANTE -->
+    <div id="turingcoin-fx" class="tc-fx" role="button" tabindex="0" aria-label="Turingcoin — aplica a créditos, click para ver más" hidden>
+        <span class="tc-close" aria-hidden="true">&times;</span>
+        <div class="tc-msg">Aplica a <strong>créditos</strong> <i class="fa-solid fa-arrow-right"></i></div>
+        <div class="tc-bob">
+            <div class="tc-coin">
+                <div class="tc-face tc-front">
+                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <radialGradient id="tcMetalF" cx="36%" cy="30%" r="80%">
+                                <stop offset="0" stop-color="#ffe7b0"/><stop offset=".4" stop-color="#f4a53a"/>
+                                <stop offset=".76" stop-color="#d67c14"/><stop offset="1" stop-color="#8f4d08"/>
+                            </radialGradient>
+                            <radialGradient id="tcInnerF" cx="42%" cy="36%" r="72%">
+                                <stop offset="0" stop-color="#f9cd82"/><stop offset=".65" stop-color="#df8f2b"/><stop offset="1" stop-color="#a95d0d"/>
+                            </radialGradient>
+                            <path id="tcArcF" d="M100 100 m -63 0 a 63 63 0 1 1 126 0"/>
+                        </defs>
+                        <circle cx="100" cy="100" r="97" fill="url(#tcMetalF)"/>
+                        <circle cx="100" cy="100" r="92" fill="none" stroke="#7a4304" stroke-width="10" stroke-dasharray="3.4 5.2" opacity=".5"/>
+                        <circle cx="100" cy="100" r="84" fill="none" stroke="#ffe9c2" stroke-width="2" opacity=".55"/>
+                        <circle cx="100" cy="100" r="84" fill="none" stroke="#6f3f04" stroke-width="1.5" opacity=".4" transform="translate(0 2)"/>
+                        <circle cx="100" cy="100" r="65" fill="url(#tcInnerF)"/>
+                        <circle cx="100" cy="100" r="65" fill="none" stroke="#6f3f04" stroke-width="2" opacity=".4"/>
+                        <circle cx="100" cy="100" r="65" fill="none" stroke="#ffedcb" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
+                        <g fill="#fff3da" opacity=".45" transform="translate(-2.5 -2.5)">
+                            <path d="M60 130 L88 68 L96 68 L68 130 Z"/><path d="M84 130 L110 74 L118 74 L92 130 Z"/><path d="M108 130 L130 82 L138 82 L116 130 Z"/>
+                        </g>
+                        <g fill="#6b3a03" opacity=".9">
+                            <path d="M60 130 L88 68 L96 68 L68 130 Z"/><path d="M84 130 L110 74 L118 74 L92 130 Z"/><path d="M108 130 L130 82 L138 82 L116 130 Z"/>
+                        </g>
+                        <text font-family="Barlow, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="3.5" fill="#5c3302">
+                            <textPath href="#tcArcF" startOffset="50%" text-anchor="middle">TURINGTECH</textPath>
+                        </text>
+                    </svg>
+                </div>
+                <div class="tc-face tc-back">
+                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <defs>
+                            <radialGradient id="tcMetalB" cx="36%" cy="30%" r="80%">
+                                <stop offset="0" stop-color="#ffe7b0"/><stop offset=".4" stop-color="#f4a53a"/>
+                                <stop offset=".76" stop-color="#d67c14"/><stop offset="1" stop-color="#8f4d08"/>
+                            </radialGradient>
+                            <radialGradient id="tcInnerB" cx="42%" cy="36%" r="72%">
+                                <stop offset="0" stop-color="#f9cd82"/><stop offset=".65" stop-color="#df8f2b"/><stop offset="1" stop-color="#a95d0d"/>
+                            </radialGradient>
+                            <path id="tcArcBt" d="M100 100 m -63 0 a 63 63 0 1 1 126 0"/>
+                            <path id="tcArcBb" d="M100 100 m -63 0 a 63 63 0 1 0 126 0"/>
+                        </defs>
+                        <circle cx="100" cy="100" r="97" fill="url(#tcMetalB)"/>
+                        <circle cx="100" cy="100" r="92" fill="none" stroke="#7a4304" stroke-width="10" stroke-dasharray="3.4 5.2" opacity=".5"/>
+                        <circle cx="100" cy="100" r="84" fill="none" stroke="#ffe9c2" stroke-width="2" opacity=".55"/>
+                        <circle cx="100" cy="100" r="65" fill="url(#tcInnerB)"/>
+                        <circle cx="100" cy="100" r="65" fill="none" stroke="#6f3f04" stroke-width="2" opacity=".4"/>
+                        <circle cx="100" cy="100" r="65" fill="none" stroke="#ffedcb" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
+                        <g fill="#fff3da" opacity=".45" transform="translate(-2.5 -2.5)">
+                            <rect x="62" y="66" width="76" height="14" rx="2"/><rect x="92" y="66" width="16" height="66" rx="2"/><rect x="72" y="92" width="56" height="10" rx="2"/>
+                        </g>
+                        <g fill="#6b3a03" opacity=".92">
+                            <rect x="62" y="66" width="76" height="14" rx="2"/><rect x="92" y="66" width="16" height="66" rx="2"/><rect x="72" y="92" width="56" height="10" rx="2"/>
+                        </g>
+                        <text font-family="Barlow, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="3" fill="#5c3302">
+                            <textPath href="#tcArcBt" startOffset="50%" text-anchor="middle">TURINGCOIN</textPath>
+                        </text>
+                        <text font-family="Barlow, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="4" fill="#5c3302">
+                            <textPath href="#tcArcBb" startOffset="50%" text-anchor="middle">CRÉDITOS</textPath>
+                        </text>
+                    </svg>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL DE AGENDAMIENTO / DIAGNÓSTICO -->
@@ -1662,6 +1805,73 @@
         }
 
         window.addEventListener('resize', resizeCanvas);
+    </script>
+
+    <!-- Turingcoin flotante: aparece ~3s en las esquinas derechas y lleva a la sección de créditos -->
+    <script>
+    (function () {
+        var fx = document.getElementById('turingcoin-fx');
+        if (!fx) return;
+        var target = document.getElementById('creditos');
+        var esMovil = function () { return window.innerWidth < 640; };
+        // solo esquinas derechas, sin tapar contenido ni el botón de WhatsApp (abajo-derecha)
+        var slots = [
+            { top: '100px', bottom: 'auto' },   // arriba-derecha (bajo el header)
+            { top: '46%',   bottom: 'auto' },    // centro-derecha
+            { top: 'auto',  bottom: '96px' }     // abajo-derecha (por encima de WhatsApp)
+        ];
+        var idx = -1, apagado = false, tVisible, tCiclo;
+
+        function aparecer() {
+            if (apagado) return;
+            idx = (idx + 1) % slots.length;
+            if (esMovil() && idx === 1) idx = 2;   // en móvil no usar el centro
+            var s = slots[idx];
+            fx.style.top = s.top; fx.style.bottom = s.bottom;
+            fx.hidden = false;
+            void fx.offsetWidth;                    // reflow para reactivar la transición
+            fx.classList.add('tc-show');
+            tVisible = setTimeout(function () {
+                fx.classList.remove('tc-show');
+                tCiclo = setTimeout(aparecer, 700 + 2600 + Math.random() * 3000);
+            }, 3200);
+        }
+
+        function irACreditos() {
+            fx.classList.remove('tc-show');
+            apagado = true; clearTimeout(tVisible); clearTimeout(tCiclo);
+            if (target) {
+                try { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                catch (x) { target.scrollIntoView(); }
+                // red de seguridad: si el scroll suave no llegó, salto instantáneo nativo
+                setTimeout(function () {
+                    var t = target.getBoundingClientRect().top;
+                    if (t > 140 || t < -120) target.scrollIntoView({ block: 'start' });
+                }, 1100);
+                target.classList.add('tc-highlight');
+                setTimeout(function () { target.classList.remove('tc-highlight'); }, 2600);
+            }
+            setTimeout(function () { apagado = false; aparecer(); }, 60000);
+        }
+
+        fx.addEventListener('click', function (e) {
+            if (e.target.classList.contains('tc-close')) return;
+            irACreditos();
+        });
+        fx.querySelector('.tc-close').addEventListener('click', function (e) {
+            e.stopPropagation();
+            fx.classList.remove('tc-show');
+            apagado = true; clearTimeout(tVisible); clearTimeout(tCiclo);
+            try { sessionStorage.setItem('tc_off', '1'); } catch (x) {}
+        });
+        fx.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); irACreditos(); }
+        });
+
+        var off = false;
+        try { off = sessionStorage.getItem('tc_off') === '1'; } catch (x) {}
+        if (!off) setTimeout(aparecer, 4500);
+    })();
     </script>
   <script src="/js/site-header.js"></script>
 </body>
