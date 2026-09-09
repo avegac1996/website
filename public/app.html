@@ -156,7 +156,20 @@
         a.textContent = initials(state.me ? state.me.name : '');
       }
     }
-    var fmtDate = function (d) { return d ? new Date(d).toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'; };
+    // Parsea una fecha a Date. Si es una fecha pura 'YYYY-MM-DD' (sin hora) la toma
+    // como fecha LOCAL para que no se corra ±1 día por zona horaria. Los timestamps
+    // ISO completos se parsean normal.
+    var parseDateLocal = function (d) {
+      if (!d) return null;
+      var s = String(d).trim();
+      var m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      var dt = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+    var fmtDate = function (d) {
+      var dt = parseDateLocal(d);
+      return dt ? dt.toLocaleDateString('es-EC', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+    };
     var fmtDateTime = function (d) { return d ? new Date(d).toLocaleString('es-EC') : '—'; };
     var isTuringtech = function (u) { return u.role === 'admin' || /@turingtech\.com\.ec\s*$/i.test(u.email || ''); };
     var statusLabel = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
@@ -610,12 +623,43 @@
       return load(current);
     }
 
-    /* ===== Seguimiento de proyectos: Cronograma (Gantt) + Tablero (Kanban), estilo Jira ===== */
+    /* ===== Seguimiento de proyectos: Cronograma (Gantt) + Backlog + Sprint (Scrum) ===== */
     var BOARD_ESTADOS = ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
     var ESTADO_SLUG = { 'Tareas por hacer': 'todo', 'En curso': 'prog', 'Client Review': 'review', 'Control de calidad': 'qa', 'Finalizada': 'done', 'Bloqueado': 'blocked' };
+    var ESTADO_FINAL = 'Finalizada';
+    var FIBO = [1, 2, 3, 5, 8, 13, 21];
+    var PRIO_META = {
+      baja: { c: '#64748b', t: 'Baja', i: 'fa-angle-down' },
+      media: { c: '#3b82f6', t: 'Media', i: 'fa-equals' },
+      alta: { c: '#f59e0b', t: 'Alta', i: 'fa-angle-up' },
+      urgente: { c: '#ef4444', t: 'Urgente', i: 'fa-angles-up' }
+    };
     var PX_DAY = 3;
-    var boardState = { tasks: [], meta: {}, tab: 'cronograma', filtros: { proyecto: '', responsable: '', tipo: '', q: '' }, collapsed: {} };
+    var boardState = {
+      tasks: [], meta: {}, tab: 'sprint',
+      proyectoId: '',        // proyecto activo para Backlog / Sprint
+      sprintSel: {},          // { [projectId]: sprintId }
+      filtros: { proyecto: '', responsable: '', tipo: '', q: '' },
+      collapsed: {}
+    };
     var dstr = function (d) { return d ? String(d).slice(0, 10) : null; };
+    var boardSprintsDe = function (pid) {
+      return (boardState.meta.sprints || []).filter(function (s) { return String(s.project_id) === String(pid); });
+    };
+    function boardCurrentProjectId() {
+      var ps = boardState.meta.projects || [];
+      if (!ps.length) return null;
+      var f = ps.filter(function (p) { return String(p.id) === String(boardState.proyectoId); })[0];
+      return f ? f.id : ps[0].id;
+    }
+    function boardSprintSel(pid) {
+      var ss = boardSprintsDe(pid);
+      if (!ss.length) return null;
+      var chosen = boardState.sprintSel[pid];
+      if (chosen && ss.filter(function (s) { return String(s.id) === String(chosen); })[0]) return Number(chosen);
+      var activo = ss.filter(function (s) { return s.estado === 'activo'; })[0];
+      return activo ? activo.id : ss[0].id;
+    }
 
     function viewBoard() {
       return API.request('/api/board/tasks').then(function (r) {
@@ -651,41 +695,135 @@
           '<option value="">' + label + '</option>' + opts.map(function (o) { return opt(o, val); }).join('') + '</select>';
       };
       var isAdmin = !!boardState.meta.isAdmin;
-      var hayProyectos = (boardState.meta.projects || []).length > 0;
+      var projects = boardState.meta.projects || [];
+      var hayProyectos = projects.length > 0;
+      var t = boardState.tab;
 
-      var tabs = '<button class="tab ' + (boardState.tab === 'cronograma' ? 'active' : '') + '" data-tab="cronograma"><i class="fa-solid fa-chart-gantt"></i> Cronograma</button>' +
-        '<button class="tab ' + (boardState.tab === 'tablero' ? 'active' : '') + '" data-tab="tablero"><i class="fa-solid fa-table-columns"></i> Tablero</button>' +
-        (isAdmin ? '<button class="tab ' + (boardState.tab === 'proyectos' ? 'active' : '') + '" data-tab="proyectos"><i class="fa-solid fa-folder-open"></i> Proyectos</button>' : '');
+      var tabs = '<button class="tab ' + (t === 'cronograma' ? 'active' : '') + '" data-tab="cronograma"><i class="fa-solid fa-chart-gantt"></i> Cronograma</button>' +
+        '<button class="tab ' + (t === 'backlog' ? 'active' : '') + '" data-tab="backlog"><i class="fa-solid fa-layer-group"></i> Backlog</button>' +
+        '<button class="tab ' + (t === 'sprint' ? 'active' : '') + '" data-tab="sprint"><i class="fa-solid fa-person-running"></i> Sprint</button>' +
+        (isAdmin ? '<button class="tab ' + (t === 'proyectos' ? 'active' : '') + '" data-tab="proyectos"><i class="fa-solid fa-folder-open"></i> Proyectos</button>' : '');
 
-      var toolbar = boardState.tab === 'proyectos' ? '' :
-        '<div class="bt-toolbar">' +
+      var toolbar = '';
+      if (t === 'cronograma') {
+        toolbar = '<div class="bt-toolbar">' +
           '<input id="bt_q" class="form-input" placeholder="Buscar actividad..." style="max-width:220px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
           sel('bt_proj', 'Todos los proyectos', boardProjectNames(), f.proyecto) +
           sel('bt_resp', 'Todos los responsables', boardResponsables(), f.responsable) +
           sel('bt_tipo', 'Todos los tipos', boardState.meta.tipos || [], f.tipo) +
-          '<div style="flex:1;"></div>' +
-          '<button class="btn btn-primary btn-small" id="bt_new" ' + (hayProyectos ? '' : 'disabled') + '><i class="fa-solid fa-plus"></i> Nueva actividad</button>' +
         '</div>';
+      } else if (t === 'backlog' || t === 'sprint') {
+        var pid = boardCurrentProjectId();
+        var projOpts = projects.map(function (p) {
+          return '<option value="' + p.id + '"' + (String(p.id) === String(pid) ? ' selected' : '') + '>' + esc(p.nombre) + '</option>';
+        }).join('');
+        toolbar = '<div class="bt-toolbar">' +
+          '<label class="text-gray text-xs" style="align-self:center;">Proyecto</label>' +
+          '<select id="bt_proj_id" class="form-input" style="width:auto;min-width:180px;padding:8px 10px;font-size:13px;"' + (hayProyectos ? '' : ' disabled') + '>' + projOpts + '</select>' +
+          '<input id="bt_q" class="form-input" placeholder="Buscar tarea..." style="max-width:200px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
+          '<div style="flex:1;"></div>' +
+          '<button class="btn btn-primary btn-small" id="bt_new" ' + (hayProyectos ? '' : 'disabled') + '><i class="fa-solid fa-plus"></i> Nueva tarea</button>' +
+        '</div>';
+      }
 
       el('view').innerHTML = '<div class="tabs" style="margin-bottom:14px;">' + tabs + '</div>' + toolbar + '<div id="boardBody"></div>';
 
       document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
         b.addEventListener('click', function () { boardState.tab = this.getAttribute('data-tab'); boardRender(); });
       });
-      if (boardState.tab !== 'proyectos') {
-        el('bt_q').addEventListener('input', function () { f.q = this.value; boardRenderBody(); });
-        el('bt_proj').addEventListener('change', function () { f.proyecto = this.value; boardRenderBody(); });
-        el('bt_resp').addEventListener('change', function () { f.responsable = this.value; boardRenderBody(); });
-        el('bt_tipo').addEventListener('change', function () { f.tipo = this.value; boardRenderBody(); });
-        el('bt_new').addEventListener('click', function () { if (hayProyectos) boardEdit(null); });
-      }
+      if (el('bt_q')) el('bt_q').addEventListener('input', function () { f.q = this.value; boardRenderBody(); });
+      if (el('bt_proj')) el('bt_proj').addEventListener('change', function () { f.proyecto = this.value; boardRenderBody(); });
+      if (el('bt_resp')) el('bt_resp').addEventListener('change', function () { f.responsable = this.value; boardRenderBody(); });
+      if (el('bt_tipo')) el('bt_tipo').addEventListener('change', function () { f.tipo = this.value; boardRenderBody(); });
+      if (el('bt_proj_id')) el('bt_proj_id').addEventListener('change', function () { boardState.proyectoId = this.value; boardRenderBody(); });
+      if (el('bt_new')) el('bt_new').addEventListener('click', function () {
+        var pre = { project_id: boardCurrentProjectId() };
+        if (boardState.tab === 'sprint') pre.sprint_id = boardSprintSel(pre.project_id);
+        boardEdit(null, pre);
+      });
       boardRenderBody();
     }
 
     function boardRenderBody() {
       if (boardState.tab === 'proyectos') renderProyectos();
-      else if (boardState.tab === 'tablero') renderTablero();
+      else if (boardState.tab === 'backlog') renderBacklog();
+      else if (boardState.tab === 'sprint') renderSprint();
       else renderCronograma();
+    }
+
+    /* ---- Drag & drop de tarjetas con línea indicadora (estilo Odoo/CRM) ---- */
+    function boardDnD(scopeEl, onDrop) {
+      var dragId = null, marker = null;
+      function removeMarker() { if (marker && marker.parentNode) marker.parentNode.removeChild(marker); marker = null; }
+      function getMarker() {
+        if (!marker) { marker = document.createElement('div'); marker.className = 'dnd-marker'; }
+        return marker;
+      }
+      function refAt(zone, y) {
+        var cards = Array.prototype.slice.call(zone.querySelectorAll('.dnd-card:not(.dragging)'));
+        for (var i = 0; i < cards.length; i++) {
+          var r = cards[i].getBoundingClientRect();
+          if (y < r.top + r.height / 2) return cards[i];
+        }
+        return null;
+      }
+      scopeEl.querySelectorAll('.dnd-card').forEach(function (card) {
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', function (e) {
+          dragId = card.getAttribute('data-id');
+          boardState.dragging = true;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain', dragId); } catch (x) {}
+        });
+        card.addEventListener('dragend', function () {
+          card.classList.remove('dragging');
+          scopeEl.querySelectorAll('.dnd-over').forEach(function (z) { z.classList.remove('dnd-over'); });
+          removeMarker();
+          setTimeout(function () { dragId = null; boardState.dragging = false; }, 60);
+        });
+      });
+      scopeEl.querySelectorAll('.dnd-zone').forEach(function (zone) {
+        zone.addEventListener('dragover', function (e) {
+          if (!dragId) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          zone.classList.add('dnd-over');
+          var ref = refAt(zone, e.clientY);
+          var mk = getMarker();
+          if (ref) zone.insertBefore(mk, ref); else zone.appendChild(mk);
+        });
+        zone.addEventListener('dragleave', function (e) { if (e.target === zone) zone.classList.remove('dnd-over'); });
+        zone.addEventListener('drop', function (e) {
+          if (!dragId) return;
+          e.preventDefault();
+          zone.classList.remove('dnd-over');
+          var ref = refAt(zone, e.clientY);
+          var ids = Array.prototype.slice.call(zone.querySelectorAll('.dnd-card'))
+            .map(function (c) { return c.getAttribute('data-id'); })
+            .filter(function (x) { return x !== dragId; });
+          var idx = ref ? ids.indexOf(ref.getAttribute('data-id')) : ids.length;
+          if (idx < 0) idx = ids.length;
+          ids.splice(idx, 0, dragId);
+          removeMarker();
+          onDrop({ id: Number(dragId), zone: zone, orderedIds: ids.map(Number) });
+        });
+      });
+    }
+
+    function boardTareaLocal(id) {
+      return boardState.tasks.filter(function (x) { return String(x.id) === String(id); })[0];
+    }
+    // aplica localmente el resultado de un drop y persiste; en error recarga
+    function boardMover(id, sprint_id, estado, orderedIds, rerender) {
+      var t = boardTareaLocal(id);
+      if (t) { t.sprint_id = sprint_id; t.estado = estado; }
+      orderedIds.forEach(function (tid, i) { var x = boardTareaLocal(tid); if (x) x.orden = i + 1; });
+      if (rerender) rerender();
+      API.request('/api/board/tasks/' + id + '/mover', {
+        method: 'PATCH',
+        body: JSON.stringify({ sprint_id: sprint_id, estado: estado, orden_ids: orderedIds })
+      }).catch(function (err) { showAlert(err.message, 'error'); viewBoard(); });
     }
 
     /* ---- Proyectos (admin) ---- */
@@ -759,8 +897,8 @@
       var all = [];
       list.forEach(function (t) { if (t.fecha) all.push(dstr(t.fecha)); if (t.fecha_fin) all.push(dstr(t.fecha_fin)); });
       var today = new Date(); today.setHours(0, 0, 0, 0);
-      var minD = all.length ? new Date(all.reduce(function (a, b) { return a < b ? a : b; })) : new Date(today);
-      var maxD = all.length ? new Date(all.reduce(function (a, b) { return a > b ? a : b; })) : new Date(today);
+      var minD = all.length ? parseDateLocal(all.reduce(function (a, b) { return a < b ? a : b; })) : new Date(today);
+      var maxD = all.length ? parseDateLocal(all.reduce(function (a, b) { return a > b ? a : b; })) : new Date(today);
       var start = new Date(minD.getFullYear(), minD.getMonth(), 1);
       var end = new Date(maxD.getFullYear(), maxD.getMonth() + 1, 0);
       // asegurar al menos 7 meses de ventana
@@ -777,7 +915,7 @@
         cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
       }
       var totalW = months.reduce(function (a, m) { return a + m.w; }, 0);
-      var off = function (d) { return Math.round((new Date(dstr(d)) - start) / 86400000); };
+      var off = function (d) { return Math.round((parseDateLocal(d) - start) / 86400000); };
       var todayLeft = off(today) * PX_DAY;
 
       var groups = {};
@@ -865,60 +1003,241 @@
       });
     }
 
-    /* ---- Tablero (Kanban) ---- */
+    function emptyProjectsMsg() {
+      return '<div class="glass-panel" style="padding:30px;text-align:center;"><p class="text-gray">' +
+        (boardState.meta.isAdmin ? 'Creá un proyecto en la pestaña Proyectos para empezar.' : 'Todavía no perteneces a ningún proyecto.') + '</p></div>';
+    }
+
+    /* ---- Tarjeta ---- */
     function boardCard(t) {
-      var resp = t.responsable ? '<span class="bt-resp" title="' + esc(t.responsable) + '">' + esc(initials(t.responsable)) + '</span>' : '';
+      var resp = t.responsable
+        ? '<span class="bt-resp" title="' + esc(t.responsable) + '">' + esc(initials(t.responsable)) + '</span>'
+        : '<span class="bt-resp bt-resp-none" title="Sin asignar">?</span>';
       var tipoCls = 'bt-tag tipo-' + (t.tipo || '').toLowerCase().replace(/[^a-z]/g, '');
-      return '<div class="bt-card" draggable="true" data-id="' + t.id + '">' +
-        '<div class="bt-title">' + esc(t.titulo) + '</div>' +
+      var pm = PRIO_META[t.prioridad] || PRIO_META.media;
+      var prio = '<span class="bt-prio" title="Prioridad: ' + pm.t + '" style="color:' + pm.c + ';"><i class="fa-solid ' + pm.i + '"></i></span>';
+      var pts = (t.puntos != null && t.puntos !== '') ? '<span class="bt-pts" title="Story points">' + esc(t.puntos) + '</span>' : '';
+      return '<div class="bt-card dnd-card" data-id="' + t.id + '">' +
+        '<div class="bt-title">' + prio + esc(t.titulo) + '</div>' +
         '<div class="bt-meta">' +
-          (t.proyecto ? '<span class="bt-tag bt-proj">' + esc(t.proyecto.length > 24 ? t.proyecto.slice(0, 22) + '…' : t.proyecto) + '</span>' : '') +
           (t.tipo ? '<span class="' + tipoCls + '">' + esc(t.tipo) + '</span>' : '') +
         '</div>' +
-        '<div class="bt-foot"><span class="text-gray text-xs">' + (t.fecha ? fmtDate(t.fecha) : '') + (t.horas ? ' &middot; ' + t.horas + 'h' : '') + '</span>' + resp + '</div>' +
+        '<div class="bt-foot">' +
+          '<span class="text-gray text-xs">' + (t.fecha ? fmtDate(t.fecha) : '') + (t.horas ? ' &middot; ' + t.horas + 'h' : '') + '</span>' +
+          '<span style="display:flex;align-items:center;gap:6px;">' + pts + resp + '</span>' +
+        '</div>' +
       '</div>';
     }
 
-    function renderTablero() {
-      var list = boardFiltered();
-      var cols = BOARD_ESTADOS.map(function (e) {
-        var items = list.filter(function (t) { return t.estado === e; });
-        return '<div class="bt-col"><div class="bt-col-head"><span>' + e + '</span><span class="bt-count">' + items.length + '</span></div>' +
-          '<div class="bt-col-body" data-estado="' + esc(e) + '">' + items.map(boardCard).join('') + '</div></div>';
-      }).join('');
-      el('boardBody').innerHTML = '<div class="bt-board">' + cols + '</div>';
+    /* ---- Backlog ---- */
+    function renderBacklog() {
+      var pid = boardCurrentProjectId();
+      if (!pid) { el('boardBody').innerHTML = emptyProjectsMsg(); return; }
+      var q = (boardState.filtros.q || '').toLowerCase();
+      var tasks = boardState.tasks.filter(function (t) {
+        return String(t.project_id) === String(pid) && !t.sprint_id &&
+          (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
+      }).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0) || a.id - b.id; });
 
-      document.querySelectorAll('.bt-card').forEach(function (card) {
-        card.addEventListener('click', function (e) {
-          if (card.classList.contains('dragging')) return;
-          var t = boardState.tasks.filter(function (x) { return String(x.id) === card.getAttribute('data-id'); })[0];
-          if (t) boardEdit(t);
-        });
-        card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', card.getAttribute('data-id')); card.classList.add('dragging'); });
-        card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
+      var sprints = boardSprintsDe(pid).filter(function (s) { return s.estado !== 'cerrado'; });
+      var moverOpts = sprints.map(function (s) { return '<option value="' + s.id + '">' + esc(s.nombre) + '</option>'; }).join('');
+
+      var chips = sprints.map(function (s) {
+        var n = boardState.tasks.filter(function (t) { return String(t.sprint_id) === String(s.id); }).length;
+        return '<div class="bl-sprint dnd-sprint" data-sprint="' + s.id + '">' +
+          '<div><strong>' + esc(s.nombre) + '</strong>' + (s.estado === 'activo' ? ' <span class="spr-badge activo">activo</span>' : '') + '</div>' +
+          '<span class="text-gray text-xs">' + n + ' tarea' + (n === 1 ? '' : 's') + ' · soltá una acá</span>' +
+        '</div>';
+      }).join('') || '<p class="text-gray text-xs">Sin sprints. Creá uno en la pestaña <strong>Sprint</strong>.</p>';
+
+      var rows = tasks.map(function (t) {
+        var pm = PRIO_META[t.prioridad] || PRIO_META.media;
+        return '<div class="bl-row dnd-card" data-id="' + t.id + '">' +
+          '<i class="fa-solid fa-grip-vertical bl-grip"></i>' +
+          '<span class="bt-prio" style="color:' + pm.c + ';" title="' + pm.t + '"><i class="fa-solid ' + pm.i + '"></i></span>' +
+          '<span class="bl-title" data-edit="' + t.id + '">' + esc(t.titulo) + '</span>' +
+          (t.tipo ? '<span class="bt-tag tipo-' + (t.tipo || '').toLowerCase().replace(/[^a-z]/g, '') + '">' + esc(t.tipo) + '</span>' : '') +
+          (t.puntos != null ? '<span class="bt-pts">' + esc(t.puntos) + '</span>' : '') +
+          (t.responsable ? '<span class="bt-resp" title="' + esc(t.responsable) + '">' + esc(initials(t.responsable)) + '</span>' : '<span class="bt-resp bt-resp-none">?</span>') +
+          (moverOpts ? '<select class="bl-move form-input" data-id="' + t.id + '"><option value="">→ a sprint…</option>' + moverOpts + '</select>' : '') +
+        '</div>';
+      }).join('') || '<p class="text-gray text-center" style="padding:24px 0;">El backlog está vacío. Usá "Nueva tarea".</p>';
+
+      el('boardBody').innerHTML =
+        '<div class="bl-wrap">' +
+          '<div class="bl-main glass-panel"><div class="section-heading" style="text-align:left;margin-bottom:12px;">Backlog (' + tasks.length + ')</div>' +
+            '<div class="dnd-zone bl-list">' + rows + '</div></div>' +
+          '<div class="bl-side glass-panel"><div class="section-heading" style="text-align:left;margin-bottom:12px;">Sprints</div>' + chips + '</div>' +
+        '</div>';
+
+      boardDnD(el('boardBody'), function (d) {
+        var t = boardTareaLocal(d.id);
+        boardMover(d.id, null, t ? t.estado : 'Tareas por hacer', d.orderedIds, renderBacklog);
       });
-      document.querySelectorAll('.bt-col-body').forEach(function (bodyEl) {
-        bodyEl.addEventListener('dragover', function (e) { e.preventDefault(); bodyEl.classList.add('drop-hover'); });
-        bodyEl.addEventListener('dragleave', function () { bodyEl.classList.remove('drop-hover'); });
-        bodyEl.addEventListener('drop', function (e) {
-          e.preventDefault(); bodyEl.classList.remove('drop-hover');
-          var id = e.dataTransfer.getData('text/plain'), estado = bodyEl.getAttribute('data-estado');
-          var t = boardState.tasks.filter(function (x) { return String(x.id) === id; })[0];
-          if (!t || t.estado === estado) return;
-          t.estado = estado; renderTablero();
-          API.request('/api/board/tasks/' + id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: estado }) })
-            .catch(function (err) { showAlert(err.message, 'error'); viewBoard(); });
+      el('boardBody').querySelectorAll('.dnd-sprint').forEach(function (chip) {
+        chip.addEventListener('dragover', function (e) { e.preventDefault(); chip.classList.add('dnd-over'); });
+        chip.addEventListener('dragleave', function () { chip.classList.remove('dnd-over'); });
+        chip.addEventListener('drop', function (e) {
+          e.preventDefault(); chip.classList.remove('dnd-over');
+          var id = Number(e.dataTransfer.getData('text/plain'));
+          var t = boardTareaLocal(id);
+          if (t) boardMover(id, Number(chip.getAttribute('data-sprint')), t.estado, [], function () { viewBoard(); });
+        });
+      });
+      el('boardBody').querySelectorAll('.bl-move').forEach(function (sc) {
+        sc.addEventListener('change', function () {
+          if (!this.value) return;
+          var id = Number(this.getAttribute('data-id')); var t = boardTareaLocal(id);
+          boardMover(id, Number(this.value), t ? t.estado : 'Tareas por hacer', [], function () { viewBoard(); });
+        });
+      });
+      el('boardBody').querySelectorAll('[data-edit]').forEach(function (s) {
+        s.addEventListener('click', function () {
+          if (boardState.dragging) return;
+          var t = boardTareaLocal(this.getAttribute('data-edit')); if (t) boardEdit(t);
         });
       });
     }
 
-    /* ---- Editor de actividad ---- */
-    function boardEdit(t) {
+    /* ---- Sprint (Kanban del sprint) ---- */
+    function sprintEstado(sprint, estado) {
+      API.request('/api/board/sprints/' + sprint.id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: estado }) })
+        .then(function (r) {
+          var msg = estado === 'activo' ? 'Sprint activado.' : estado === 'cerrado' ? 'Sprint cerrado.' : 'Sprint actualizado.';
+          if (r && r.tareas_devueltas_al_backlog) msg += ' ' + r.tareas_devueltas_al_backlog + ' tarea(s) volvieron al Backlog.';
+          showAlert(msg, 'success'); viewBoard();
+        })
+        .catch(function (err) { showAlert(err.message, 'error'); });
+    }
+
+    function renderSprint() {
+      var pid = boardCurrentProjectId();
+      if (!pid) { el('boardBody').innerHTML = emptyProjectsMsg(); return; }
+      var sprints = boardSprintsDe(pid);
+      if (!sprints.length) {
+        el('boardBody').innerHTML = '<div class="glass-panel" style="padding:30px;text-align:center;">' +
+          '<p class="text-gray" style="margin-bottom:14px;">Este proyecto no tiene sprints todavía.</p>' +
+          '<button class="btn btn-primary btn-small" id="spr_new"><i class="fa-solid fa-plus"></i> Crear primer sprint</button></div>';
+        el('spr_new').addEventListener('click', function () { sprintEdit(pid, null); });
+        return;
+      }
+      var sid = boardSprintSel(pid);
+      var sprint = sprints.filter(function (s) { return String(s.id) === String(sid); })[0] || sprints[0];
+      var q = (boardState.filtros.q || '').toLowerCase();
+      var tasks = boardState.tasks.filter(function (t) {
+        return String(t.sprint_id) === String(sprint.id) && (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
+      });
+
+      var totalPts = 0, donePts = 0, doneN = 0;
+      tasks.forEach(function (t) {
+        var p = Number(t.puntos) || 0; totalPts += p;
+        if (t.estado === ESTADO_FINAL) { donePts += p; doneN++; }
+      });
+      var pct = tasks.length ? Math.round((totalPts ? donePts / totalPts : doneN / tasks.length) * 100) : 0;
+
+      var selOpts = sprints.map(function (s) {
+        return '<option value="' + s.id + '"' + (String(s.id) === String(sprint.id) ? ' selected' : '') + '>' +
+          esc(s.nombre) + (s.estado === 'activo' ? ' • activo' : s.estado === 'cerrado' ? ' • cerrado' : '') + '</option>';
+      }).join('');
+
+      var acciones = '';
+      if (sprint.estado === 'planificado') acciones += '<button class="btn btn-primary btn-small" id="spr_activar"><i class="fa-solid fa-play"></i> Activar</button>';
+      if (sprint.estado === 'activo') acciones += '<button class="btn btn-secondary btn-small" id="spr_cerrar"><i class="fa-solid fa-flag-checkered"></i> Cerrar</button>';
+      acciones += '<button class="btn btn-secondary btn-small" id="spr_edit" title="Editar sprint"><i class="fa-solid fa-pen"></i></button>';
+      acciones += '<button class="btn btn-error btn-small" id="spr_del" title="Eliminar sprint"><i class="fa-solid fa-trash"></i></button>';
+
+      var rango = (sprint.fecha_inicio ? fmtDate(sprint.fecha_inicio) : '—') + '  →  ' + (sprint.fecha_fin ? fmtDate(sprint.fecha_fin) : '—');
+      var header = '<div class="spr-head glass-panel">' +
+        '<div class="spr-head-top">' +
+          '<select id="spr_sel" class="form-input" style="width:auto;min-width:170px;padding:7px 10px;font-size:13px;">' + selOpts + '</select>' +
+          '<span class="spr-badge ' + sprint.estado + '">' + sprint.estado + '</span>' +
+          '<button class="btn btn-secondary btn-small" id="spr_new"><i class="fa-solid fa-plus"></i> Sprint</button>' +
+          '<div style="flex:1;"></div>' + acciones +
+        '</div>' +
+        (sprint.objetivo ? '<div class="spr-goal">' + esc(sprint.objetivo) + '</div>' : '') +
+        '<div class="spr-meta"><span><i class="fa-regular fa-calendar"></i> ' + rango + '</span>' +
+          '<span>' + doneN + '/' + tasks.length + ' tareas</span>' +
+          (totalPts ? '<span>' + donePts + '/' + totalPts + ' pts</span>' : '') + '</div>' +
+        '<div class="spr-bar"><div class="spr-bar-fill" style="width:' + pct + '%;"></div></div>' +
+      '</div>';
+
+      var colsHtml = BOARD_ESTADOS.map(function (e) {
+        var items = tasks.filter(function (t) { return t.estado === e; })
+          .sort(function (a, b) { return (a.orden || 0) - (b.orden || 0) || a.id - b.id; });
+        return '<div class="bt-col"><div class="bt-col-head"><span>' + e + '</span><span class="bt-count">' + items.length + '</span></div>' +
+          '<div class="bt-col-body dnd-zone" data-estado="' + esc(e) + '">' + items.map(boardCard).join('') + '</div></div>';
+      }).join('');
+
+      el('boardBody').innerHTML = header + '<div class="bt-board">' + colsHtml + '</div>';
+
+      el('spr_sel').addEventListener('change', function () { boardState.sprintSel[pid] = this.value; renderSprint(); });
+      el('spr_new').addEventListener('click', function () { sprintEdit(pid, null); });
+      if (el('spr_edit')) el('spr_edit').addEventListener('click', function () { sprintEdit(pid, sprint); });
+      if (el('spr_activar')) el('spr_activar').addEventListener('click', function () { sprintEstado(sprint, 'activo'); });
+      if (el('spr_cerrar')) el('spr_cerrar').addEventListener('click', function () {
+        if (confirm('¿Cerrar "' + sprint.nombre + '"? Las tareas sin finalizar vuelven al Backlog.')) sprintEstado(sprint, 'cerrado');
+      });
+      if (el('spr_del')) el('spr_del').addEventListener('click', function () {
+        if (!confirm('¿Eliminar el sprint "' + sprint.nombre + '"? Sus tareas vuelven al Backlog.')) return;
+        API.request('/api/board/sprints/' + sprint.id, { method: 'DELETE' })
+          .then(function () { showAlert('Sprint eliminado.', 'success'); delete boardState.sprintSel[pid]; viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+
+      boardDnD(el('boardBody'), function (d) {
+        boardMover(d.id, sprint.id, d.zone.getAttribute('data-estado'), d.orderedIds, renderSprint);
+      });
+      el('boardBody').querySelectorAll('.bt-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+          if (boardState.dragging) return;
+          var t = boardTareaLocal(card.getAttribute('data-id')); if (t) boardEdit(t);
+        });
+      });
+    }
+
+    /* ---- Editor de sprint ---- */
+    function sprintEdit(pid, s) {
+      var isNew = !s;
+      s = s || { nombre: '', objetivo: '', fecha_inicio: '', fecha_fin: '' };
+      el('view').innerHTML =
+        '<button class="btn btn-secondary btn-small" id="spr_back"><i class="fa-solid fa-arrow-left"></i> Volver</button>' +
+        '<div class="glass-panel" style="padding:28px;max-width:520px;margin-top:14px;">' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? 'Nuevo sprint' : 'Editar sprint') + '</div>' +
+          '<form id="sprForm">' +
+            '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input id="spr_nombre" class="form-input" required value="' + esc(s.nombre) + '"></div>' +
+            '<div class="form-group"><label>Objetivo del sprint</label><textarea id="spr_obj" class="form-input" rows="2">' + esc(s.objetivo || '') + '</textarea></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+              '<div class="form-group"><label>Inicio</label><input type="date" id="spr_ini" class="form-input" value="' + esc(dstr(s.fecha_inicio) || '') + '"></div>' +
+              '<div class="form-group"><label>Fin</label><input type="date" id="spr_fin" class="form-input" value="' + esc(dstr(s.fecha_fin) || '') + '"></div>' +
+            '</div>' +
+            '<button type="submit" class="btn btn-primary" id="spr_save">' + (isNew ? 'Crear sprint' : 'Guardar') + '</button>' +
+          '</form>' +
+        '</div>';
+      el('spr_back').addEventListener('click', boardRender);
+      el('sprForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = el('spr_save'); btn.disabled = true; btn.textContent = 'Guardando...';
+        var body = {
+          project_id: pid, nombre: el('spr_nombre').value.trim(), objetivo: el('spr_obj').value.trim(),
+          fecha_inicio: el('spr_ini').value || null, fecha_fin: el('spr_fin').value || null
+        };
+        var req = isNew
+          ? API.request('/api/board/sprints', { method: 'POST', body: JSON.stringify(body) })
+          : API.request('/api/board/sprints/' + s.id, { method: 'PUT', body: JSON.stringify(body) });
+        req.then(function () { showAlert(isNew ? 'Sprint creado.' : 'Sprint actualizado.', 'success'); viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear sprint' : 'Guardar'; });
+      });
+    }
+
+    /* ---- Editor de tarea ---- */
+    function boardEdit(t, pre) {
       var isNew = !t;
-      t = t || { titulo: '', project_id: '', assignee_id: '', tipo: 'Tarea', estado: 'Tareas por hacer', fecha: '', fecha_fin: '', horas: '', observaciones: '' };
+      pre = pre || {};
+      t = t || { titulo: '', project_id: pre.project_id || '', assignee_id: '', sprint_id: pre.sprint_id || '', tipo: 'Tarea', estado: 'Tareas por hacer', prioridad: 'media', fecha: '', fecha_fin: '', horas: '', puntos: '', observaciones: '' };
       var m = boardState.meta;
       var projs = m.projects || [];
       var memByProj = m.membersByProject || {};
+      var prioridades = m.prioridades || ['baja', 'media', 'alta', 'urgente'];
       var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
       var curProj = t.project_id ? Number(t.project_id) : (projs[0] ? projs[0].id : '');
 
@@ -929,55 +1248,81 @@
           return '<option value="' + u.id + '"' + (String(u.id) === String(t.assignee_id) ? ' selected' : '') + '>' + esc(u.name) + '</option>';
         }).join('');
       };
+      var sprintOptsFor = function (pid) {
+        var ss = boardSprintsDe(pid).filter(function (s) { return s.estado !== 'cerrado'; });
+        return '<option value="">Backlog (sin sprint)</option>' + ss.map(function (s) {
+          return '<option value="' + s.id + '"' + (String(s.id) === String(t.sprint_id) ? ' selected' : '') + '>' + esc(s.nombre) + (s.estado === 'activo' ? ' • activo' : '') + '</option>';
+        }).join('');
+      };
+      var chipsHtml = function (v) {
+        return '<div class="sp-chips" id="bt_f_pts">' +
+          '<button type="button" class="sp-chip' + (v == null || v === '' ? ' active' : '') + '" data-v="">–</button>' +
+          FIBO.map(function (n) { return '<button type="button" class="sp-chip' + (String(v) === String(n) ? ' active' : '') + '" data-v="' + n + '">' + n + '</button>'; }).join('') +
+        '</div>';
+      };
 
       el('view').innerHTML =
         '<button class="btn btn-secondary btn-small" id="bt_back"><i class="fa-solid fa-arrow-left"></i> Volver</button>' +
         '<div class="glass-panel" style="padding:28px;max-width:640px;margin-top:14px;">' +
-          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? 'Nueva actividad' : 'Editar actividad') + '</div>' +
+          '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? 'Nueva tarea' : 'Editar tarea') + '</div>' +
           '<form id="btForm">' +
             '<div class="form-group"><label>Título / descripción <span class="form-required-marker">*</span></label>' +
               '<textarea id="bt_titulo" class="form-input" rows="2" required>' + esc(t.titulo) + '</textarea></div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
               '<div class="form-group"><label>Proyecto <span class="form-required-marker">*</span></label><select id="bt_f_proj" class="form-input" required>' + projOpts + '</select></div>' +
+              '<div class="form-group"><label>Sprint</label><select id="bt_f_sprint" class="form-input">' + sprintOptsFor(curProj) + '</select></div>' +
               '<div class="form-group"><label>Responsable</label><select id="bt_f_resp" class="form-input">' + respOptsFor(curProj) + '</select></div>' +
               '<div class="form-group"><label>Tipo</label><select id="bt_f_tipo" class="form-input">' + opt(m.tipos || ['Tarea'], t.tipo) + '</select></div>' +
               '<div class="form-group"><label>Estado</label><select id="bt_f_estado" class="form-input">' + opt(BOARD_ESTADOS, t.estado) + '</select></div>' +
+              '<div class="form-group"><label>Prioridad</label><select id="bt_f_prio" class="form-input">' + opt(prioridades, t.prioridad || 'media') + '</select></div>' +
               '<div class="form-group"><label>Inicio</label><input type="date" id="bt_f_fecha" class="form-input" value="' + esc(dstr(t.fecha) || '') + '"></div>' +
               '<div class="form-group"><label>Fin</label><input type="date" id="bt_f_fin" class="form-input" value="' + esc(dstr(t.fecha_fin) || '') + '"></div>' +
               '<div class="form-group"><label>Horas</label><input type="number" step="0.5" min="0" id="bt_f_horas" class="form-input" value="' + esc(t.horas != null ? t.horas : '') + '"></div>' +
             '</div>' +
+            '<div class="form-group"><label>Story points</label>' + chipsHtml(t.puntos) + '</div>' +
             '<div class="form-group"><label>Observaciones</label><textarea id="bt_f_obs" class="form-input" rows="2">' + esc(t.observaciones || '') + '</textarea></div>' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-              '<button type="submit" class="btn btn-primary" id="bt_save">' + (isNew ? 'Crear actividad' : 'Guardar') + '</button>' +
+              '<button type="submit" class="btn btn-primary" id="bt_save">' + (isNew ? 'Crear tarea' : 'Guardar') + '</button>' +
               (isNew ? '' : '<button type="button" class="btn btn-error btn-small" id="bt_del">Eliminar</button>') +
             '</div>' +
           '</form>' +
         '</div>';
 
+      var puntosSel = (t.puntos != null ? String(t.puntos) : '');
       el('bt_back').addEventListener('click', boardRender);
       el('bt_f_proj').addEventListener('change', function () {
         el('bt_f_resp').innerHTML = respOptsFor(Number(this.value));
+        el('bt_f_sprint').innerHTML = sprintOptsFor(Number(this.value));
+      });
+      el('bt_f_pts').querySelectorAll('.sp-chip').forEach(function (c) {
+        c.addEventListener('click', function () {
+          el('bt_f_pts').querySelectorAll('.sp-chip').forEach(function (x) { x.classList.remove('active'); });
+          c.classList.add('active'); puntosSel = c.getAttribute('data-v');
+        });
       });
       el('btForm').addEventListener('submit', function (e) {
         e.preventDefault();
         var btn = el('bt_save'); btn.disabled = true; btn.textContent = 'Guardando...';
         var body = {
           titulo: el('bt_titulo').value.trim(), project_id: el('bt_f_proj').value || null,
+          sprint_id: el('bt_f_sprint').value || null,
           assignee_id: el('bt_f_resp').value || null, tipo: el('bt_f_tipo').value, estado: el('bt_f_estado').value,
+          prioridad: el('bt_f_prio').value,
           fecha: el('bt_f_fecha').value || null, fecha_fin: el('bt_f_fin').value || null,
-          horas: el('bt_f_horas').value, observaciones: el('bt_f_obs').value.trim()
+          horas: el('bt_f_horas').value, puntos: puntosSel === '' ? null : puntosSel,
+          observaciones: el('bt_f_obs').value.trim()
         };
         var req = isNew
           ? API.request('/api/board/tasks', { method: 'POST', body: JSON.stringify(body) })
           : API.request('/api/board/tasks/' + t.id, { method: 'PUT', body: JSON.stringify(body) });
-        req.then(function () { showAlert(isNew ? 'Actividad creada.' : 'Actividad actualizada.', 'success'); viewBoard(); })
-          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear actividad' : 'Guardar'; });
+        req.then(function () { showAlert(isNew ? 'Tarea creada.' : 'Tarea actualizada.', 'success'); viewBoard(); })
+          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear tarea' : 'Guardar'; });
       });
       var del = el('bt_del');
       if (del) del.addEventListener('click', function () {
-        if (!confirm('¿Eliminar esta actividad?')) return;
+        if (!confirm('¿Eliminar esta tarea?')) return;
         API.request('/api/board/tasks/' + t.id, { method: 'DELETE' })
-          .then(function () { showAlert('Actividad eliminada.', 'success'); viewBoard(); })
+          .then(function () { showAlert('Tarea eliminada.', 'success'); viewBoard(); })
           .catch(function (err) { showAlert(err.message, 'error'); });
       });
     }

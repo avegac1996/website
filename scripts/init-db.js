@@ -132,14 +132,32 @@ async function initDatabase() {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+    // Sprints (Scrum). sprint_id NULL en board_tasks = la tarea está en el Backlog.
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS board_sprints (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES board_projects(id) ON DELETE CASCADE,
+        nombre VARCHAR(120) NOT NULL,
+        objetivo TEXT,
+        fecha_inicio DATE,
+        fecha_fin DATE,
+        estado VARCHAR(20) NOT NULL DEFAULT 'planificado',   -- planificado | activo | cerrado
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
     for (const [col, ddl] of [
       ['fecha_fin', 'DATE'],
       ['project_id', 'INTEGER REFERENCES board_projects(id)'],
       ['assignee_id', 'INTEGER REFERENCES users(id)'],
+      ['sprint_id', 'INTEGER REFERENCES board_sprints(id) ON DELETE SET NULL'],
+      ['puntos', 'SMALLINT'],
+      ['prioridad', "VARCHAR(10) NOT NULL DEFAULT 'media'"],  // baja | media | alta | urgente
     ]) {
       await db.query(`ALTER TABLE board_tasks ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
     }
-    console.log('[OK] Tablas board_projects / board_project_members / board_tasks');
+    console.log('[OK] Tablas board_projects / board_project_members / board_sprints / board_tasks');
 
     // ---------------- Prospectos (Matriz B2B Ecuador) ----------------
     await db.query(`
@@ -205,6 +223,8 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_hr_requests_status ON hr_requests(status)',
       'CREATE INDEX IF NOT EXISTS idx_board_estado ON board_tasks(estado)',
       'CREATE INDEX IF NOT EXISTS idx_board_project_id ON board_tasks(project_id)',
+      'CREATE INDEX IF NOT EXISTS idx_board_sprint_id ON board_tasks(sprint_id)',
+      'CREATE INDEX IF NOT EXISTS idx_board_sprints_project ON board_sprints(project_id)',
       'CREATE INDEX IF NOT EXISTS idx_prospectos_sector ON prospectos(sector_id)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
     ];
