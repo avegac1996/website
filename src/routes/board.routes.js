@@ -10,7 +10,18 @@ const PRIORIDADES = ['baja', 'media', 'alta', 'urgente'];
 const SPRINT_ESTADOS = ['planificado', 'activo', 'cerrado'];
 const ESTADO_FINAL = 'Finalizada';
 
+// Turingcoins por cumplimiento de fechas
+const COIN_PREMIO = 2;   // terminar a tiempo
+const COIN_CASTIGO = 3;  // extender la fecha de fin sin haber terminado
+
+// Adjuntos de tareas (data URL en la BD)
+const FILE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf'];
+const FILE_MAX = 5 * 1024 * 1024; // 5 MB (tamaño del binario decodificado)
+
 const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || null;
+// Ecuador es UTC-5 todo el año (sin horario de verano)
+const hoyISO = () => new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+const soloFecha = (d) => (d ? String(d).slice(0, 10) : null);
 
 // Solo colaboradores TURINGTECH y admins
 router.use(authMiddleware, (req, res, next) => {
@@ -276,7 +287,9 @@ router.get('/tasks', async (req, res) => {
       ? (await db.query(
           `SELECT t.id, t.titulo, t.tipo, t.estado, t.fecha, t.fecha_fin, t.horas, t.observaciones, t.orden,
                   t.project_id, bp.nombre AS proyecto, t.assignee_id, t.sprint_id, t.puntos, t.prioridad,
+                  t.parent_id, t.recompensa_dada,
                   u.name AS assignee_nombre, COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable,
+                  (SELECT COUNT(*) FROM board_task_files f WHERE f.task_id = t.id)::int AS files_count,
                   t.created_at, t.updated_at
            FROM board_tasks t
            LEFT JOIN board_projects bp ON bp.id = t.project_id
@@ -341,6 +354,7 @@ function cleanTask(body) {
     project_id: body.project_id ? Number(body.project_id) : null,
     assignee_id: body.assignee_id ? Number(body.assignee_id) : null,
     sprint_id: body.sprint_id ? Number(body.sprint_id) : null,
+    parent_id: body.parent_id ? Number(body.parent_id) : null,
     tipo: body.tipo ? String(body.tipo).trim() : 'Tarea',
     estado,
     prioridad,
@@ -352,8 +366,8 @@ function cleanTask(body) {
   };
 }
 
-// valida proyecto + que el assignee y el sprint pertenezcan a ese proyecto
-async function validarTarea(req, t) {
+// valida proyecto + que el assignee, el sprint y la tarea padre pertenezcan a ese proyecto
+async function validarTarea(req, t, selfId) {
   if (!t.project_id) return 'Elige un proyecto';
   if (!(await puedeProyecto(req, t.project_id))) return 'No perteneces a ese proyecto';
   if (t.assignee_id) {
@@ -364,6 +378,13 @@ async function validarTarea(req, t) {
     const s = await db.query('SELECT 1 FROM board_sprints WHERE id=$1 AND project_id=$2', [t.sprint_id, t.project_id]);
     if (!s.rows.length) return 'El sprint no pertenece a ese proyecto';
   }
+  if (t.parent_id) {
+    if (selfId && Number(t.parent_id) === Number(selfId)) return 'Una tarea no puede ser subtarea de sí misma';
+    const p = await db.query('SELECT project_id, parent_id FROM board_tasks WHERE id=$1', [t.parent_id]);
+    if (!p.rows.length) return 'La tarea principal no existe';
+    if (p.rows[0].project_id !== t.project_id) return 'La tarea principal es de otro proyecto';
+    if (p.rows[0].parent_id) return 'No se puede anidar una subtarea dentro de otra subtarea';
+  }
   return null;
 }
 
@@ -371,6 +392,64 @@ async function nombreAsignado(assignee_id) {
   if (!assignee_id) return null;
   const r = await db.query('SELECT name FROM users WHERE id = $1', [assignee_id]);
   return r.rows.length ? firstName(r.rows[0].name) : null;
+}
+
+/* ---- Turingcoins por cumplimiento de fechas ---- */
+
+// ajusta el saldo del usuario + registra transacción + notificación
+async function ajustarTuringcoins(userId, delta, tipo, descripcion, notifTitulo, notifMensaje) {
+  await db.query(
+    'UPDATE users SET credits = credits + $1, handycoins = credits + $1, updated_at = NOW() WHERE id = $2',
+    [delta, userId]
+  );
+  await db.query(
+    `INSERT INTO credit_transactions (user_id, amount, type, description) VALUES ($1, $2, $3, $4)`,
+    [userId, delta, tipo, descripcion]
+  );
+  await db.query(
+    `INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)`,
+    [userId, notifTitulo, notifMensaje, delta >= 0 ? 'reward' : 'penalty']
+  );
+}
+
+// Aplica las reglas de turingcoins dada la tarea ANTES del cambio (old) y los valores nuevos.
+//   +COIN_PREMIO  : la tarea pasa a "Finalizada" en o antes de fecha_fin (una sola vez, marca recompensa_dada)
+//   -COIN_CASTIGO : se mueve fecha_fin a una posterior sin haber finalizado (cada vez)
+// Solo aplica a tareas con responsable + fecha inicio + fecha fin.
+async function reglaTuringcoins(old, nuevoEstado, nuevaFechaFin) {
+  if (!old || !old.assignee_id || !old.fecha || !old.fecha_fin) return;
+  const finPrevio = soloFecha(old.fecha_fin);
+  const finNuevo = nuevaFechaFin ? soloFecha(nuevaFechaFin) : finPrevio;
+  const eraFinal = old.estado === ESTADO_FINAL;
+  const esFinal = nuevoEstado === ESTADO_FINAL;
+
+  if (esFinal && !eraFinal && !old.recompensa_dada && hoyISO() <= finNuevo) {
+    await ajustarTuringcoins(
+      old.assignee_id, COIN_PREMIO, 'reward',
+      `Reto cumplido: ${old.titulo}`,
+      'Reto cumplido 🎉',
+      `Terminaste "${old.titulo}" en fecha. Ganaste +${COIN_PREMIO} Turingcoins.`
+    );
+    await db.query('UPDATE board_tasks SET recompensa_dada = true WHERE id = $1', [old.id]);
+  }
+
+  if (finNuevo > finPrevio && !esFinal && !eraFinal) {
+    await ajustarTuringcoins(
+      old.assignee_id, -COIN_CASTIGO, 'penalty',
+      `Extensión de fecha: ${old.titulo}`,
+      'No lo lograste a tiempo',
+      `Se movió la fecha de fin de "${old.titulo}". Perdiste -${COIN_CASTIGO} Turingcoins.`
+    );
+  }
+}
+
+// trae la tarea con todo lo que necesita reglaTuringcoins
+async function tareaParaRegla(id) {
+  const r = await db.query(
+    'SELECT id, titulo, estado, fecha, fecha_fin, assignee_id, recompensa_dada, project_id, sprint_id FROM board_tasks WHERE id = $1',
+    [id]
+  );
+  return r.rows[0] || null;
 }
 
 // siguiente orden dentro del bucket (proyecto + sprint + estado)
@@ -391,13 +470,19 @@ router.post('/tasks', async (req, res) => {
     const err = await validarTarea(req, t);
     if (err) return res.status(400).json({ error: err });
 
+    // una subtarea hereda el sprint de la tarea principal
+    if (t.parent_id) {
+      const p = await db.query('SELECT sprint_id FROM board_tasks WHERE id = $1', [t.parent_id]);
+      if (p.rows.length) t.sprint_id = p.rows[0].sprint_id;
+    }
+
     const ord = await siguienteOrden(t.project_id, t.sprint_id, t.estado);
     const resp = await nombreAsignado(t.assignee_id);
     const result = await db.query(
       `INSERT INTO board_tasks
-         (titulo, project_id, assignee_id, responsable, sprint_id, tipo, estado, prioridad, fecha, fecha_fin, horas, puntos, observaciones, orden, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
-      [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.tipo, t.estado, t.prioridad,
+         (titulo, project_id, assignee_id, responsable, sprint_id, parent_id, tipo, estado, prioridad, fecha, fecha_fin, horas, puntos, observaciones, orden, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+      [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.parent_id, t.tipo, t.estado, t.prioridad,
        t.fecha, t.fecha_fin, t.horas, t.puntos, t.observaciones, ord, req.user.id]
     );
     res.status(201).json({ id: result.rows[0].id });
@@ -410,23 +495,26 @@ router.post('/tasks', async (req, res) => {
 // PUT /api/board/tasks/:id
 router.put('/tasks/:id', async (req, res) => {
   try {
-    const cur = await db.query('SELECT project_id FROM board_tasks WHERE id = $1', [req.params.id]);
-    if (!cur.rows.length) return res.status(404).json({ error: 'Tarea no encontrada' });
-    if (!(await puedeProyecto(req, cur.rows[0].project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
+    const old = await tareaParaRegla(req.params.id);
+    if (!old) return res.status(404).json({ error: 'Tarea no encontrada' });
+    if (!(await puedeProyecto(req, old.project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
 
     const t = cleanTask(req.body);
     if (!t.titulo) return res.status(400).json({ error: 'El título es obligatorio' });
-    const err = await validarTarea(req, t);
+    const err = await validarTarea(req, t, req.params.id);
     if (err) return res.status(400).json({ error: err });
 
     const resp = await nombreAsignado(t.assignee_id);
     const result = await db.query(
-      `UPDATE board_tasks SET titulo=$1, project_id=$2, assignee_id=$3, responsable=$4, sprint_id=$5, tipo=$6, estado=$7,
-              prioridad=$8, fecha=$9, fecha_fin=$10, horas=$11, puntos=$12, observaciones=$13, updated_at=NOW()
-       WHERE id=$14 RETURNING id`,
-      [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.tipo, t.estado, t.prioridad,
+      `UPDATE board_tasks SET titulo=$1, project_id=$2, assignee_id=$3, responsable=$4, sprint_id=$5, parent_id=$6, tipo=$7, estado=$8,
+              prioridad=$9, fecha=$10, fecha_fin=$11, horas=$12, puntos=$13, observaciones=$14, updated_at=NOW()
+       WHERE id=$15 RETURNING id`,
+      [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.parent_id, t.tipo, t.estado, t.prioridad,
        t.fecha, t.fecha_fin, t.horas, t.puntos, t.observaciones, req.params.id]
     );
+
+    await reglaTuringcoins(old, t.estado, t.fecha_fin);
+
     res.json({ id: result.rows[0].id });
   } catch (err) {
     console.error('Error actualizando board task:', err.message);
@@ -439,12 +527,13 @@ router.patch('/tasks/:id/estado', async (req, res) => {
   try {
     const estado = ESTADOS.includes(req.body.estado) ? req.body.estado : null;
     if (!estado) return res.status(400).json({ error: 'Estado no válido' });
-    const cur = await db.query('SELECT project_id, sprint_id FROM board_tasks WHERE id = $1', [req.params.id]);
-    if (!cur.rows.length) return res.status(404).json({ error: 'Tarea no encontrada' });
-    if (!(await puedeProyecto(req, cur.rows[0].project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
+    const old = await tareaParaRegla(req.params.id);
+    if (!old) return res.status(404).json({ error: 'Tarea no encontrada' });
+    if (!(await puedeProyecto(req, old.project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
 
-    const ord = await siguienteOrden(cur.rows[0].project_id, cur.rows[0].sprint_id, estado);
+    const ord = await siguienteOrden(old.project_id, old.sprint_id, estado);
     await db.query('UPDATE board_tasks SET estado=$1, orden=$2, updated_at=NOW() WHERE id=$3', [estado, ord, req.params.id]);
+    await reglaTuringcoins(old, estado, old.fecha_fin);
     res.json({ id: Number(req.params.id), estado });
   } catch (err) {
     console.error('Error moviendo board task:', err.message);
@@ -457,9 +546,9 @@ router.patch('/tasks/:id/estado', async (req, res) => {
 router.patch('/tasks/:id/mover', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const cur = await db.query('SELECT project_id FROM board_tasks WHERE id = $1', [id]);
-    if (!cur.rows.length) return res.status(404).json({ error: 'Tarea no encontrada' });
-    const projectId = cur.rows[0].project_id;
+    const old = await tareaParaRegla(id);
+    if (!old) return res.status(404).json({ error: 'Tarea no encontrada' });
+    const projectId = old.project_id;
     if (!(await puedeProyecto(req, projectId))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
 
     const estado = ESTADOS.includes(req.body.estado) ? req.body.estado : null;
@@ -499,6 +588,7 @@ router.patch('/tasks/:id/mover', async (req, res) => {
       );
     }
     await db.query('COMMIT');
+    await reglaTuringcoins(old, estado, old.fecha_fin);
     res.json({ id, sprint_id, estado });
   } catch (err) {
     await db.query('ROLLBACK');
@@ -507,16 +597,92 @@ router.patch('/tasks/:id/mover', async (req, res) => {
   }
 });
 
-// DELETE /api/board/tasks/:id
+// DELETE /api/board/tasks/:id  (borra también subtareas y adjuntos en disco)
 router.delete('/tasks/:id', async (req, res) => {
   try {
     const cur = await db.query('SELECT project_id FROM board_tasks WHERE id = $1', [req.params.id]);
     if (!cur.rows.length) return res.status(404).json({ error: 'Tarea no encontrada' });
     if (!(await puedeProyecto(req, cur.rows[0].project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
+
+    // CASCADE borra subtareas y sus adjuntos
     await db.query('DELETE FROM board_tasks WHERE id = $1', [req.params.id]);
     res.json({ message: 'Tarea eliminada' });
   } catch (err) {
     console.error('Error eliminando board task:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+/* ===================== ADJUNTOS DE TAREAS ===================== */
+
+async function tareaConProyecto(id) {
+  const r = await db.query('SELECT id, project_id FROM board_tasks WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+
+// GET /api/board/tasks/:id/files  -> incluye el data URL para render directo
+router.get('/tasks/:id/files', async (req, res) => {
+  try {
+    const t = await tareaConProyecto(req.params.id);
+    if (!t) return res.status(404).json({ error: 'Tarea no encontrada' });
+    if (!(await puedeProyecto(req, t.project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
+    const files = (await db.query(
+      `SELECT f.id, f.nombre, f.mime, f.tamano, f.data, f.created_at, u.name AS subido_por
+       FROM board_task_files f LEFT JOIN users u ON u.id = f.uploaded_by
+       WHERE f.task_id = $1 ORDER BY f.created_at`, [req.params.id]
+    )).rows;
+    res.json({ files });
+  } catch (err) {
+    console.error('Error listando adjuntos:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/board/tasks/:id/files   body: { nombre, data }  (data = data URL base64)
+router.post('/tasks/:id/files', async (req, res) => {
+  try {
+    const t = await tareaConProyecto(req.params.id);
+    if (!t) return res.status(404).json({ error: 'Tarea no encontrada' });
+    if (!(await puedeProyecto(req, t.project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
+
+    const nombre = req.body.nombre;
+    const data = String(req.body.data || '');
+    const m = data.match(/^data:([^;]+);base64,(.*)$/s);
+    if (!m) return res.status(400).json({ error: 'Formato de archivo inválido' });
+    const mime = m[1].toLowerCase();
+    if (!FILE_MIMES.includes(mime)) {
+      return res.status(400).json({ error: 'Solo se permiten imágenes (PNG, JPG, WEBP, GIF) o PDF' });
+    }
+    const bytes = Buffer.byteLength(m[2], 'base64');
+    if (!bytes) return res.status(400).json({ error: 'Archivo vacío o inválido' });
+    if (bytes > FILE_MAX) return res.status(400).json({ error: 'El archivo supera los 5 MB' });
+
+    const row = (await db.query(
+      `INSERT INTO board_task_files (task_id, nombre, mime, tamano, data, uploaded_by)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, nombre, mime, tamano, data, created_at`,
+      [t.id, String(nombre || 'adjunto').slice(0, 255), mime, bytes, data, req.user.id]
+    )).rows[0];
+    res.status(201).json({ file: row });
+  } catch (err) {
+    console.error('Error subiendo adjunto:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/board/files/:id
+router.delete('/files/:id', async (req, res) => {
+  try {
+    const f = (await db.query(
+      `SELECT f.id, t.project_id
+       FROM board_task_files f JOIN board_tasks t ON t.id = f.task_id
+       WHERE f.id = $1`, [req.params.id]
+    )).rows[0];
+    if (!f) return res.status(404).json({ error: 'Adjunto no encontrado' });
+    if (!(await puedeProyecto(req, f.project_id))) return res.status(403).json({ error: 'Sin acceso' });
+    await db.query('DELETE FROM board_task_files WHERE id = $1', [req.params.id]);
+    res.json({ message: 'Adjunto eliminado' });
+  } catch (err) {
+    console.error('Error eliminando adjunto:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

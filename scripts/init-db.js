@@ -154,10 +154,25 @@ async function initDatabase() {
       ['sprint_id', 'INTEGER REFERENCES board_sprints(id) ON DELETE SET NULL'],
       ['puntos', 'SMALLINT'],
       ['prioridad', "VARCHAR(10) NOT NULL DEFAULT 'media'"],  // baja | media | alta | urgente
+      ['parent_id', 'INTEGER REFERENCES board_tasks(id) ON DELETE CASCADE'],  // subtarea (estilo Jira)
+      ['recompensa_dada', 'BOOLEAN NOT NULL DEFAULT false'],  // +2 turingcoins ya otorgado por terminar a tiempo
     ]) {
       await db.query(`ALTER TABLE board_tasks ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
     }
-    console.log('[OK] Tablas board_projects / board_project_members / board_sprints / board_tasks');
+    // Adjuntos de tareas (imágenes / PDF de observaciones), guardados como data URL
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS board_task_files (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES board_tasks(id) ON DELETE CASCADE,
+        nombre VARCHAR(255),
+        mime VARCHAR(120),
+        tamano INTEGER,
+        data TEXT NOT NULL,                        -- data URL (base64)
+        uploaded_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('[OK] Tablas board_projects / board_project_members / board_sprints / board_tasks / board_task_files');
 
     // ---------------- Prospectos (Matriz B2B Ecuador) ----------------
     await db.query(`
@@ -224,7 +239,9 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_board_estado ON board_tasks(estado)',
       'CREATE INDEX IF NOT EXISTS idx_board_project_id ON board_tasks(project_id)',
       'CREATE INDEX IF NOT EXISTS idx_board_sprint_id ON board_tasks(sprint_id)',
+      'CREATE INDEX IF NOT EXISTS idx_board_parent_id ON board_tasks(parent_id)',
       'CREATE INDEX IF NOT EXISTS idx_board_sprints_project ON board_sprints(project_id)',
+      'CREATE INDEX IF NOT EXISTS idx_board_task_files_task ON board_task_files(task_id)',
       'CREATE INDEX IF NOT EXISTS idx_prospectos_sector ON prospectos(sector_id)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
     ];
