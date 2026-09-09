@@ -5,6 +5,12 @@ node_modules/
 .env
 BITACORA-DEPLOY.md
 
+# Secrets / llaves SSH (NUNCA subir a git)
+.secrets/
+*.pem
+id_ed25519*
+id_rsa*
+
 # OS
 .DS_Store
 Thumbs.db
@@ -20,3 +26,4 @@ npm-debug.log*
 # Temp
 tmp/
 temp/
+backups/
