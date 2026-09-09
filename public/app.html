@@ -1505,15 +1505,55 @@
       });
     }
 
-    /* ===== Prospectos: Matriz de Prospección B2B Ecuador ===== */
+    /* ===== Prospectos: CRM de prospección B2B Ecuador ===== */
     var SECTORES = window.SECTORES || [];
     var PILARES = window.PILARES || ['RPA', 'IA', 'BI', 'Software a la Medida', 'App Móvil Offline'];
     var FUENTES = window.FUENTES || ['LinkedIn', 'PBX', 'Referido'];
     var FASES_SOP = window.FASES_SOP || [];
     var PATRONES_EMAIL = window.PATRONES_EMAIL || [];
     var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
-    var PROS = { list: [], tab: 'ficha', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '' } };
+    var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '' }, sel: null };
     var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
+
+    var PROS_ESTADOS = [
+      { id: 'nuevo', label: 'Nuevo', c: '#94a3b8' },
+      { id: 'contactado', label: 'Contactado', c: '#3b82f6' },
+      { id: 'en_seguimiento', label: 'En seguimiento', c: '#a78bfa' },
+      { id: 'reunion', label: 'Reunión agendada', c: '#f59e0b' },
+      { id: 'propuesta', label: 'Propuesta enviada', c: '#f97316' },
+      { id: 'ganado', label: 'Ganado', c: '#10b981' },
+      { id: 'perdido', label: 'Perdido', c: '#ef4444' },
+      { id: 'no_responde', label: 'No responde', c: '#64748b' }
+    ];
+    var PROS_ESTADO = {}; PROS_ESTADOS.forEach(function (e) { PROS_ESTADO[e.id] = e; });
+    var INTER_TIPOS = [
+      { id: 'llamada', label: 'Llamada', icon: 'fa-solid fa-phone' },
+      { id: 'email', label: 'Email', icon: 'fa-solid fa-envelope' },
+      { id: 'whatsapp', label: 'WhatsApp', icon: 'fa-brands fa-whatsapp' },
+      { id: 'reunion', label: 'Reunión', icon: 'fa-solid fa-handshake' },
+      { id: 'nota', label: 'Nota', icon: 'fa-solid fa-note-sticky' }
+    ];
+    var INTER_TIPO = {}; INTER_TIPOS.forEach(function (t) { INTER_TIPO[t.id] = t; });
+    var INTER_RESULTADOS = [
+      { id: 'contacto', label: 'Contacté' }, { id: 'no_contesto', label: 'No contestó' },
+      { id: 'agendo', label: 'Agendó reunión' }, { id: 'propuesta', label: 'Envié propuesta' },
+      { id: 'descartado', label: 'Descartado' }, { id: 'otro', label: 'Otro' }
+    ];
+    var INTER_RES = {}; INTER_RESULTADOS.forEach(function (r) { INTER_RES[r.id] = r.label; });
+    var prosById = function (id) { return PROS.list.filter(function (p) { return String(p.id) === String(id); })[0]; };
+    function fmtRel(d) {
+      if (!d) return '—';
+      var diff = Date.now() - new Date(d).getTime();
+      var dias = Math.floor(diff / 86400000);
+      if (dias <= 0) return 'hoy';
+      if (dias === 1) return 'ayer';
+      if (dias < 30) return 'hace ' + dias + ' días';
+      return fmtDate(d);
+    }
+    function prosEstadoChip(id) {
+      var e = PROS_ESTADO[id] || PROS_ESTADO.nuevo;
+      return '<span class="pipe-badge" style="background:' + e.c + '22;color:' + e.c + ';">' + esc(e.label) + '</span>';
+    }
 
     function personalizarScript(s, vend, cont, emp) {
       var out = String(s || '');
@@ -1526,20 +1566,21 @@
     function viewProspectos() {
       return API.request('/api/prospectos').then(function (r) {
         PROS.list = r.prospectos || [];
+        PROS.meta = r.meta || {};
         prosRender();
       });
     }
 
     function prosRender() {
-      var tabs = [['ficha', 'Ficha del sector'], ['registrar', 'Registrar prospecto'], ['sop', 'SOP de contactos'], ['registros', 'Registros (' + PROS.list.length + ')']];
+      var tabs = [['guia', 'Guía por sector'], ['sop', 'Cómo investigar'], ['gestion', 'Gestión (' + PROS.list.length + ')']];
       el('view').innerHTML =
         '<div class="tabs" style="margin-bottom:16px;flex-wrap:wrap;">' +
           tabs.map(function (t) { return '<button class="tab ' + (PROS.tab === t[0] ? 'active' : '') + '" data-pt="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') +
         '</div><div id="prosBody"></div>';
       document.querySelectorAll('.tab[data-pt]').forEach(function (b) {
-        b.addEventListener('click', function () { PROS.tab = this.getAttribute('data-pt'); prosRender(); });
+        b.addEventListener('click', function () { PROS.tab = this.getAttribute('data-pt'); PROS.sel = null; prosRender(); });
       });
-      ({ ficha: prosFicha, registrar: prosRegistrar, sop: prosSop, registros: prosRegistros })[PROS.tab]();
+      ({ guia: prosGuia, sop: prosSop, gestion: prosGestion })[PROS.tab]();
     }
 
     function sectorSelectHtml(id, sel) {
@@ -1549,7 +1590,7 @@
         '</select>';
     }
 
-    function prosFicha() {
+    function prosGuia() {
       var s = sectorById(PROS.sectorId);
       var html = '<div class="glass-panel" style="padding:20px;margin-bottom:18px;max-width:520px;">' +
         '<label class="text-gray text-sm" style="display:block;margin-bottom:6px;">Sector objetivo</label>' +
@@ -1585,7 +1626,7 @@
       }
       el('prosBody').innerHTML = html;
 
-      el('fx_sector').addEventListener('change', function () { PROS.sectorId = this.value; prosFicha(); });
+      el('fx_sector').addEventListener('change', function () { PROS.sectorId = this.value; prosGuia(); });
       if (s) {
         ['vend', 'cont', 'emp'].forEach(function (k) {
           var inp = el('sc_' + k);
@@ -1596,7 +1637,7 @@
         });
         el('sc_copy').addEventListener('click', function () { navigator.clipboard.writeText(el('sc_preview').textContent); showAlert('Mensaje copiado.', 'success'); });
         el('sc_copy_orig').addEventListener('click', function () { navigator.clipboard.writeText(s.script); showAlert('Script original copiado.', 'success'); });
-        el('sc_go').addEventListener('click', function () { PROS.tab = 'registrar'; prosRender(); });
+        el('sc_go').addEventListener('click', function () { PROS.tab = 'gestion'; PROS.sel = null; prosRender(); setTimeout(function () { prosRegistrar(null); }, 0); });
       }
     }
 
@@ -1608,10 +1649,26 @@
       var faseOpts = '<option value="">—</option>' + FASES_SOP.map(function (f) { return '<option value="' + f.id + '"' + (String(pros.fase_sop) === String(f.id) ? ' selected' : '') + '>' + esc(f.nombre) + '</option>'; }).join('');
       var cargos = s ? '<datalist id="dl_cargos">' + s.cargosLinkedIn.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>' : '';
 
+      // Ayuda del sector: se traslada la info de la "Guía por sector"
+      var intel = s
+        ? '<div class="glass-panel pros-intel">' +
+            '<div class="section-heading" style="text-align:left;font-size:12px;margin-bottom:10px;">' + esc(s.icono + ' ' + s.nombre) + '</div>' +
+            '<p class="text-xs"><strong>Decisor:</strong> ' + esc(s.decisor) + '</p>' +
+            '<p class="text-xs" style="margin-top:6px;"><strong>Pilar a vender:</strong> <span class="text-accent">' + esc(s.pilar) + '</span></p>' +
+            '<p class="text-xs" style="margin-top:8px;"><strong>Cargos (clic para usar):</strong></p>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">' +
+              s.cargosLinkedIn.map(function (c) { return '<button type="button" class="mini-chip" data-cargo="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+            '<p class="text-xs" style="margin-top:10px;"><strong>Script:</strong></p>' +
+            '<blockquote class="pros-script" style="font-size:11.5px;margin-top:4px;">' + esc(s.script) + '</blockquote>' +
+            '<button type="button" class="btn btn-secondary btn-small" id="px_copyscript" style="margin-top:6px;">📋 Copiar script</button>' +
+          '</div>'
+        : '';
+
       el('prosBody').innerHTML =
-        (isEdit ? '<button class="btn btn-secondary btn-small" id="px_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a registros</button>' : '') +
-        '<div class="glass-panel" style="padding:26px;max-width:820px;"><form id="prosForm">' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">' +
+        '<button class="btn btn-secondary btn-small" id="px_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</button>' +
+        '<div class="pros-form-wrap">' +
+        '<div class="glass-panel" style="padding:26px;"><div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isEdit ? 'Editar datos del prospecto' : 'Nuevo prospecto') + '</div><form id="prosForm">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">' +
             '<div class="form-group"><label>Sector <span class="form-required-marker">*</span></label>' + sectorSelectHtml('px_sector', pros.sector_id || PROS.sectorId) + '</div>' +
             '<div class="form-group"><label>Empresa <span class="form-required-marker">*</span></label><input id="px_empresa" class="form-input" required value="' + esc(pros.empresa || '') + '"></div>' +
             '<div class="form-group"><label>RUC</label><input id="px_ruc" class="form-input" value="' + esc(pros.ruc || '') + '"></div>' +
@@ -1634,10 +1691,14 @@
             '<button type="submit" class="btn btn-primary" id="px_save">' + (isEdit ? 'Guardar cambios' : '💾 Guardar prospecto') + '</button>' +
             (isEdit ? '<button type="button" class="btn btn-error btn-small" id="px_del">Eliminar</button>' : '') +
           '</div>' +
-        '</form></div>';
+        '</form></div>' + intel + '</div>';
 
-      if (isEdit) el('px_back').addEventListener('click', function () { PROS.tab = 'registros'; prosRender(); });
+      el('px_back').addEventListener('click', function () { PROS.tab = 'gestion'; prosRender(); });
       el('px_sector').addEventListener('change', function () { PROS.sectorId = this.value; prosRegistrar(isEdit ? Object.assign({}, pros, collectPros()) : null); });
+      document.querySelectorAll('[data-cargo]').forEach(function (b) {
+        b.addEventListener('click', function () { el('px_cargo').value = this.getAttribute('data-cargo'); });
+      });
+      if (el('px_copyscript')) el('px_copyscript').addEventListener('click', function () { navigator.clipboard.writeText(s.script); showAlert('Script copiado.', 'success'); });
 
       function collectPros() {
         var sec = sectorById(el('px_sector').value);
@@ -1660,14 +1721,16 @@
         var req = isEdit
           ? API.request('/api/prospectos/' + pros.id, { method: 'PUT', body: JSON.stringify(b) })
           : API.request('/api/prospectos', { method: 'POST', body: JSON.stringify(b) });
-        req.then(function () { showAlert(isEdit ? 'Prospecto actualizado.' : 'Prospecto guardado.', 'success'); PROS.tab = 'registros'; viewProspectos(); })
-          .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isEdit ? 'Guardar cambios' : '💾 Guardar prospecto'; });
+        req.then(function () {
+          showAlert(isEdit ? 'Prospecto actualizado.' : 'Prospecto guardado.', 'success');
+          PROS.tab = 'gestion'; if (isEdit) PROS.sel = pros.id; viewProspectos();
+        }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isEdit ? 'Guardar cambios' : '💾 Guardar prospecto'; });
       });
       var pd = el('px_del');
       if (pd) pd.addEventListener('click', function () {
-        if (!confirm('¿Eliminar este prospecto?')) return;
+        if (!confirm('¿Eliminar este prospecto? Se borra también su historial.')) return;
         API.request('/api/prospectos/' + pros.id, { method: 'DELETE' })
-          .then(function () { showAlert('Prospecto eliminado.', 'success'); PROS.tab = 'registros'; viewProspectos(); })
+          .then(function () { showAlert('Prospecto eliminado.', 'success'); PROS.tab = 'gestion'; PROS.sel = null; viewProspectos(); })
           .catch(function (err) { showAlert(err.message, 'error'); });
       });
     }
@@ -1693,47 +1756,61 @@
           '<p class="text-sm" style="margin-top:6px;">Toda prospección se realiza bajo modalidad B2B, usando exclusivamente información de contacto corporativa y perfiles profesionales públicos (Ley Orgánica de Protección de Datos Personales).</p></div>';
     }
 
-    function prosRegistros() {
+    /* ---- Gestión: lista compacta de clientes / prospectos ---- */
+    function prosGestion() {
+      if (PROS.sel) { var pp = prosById(PROS.sel); if (pp) return prosGestionar(pp); PROS.sel = null; }
       var f = PROS.filtro;
       var secs = Array.from(new Set(PROS.list.map(function (p) { return p.sector_nombre; }).filter(Boolean))).sort();
+      var owners = (PROS.meta.colaboradores || []);
       var list = PROS.list.filter(function (p) {
         if (f.sector && p.sector_nombre !== f.sector) return false;
+        if (f.estado && p.estado !== f.estado) return false;
+        if (f.owner === '__none') { if (p.owner_id) return false; }
+        else if (f.owner && String(p.owner_id) !== String(f.owner)) return false;
         if (f.q) {
           var hay = (p.empresa + ' ' + (p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '') + ' ' + (p.email || '') + ' ' + (p.cargo || '')).toLowerCase();
           if (hay.indexOf(f.q.toLowerCase()) === -1) return false;
         }
         return true;
       });
+
       var rows = list.map(function (p) {
+        var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
         return '<tr data-id="' + p.id + '" style="cursor:pointer;">' +
-          '<td>' + fmtDate(p.ts) + '</td>' +
-          '<td>' + esc(p.sector_nombre || '—') + '</td>' +
-          '<td style="color:#fff;">' + esc(p.empresa) + '</td>' +
-          '<td>' + esc(((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim() || '—') + '</td>' +
-          '<td>' + esc(p.cargo || '—') + '</td>' +
-          '<td>' + esc(p.email || '—') + '</td>' +
-          '<td>' + esc(p.telefono || '—') + '</td>' +
-          '<td>' + esc(p.pilar || '—') + '</td>' +
-          '<td>' + esc(p.fase_sop || '—') + '</td>' +
+          '<td style="color:#fff;font-weight:600;">' + esc(p.empresa) + (p.task_id ? ' <i class="fa-solid fa-list-check" title="Tiene tarea en el tablero" style="color:var(--color-accent);font-size:11px;"></i>' : '') + '</td>' +
+          '<td>' + esc(contacto || '—') + (p.cargo ? '<div class="text-gray text-xs">' + esc(p.cargo) + '</div>' : '') + '</td>' +
+          '<td>' + prosEstadoChip(p.estado) + '</td>' +
+          '<td>' + (p.owner_nombre ? esc(p.owner_nombre) : '<span class="text-gray">Sin asignar</span>') + '</td>' +
+          '<td class="text-gray text-xs">' + fmtRel(p.ultima_gestion) + (p.interacciones ? ' · ' + p.interacciones + ' gest.' : '') + '</td>' +
+          '<td style="text-align:right;color:var(--color-gray);"><i class="fa-solid fa-chevron-right"></i></td>' +
         '</tr>';
-      }).join('') || '<tr><td colspan="9" class="text-gray text-center" style="padding:28px 0;">Sin registros.</td></tr>';
+      }).join('') || '<tr><td colspan="6" class="text-gray text-center" style="padding:28px 0;">Sin prospectos con estos filtros.</td></tr>';
+
+      var estadoOpts = '<option value="">Todos los estados</option>' + PROS_ESTADOS.map(function (e) { return '<option value="' + e.id + '"' + (f.estado === e.id ? ' selected' : '') + '>' + esc(e.label) + '</option>'; }).join('');
+      var ownerOpts = '<option value="">Todos los responsables</option><option value="__none"' + (f.owner === '__none' ? ' selected' : '') + '>Sin asignar</option>' +
+        owners.map(function (o) { return '<option value="' + o.id + '"' + (String(f.owner) === String(o.id) ? ' selected' : '') + '>' + esc(o.name) + '</option>'; }).join('');
 
       el('prosBody').innerHTML =
         '<div class="bt-toolbar">' +
-          '<input id="pr_q" class="form-input" placeholder="Buscar empresa, contacto, email..." style="max-width:240px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
-          '<select id="pr_sec" class="form-input" style="width:auto;min-width:160px;padding:8px 10px;font-size:13px;"><option value="">Todos los sectores</option>' +
+          '<input id="pr_q" class="form-input" placeholder="Buscar empresa, contacto, email..." style="max-width:230px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
+          '<select id="pr_estado" class="form-input" style="width:auto;min-width:150px;padding:8px 10px;font-size:13px;">' + estadoOpts + '</select>' +
+          '<select id="pr_owner" class="form-input" style="width:auto;min-width:150px;padding:8px 10px;font-size:13px;">' + ownerOpts + '</select>' +
+          '<select id="pr_sec" class="form-input" style="width:auto;min-width:140px;padding:8px 10px;font-size:13px;"><option value="">Todos los sectores</option>' +
             secs.map(function (o) { return '<option' + (o === f.sector ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>' +
           '<div style="flex:1;"></div>' +
-          '<button class="btn btn-secondary btn-small" id="pr_export"><i class="fa-solid fa-download"></i> Exportar .txt</button>' +
-          '<button class="btn btn-primary btn-small" id="pr_new"><i class="fa-solid fa-plus"></i> Nuevo</button>' +
+          '<button class="btn btn-secondary btn-small" id="pr_export"><i class="fa-solid fa-download"></i> .txt</button>' +
+          '<button class="btn btn-primary btn-small" id="pr_new"><i class="fa-solid fa-plus"></i> Nuevo prospecto</button>' +
         '</div>' +
-        '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table">' +
-          '<thead><tr><th>Fecha</th><th>Sector</th><th>Empresa</th><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Pilar</th><th>Fase</th></tr></thead>' +
-          '<tbody>' + rows + '</tbody></table></div></div>';
+        '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table pros-table">' +
+          '<thead><tr><th>Empresa</th><th>Contacto</th><th>Estado</th><th>Responsable</th><th>Última gestión</th><th></th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div></div>' +
+        '<div class="text-gray text-xs" style="margin-top:8px;">' + list.length + ' de ' + PROS.list.length + ' prospectos · clic en una fila para gestionar</div>';
 
-      el('pr_q').addEventListener('input', function () { f.q = this.value; prosRegistros(); setTimeout(function () { var q = el('pr_q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 0); });
-      el('pr_sec').addEventListener('change', function () { f.sector = this.value; prosRegistros(); });
-      el('pr_new').addEventListener('click', function () { PROS.tab = 'registrar'; prosRender(); });
+      el('pr_q').addEventListener('input', function () { f.q = this.value; prosGestion(); setTimeout(function () { var q = el('pr_q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 0); });
+      el('pr_estado').addEventListener('change', function () { f.estado = this.value; prosGestion(); });
+      el('pr_owner').addEventListener('change', function () { f.owner = this.value; prosGestion(); });
+      el('pr_sec').addEventListener('change', function () { f.sector = this.value; prosGestion(); });
+      el('pr_new').addEventListener('click', function () { prosRegistrar(null); });
       el('pr_export').addEventListener('click', function () {
         var btn = this; btn.disabled = true;
         fetch('/api/prospectos/export', { headers: { Authorization: 'Bearer ' + API.token } })
@@ -1747,11 +1824,154 @@
           .then(function () { btn.disabled = false; });
       });
       document.querySelectorAll('#prosBody tbody tr[data-id]').forEach(function (tr) {
-        tr.addEventListener('click', function () {
-          var p = PROS.list.filter(function (x) { return String(x.id) === tr.getAttribute('data-id'); })[0];
-          if (p) prosRegistrar(p);
+        tr.addEventListener('click', function () { PROS.sel = Number(tr.getAttribute('data-id')); prosGestion(); });
+      });
+    }
+
+    /* ---- Panel Gestionar: pipeline + historial + tarea ---- */
+    function prosGestionar(p) {
+      var s = sectorById(p.sector_id);
+      var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
+      var owners = (PROS.meta.colaboradores || []);
+      var ownerSel = '<option value="">— Sin asignar —</option>' + owners.map(function (o) {
+        return '<option value="' + o.id + '"' + (String(p.owner_id) === String(o.id) ? ' selected' : '') + '>' + esc(o.name) + '</option>';
+      }).join('');
+      var links = [
+        p.telefono ? '<a href="tel:' + esc(p.telefono) + '" class="pill-link"><i class="fa-solid fa-phone"></i> ' + esc(p.telefono) + '</a>' : '',
+        p.email ? '<a href="mailto:' + esc(p.email) + '" class="pill-link"><i class="fa-solid fa-envelope"></i> ' + esc(p.email) + '</a>' : '',
+        p.web ? '<a href="' + esc(p.web) + '" target="_blank" rel="noopener" class="pill-link"><i class="fa-solid fa-globe"></i> web</a>' : '',
+        p.linkedin ? '<a href="' + esc(p.linkedin) + '" target="_blank" rel="noopener" class="pill-link"><i class="fa-brands fa-linkedin"></i> LinkedIn</a>' : ''
+      ].filter(Boolean).join('');
+
+      var chips = PROS_ESTADOS.map(function (e) {
+        return '<button type="button" class="pipe-chip' + (p.estado === e.id ? ' on' : '') + '" data-estado="' + e.id + '" style="--pc:' + e.c + ';">' + esc(e.label) + '</button>';
+      }).join('');
+
+      var tareaBtn = p.task_id
+        ? '<button class="btn btn-secondary btn-small" id="pg_vertarea"><i class="fa-solid fa-up-right-from-square"></i> Ver en el tablero</button>'
+        : '<button class="btn btn-primary btn-small" id="pg_convertir"><i class="fa-solid fa-list-check"></i> Convertir en tarea</button>';
+
+      el('prosBody').innerHTML =
+        '<button class="btn btn-secondary btn-small" id="pg_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</button>' +
+        '<div class="glass-panel" style="padding:24px;margin-bottom:16px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">' +
+            '<div>' +
+              '<h2 style="color:#fff;font-size:20px;font-weight:800;margin:0;">' + esc(p.empresa) + '</h2>' +
+              '<div class="text-gray text-sm" style="margin-top:4px;">' + esc(s ? s.icono + ' ' + s.nombre : (p.sector_nombre || 'Sin sector')) +
+                (contacto ? ' · ' + esc(contacto) : '') + (p.cargo ? ' (' + esc(p.cargo) + ')' : '') + '</div>' +
+              (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
+            '</div>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + tareaBtn +
+              '<button class="btn btn-secondary btn-small" id="pg_editar"><i class="fa-solid fa-pen"></i> Editar datos</button>' +
+              '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-top:18px;">' +
+            '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado del pipeline</label>' +
+              '<div class="pipe-chips">' + chips + '</div></div>' +
+            '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
+              '<select id="pg_owner" class="form-input" style="min-width:180px;">' + ownerSel + '</select></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pros-gest-grid">' +
+          '<div class="glass-panel" style="padding:20px;">' +
+            '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Registrar interacción</div>' +
+            '<div class="int-tipos" id="pg_tipos">' + INTER_TIPOS.map(function (t, i) {
+              return '<button type="button" class="int-tipo' + (i === 0 ? ' on' : '') + '" data-tipo="' + t.id + '"><i class="' + t.icon + '"></i> ' + esc(t.label) + '</button>';
+            }).join('') + '</div>' +
+            '<select id="pg_res" class="form-input" style="margin-top:10px;"><option value="">Resultado (opcional)…</option>' +
+              INTER_RESULTADOS.map(function (r) { return '<option value="' + r.id + '">' + esc(r.label) + '</option>'; }).join('') + '</select>' +
+            '<textarea id="pg_nota" class="form-input" rows="3" placeholder="¿Qué pasó? Anotá lo relevante de la conversación…" style="margin-top:10px;"></textarea>' +
+            '<button class="btn btn-primary btn-small" id="pg_addint" style="margin-top:10px;"><i class="fa-solid fa-plus"></i> Agregar al historial</button>' +
+          '</div>' +
+          '<div class="glass-panel" style="padding:20px;">' +
+            '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Historial</div>' +
+            '<div id="pg_timeline"><span class="text-gray text-xs">Cargando…</span></div>' +
+          '</div>' +
+        '</div>';
+
+      el('pg_back').addEventListener('click', function () { PROS.sel = null; prosGestion(); });
+      el('pg_editar').addEventListener('click', function () { prosRegistrar(p); });
+      el('pg_del').addEventListener('click', function () {
+        if (!confirm('¿Eliminar el prospecto "' + p.empresa + '" y su historial?')) return;
+        API.request('/api/prospectos/' + p.id, { method: 'DELETE' })
+          .then(function () { showAlert('Prospecto eliminado.', 'success'); PROS.sel = null; viewProspectos(); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+
+      document.querySelectorAll('#prosBody .pipe-chip').forEach(function (c) {
+        c.addEventListener('click', function () {
+          var estado = this.getAttribute('data-estado');
+          if (estado === p.estado) return;
+          API.request('/api/prospectos/' + p.id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: estado }) })
+            .then(function () { showAlert('Estado actualizado.', 'success'); viewProspectos(); })
+            .catch(function (err) { showAlert(err.message, 'error'); });
         });
       });
+      el('pg_owner').addEventListener('change', function () {
+        API.request('/api/prospectos/' + p.id + '/owner', { method: 'PATCH', body: JSON.stringify({ owner_id: this.value || null }) })
+          .then(function () { showAlert('Responsable actualizado.', 'success'); viewProspectos(); })
+          .catch(function (err) { showAlert(err.message, 'error'); });
+      });
+
+      if (el('pg_convertir')) el('pg_convertir').addEventListener('click', function () {
+        var b = this; b.disabled = true;
+        API.request('/api/prospectos/' + p.id + '/convertir-tarea', { method: 'POST', body: '{}' })
+          .then(function () { showAlert('Tarea creada en "Prospectos" del tablero.', 'success'); viewProspectos(); })
+          .catch(function (err) { showAlert(err.message, 'error'); b.disabled = false; });
+      });
+      if (el('pg_vertarea')) el('pg_vertarea').addEventListener('click', function () {
+        if (p.task_project_id) { boardState.proyectoId = p.task_project_id; boardState.tab = 'tablero'; boardState.tableroMode = 'backlog'; }
+        location.hash = '#/board';
+      });
+
+      // registrar interacción
+      var tipoSel = INTER_TIPOS[0].id;
+      document.querySelectorAll('#pg_tipos .int-tipo').forEach(function (b) {
+        b.addEventListener('click', function () {
+          document.querySelectorAll('#pg_tipos .int-tipo').forEach(function (x) { x.classList.remove('on'); });
+          b.classList.add('on'); tipoSel = b.getAttribute('data-tipo');
+        });
+      });
+      el('pg_addint').addEventListener('click', function () {
+        var nota = el('pg_nota').value.trim(), resultado = el('pg_res').value;
+        if (!nota && !resultado) { showAlert('Escribí una nota o elegí un resultado.', 'warning'); return; }
+        var b = this; b.disabled = true;
+        API.request('/api/prospectos/' + p.id + '/interacciones', { method: 'POST', body: JSON.stringify({ tipo: tipoSel, resultado: resultado || null, nota: nota || null }) })
+          .then(function () { el('pg_nota').value = ''; el('pg_res').value = ''; showAlert('Interacción registrada.', 'success'); cargarTimeline(); actualizarLista(); })
+          .catch(function (err) { showAlert(err.message, 'error'); })
+          .then(function () { b.disabled = false; });
+      });
+
+      function actualizarLista() {
+        API.request('/api/prospectos').then(function (r) { PROS.list = r.prospectos || []; PROS.meta = r.meta || PROS.meta; });
+      }
+      function cargarTimeline() {
+        API.request('/api/prospectos/' + p.id + '/interacciones').then(function (r) {
+          var tl = el('pg_timeline'); if (!tl) return;
+          tl.innerHTML = (r.interacciones || []).map(function (it) {
+            var ti = INTER_TIPO[it.tipo] || INTER_TIPO.nota;
+            return '<div class="tl-item">' +
+              '<span class="tl-icon"><i class="' + ti.icon + '"></i></span>' +
+              '<div style="flex:1;">' +
+                '<div style="font-size:12px;"><strong style="color:#fff;">' + esc(ti.label) + '</strong>' +
+                  (it.resultado ? ' · <span class="text-accent">' + esc(INTER_RES[it.resultado] || it.resultado) + '</span>' : '') +
+                  ' <span class="text-gray">— ' + fmtRel(it.created_at) + (it.usuario ? ' · ' + esc(it.usuario) : '') + '</span></div>' +
+                (it.nota ? '<div class="text-sm" style="margin-top:3px;white-space:pre-wrap;">' + esc(it.nota) + '</div>' : '') +
+              '</div>' +
+              '<button class="tl-del" data-del="' + it.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>' +
+            '</div>';
+          }).join('') || '<span class="text-gray text-xs">Sin interacciones. Registrá la primera arriba.</span>';
+          tl.querySelectorAll('[data-del]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              if (!confirm('¿Eliminar esta interacción del historial?')) return;
+              API.request('/api/prospectos/' + p.id + '/interacciones/' + this.getAttribute('data-del'), { method: 'DELETE' })
+                .then(function () { cargarTimeline(); actualizarLista(); }).catch(function (err) { showAlert(err.message, 'error'); });
+            });
+          });
+        });
+      }
+      cargarTimeline();
     }
 
     /* ===== Humanizador de texto ===== */
