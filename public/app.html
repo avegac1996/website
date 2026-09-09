@@ -112,6 +112,7 @@
           { id: 'admin-usuarios',       label: 'Usuarios',                icon: 'fa-users' },
           { id: 'admin-creditos',       label: 'Modificar créditos',      icon: 'fa-sliders' },
           { id: 'admin-prospectos',     label: 'Estados de prospectos',   icon: 'fa-tags' },
+          { id: 'admin-sprints',        label: 'Automatización de sprints', icon: 'fa-calendar-week' },
           { id: 'admin-config',         label: 'Configuración',           icon: 'fa-gear' }
         ] });
       }
@@ -223,6 +224,7 @@
       'admin-usuarios': viewAdminUsuarios,
       'admin-creditos': viewAdminCreditos,
       'admin-prospectos': viewAdminProspectos,
+      'admin-sprints': viewAutoSprint,
       'admin-config': viewAdminConfig
     };
 
@@ -660,7 +662,15 @@
       var ps = boardState.meta.projects || [];
       if (!ps.length) return null;
       var f = ps.filter(function (p) { return String(p.id) === String(boardState.proyectoId); })[0];
-      return f ? f.id : ps[0].id;
+      if (f) return f.id;
+      // por defecto: "Turingtech" si existe, si no el primero
+      var tt = ps.filter(function (p) { return p.nombre === 'Turingtech'; })[0];
+      return tt ? tt.id : ps[0].id;
+    }
+    // filtro personal: no-admin ya viene filtrado del backend; admin puede filtrar por responsable
+    function boardPasaResponsable(t) {
+      var f = boardState.filtros.responsable;
+      return !f || t.responsable === f;
     }
     function boardSprintSel(pid) {
       var ss = boardSprintsDe(pid);
@@ -729,11 +739,12 @@
         var mode = boardState.tableroMode;
         toolbar = '<div class="bt-toolbar">' +
           '<div class="seg-toggle">' +
-            '<button class="seg ' + (mode === 'sprint' ? 'on' : '') + '" data-mode="sprint"><i class="fa-solid fa-person-running"></i> Sprint</button>' +
             '<button class="seg ' + (mode === 'backlog' ? 'on' : '') + '" data-mode="backlog"><i class="fa-solid fa-layer-group"></i> Backlog</button>' +
+            '<button class="seg ' + (mode === 'sprint' ? 'on' : '') + '" data-mode="sprint"><i class="fa-solid fa-person-running"></i> Sprint</button>' +
           '</div>' +
-          '<select id="bt_proj_id" class="form-input" style="width:auto;min-width:180px;padding:8px 10px;font-size:13px;"' + (hayProyectos ? '' : ' disabled') + '>' + projOpts + '</select>' +
-          '<input id="bt_q" class="form-input" placeholder="Buscar tarea..." style="max-width:190px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
+          '<select id="bt_proj_id" class="form-input" style="width:auto;min-width:170px;padding:8px 10px;font-size:13px;"' + (hayProyectos ? '' : ' disabled') + '>' + projOpts + '</select>' +
+          (isAdmin ? sel('bt_resp', 'Cualquier responsable', boardResponsables(), f.responsable) : '') +
+          '<input id="bt_q" class="form-input" placeholder="Buscar tarea..." style="max-width:170px;padding:8px 12px;font-size:13px;" value="' + esc(f.q) + '">' +
           '<div style="flex:1;"></div>' +
           '<button class="btn btn-primary btn-small" id="bt_new" ' + (hayProyectos ? '' : 'disabled') + '><i class="fa-solid fa-plus"></i> Nueva tarea</button>' +
         '</div>';
@@ -1049,14 +1060,17 @@
           subs.filter(function (s) { return s.estado === ESTADO_FINAL; }).length + '/' + subs.length + '</span>'
         : '';
       var fileBadge = t.files_count ? '<span class="bt-badge" title="Adjuntos"><i class="fa-solid fa-paperclip"></i> ' + t.files_count + '</span>' : '';
+      var obs = t.observaciones ? '<div class="bt-obs">' + esc(String(t.observaciones).replace(/\s+/g, ' ').slice(0, 90)) + (String(t.observaciones).length > 90 ? '…' : '') + '</div>' : '';
       return '<div class="bt-card dnd-card" data-id="' + t.id + '">' +
         '<div class="bt-title">' + prio + esc(t.titulo) + '</div>' +
+        obs +
         '<div class="bt-meta">' +
           (t.tipo ? '<span class="' + tipoCls + '">' + esc(t.tipo) + '</span>' : '') +
           boardPlazoChip(t) + subBadge + fileBadge +
         '</div>' +
         '<div class="bt-foot">' +
-          '<span class="text-gray text-xs">' + (t.fecha ? fmtDate(t.fecha) : '') + (t.horas ? ' &middot; ' + t.horas + 'h' : '') + '</span>' +
+          '<span class="text-gray text-xs">' + (t.responsable ? esc(t.responsable) : 'Sin asignar') +
+            (t.fecha ? ' &middot; ' + fmtDate(t.fecha) : '') + (t.horas ? ' &middot; ' + t.horas + 'h' : '') + '</span>' +
           '<span style="display:flex;align-items:center;gap:6px;">' + pts + resp + '</span>' +
         '</div>' +
       '</div>';
@@ -1068,7 +1082,7 @@
       if (!pid) { el('boardBody').innerHTML = emptyProjectsMsg(); return; }
       var q = (boardState.filtros.q || '').toLowerCase();
       var tasks = boardState.tasks.filter(function (t) {
-        return String(t.project_id) === String(pid) && !t.sprint_id && boardEsPrincipal(t) &&
+        return String(t.project_id) === String(pid) && !t.sprint_id && boardEsPrincipal(t) && boardPasaResponsable(t) &&
           (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
       }).sort(function (a, b) { return (a.orden || 0) - (b.orden || 0) || a.id - b.id; });
 
@@ -1159,7 +1173,7 @@
       var q = (boardState.filtros.q || '').toLowerCase();
       var enSprint = boardState.tasks.filter(function (t) { return String(t.sprint_id) === String(sprint.id); });
       var tasks = enSprint.filter(function (t) {
-        return boardEsPrincipal(t) && (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
+        return boardEsPrincipal(t) && boardPasaResponsable(t) && (!q || (t.titulo || '').toLowerCase().indexOf(q) !== -1);
       });
 
       // progreso: cuenta tareas principales + subtareas del sprint
@@ -2141,6 +2155,63 @@
           });
         }
         wire();
+      });
+    }
+
+    /* ---- Admin: automatización de sprints semanales ---- */
+    var DIAS_SEMANA = [[1, 'Lunes'], [2, 'Martes'], [3, 'Miércoles'], [4, 'Jueves'], [5, 'Viernes'], [6, 'Sábado'], [0, 'Domingo']];
+    function viewAutoSprint() {
+      return API.request('/api/board/auto-sprint').then(function (r) {
+        var cfg = r.config || {};
+        var propios = (cfg.project_ids && cfg.project_ids.length) ? cfg.project_ids.map(Number) : [];
+        var efectivos = (r.project_ids_efectivos || []).map(Number);
+        var checks = (r.projects || []).map(function (p) {
+          var on = propios.length ? propios.indexOf(p.id) !== -1 : efectivos.indexOf(p.id) !== -1;
+          return '<label class="as-check"><input type="checkbox" value="' + p.id + '"' + (on ? ' checked' : '') + '> ' + esc(p.nombre) + '</label>';
+        }).join('');
+        var diaOpts = DIAS_SEMANA.map(function (d) { return '<option value="' + d[0] + '"' + (Number(cfg.dia_inicio) === d[0] ? ' selected' : '') + '>' + d[1] + '</option>'; }).join('');
+
+        el('view').innerHTML =
+          '<div class="glass-panel" style="padding:24px;max-width:640px;">' +
+            '<div class="section-heading" style="text-align:left;margin-bottom:6px;">Sprints semanales automáticos</div>' +
+            '<p class="text-gray text-xs mb-3">El sistema crea un sprint por semana para los proyectos marcados. Las tareas sin sprint entran solas al sprint de la semana; al empezar la semana nueva, lo no finalizado pasa al sprint nuevo (con su penalización de Turingcoins).</p>' +
+            '<form id="asForm">' +
+              '<label class="as-check" style="font-weight:600;margin-bottom:14px;"><input type="checkbox" id="as_activo"' + (cfg.activo !== false ? ' checked' : '') + '> Automatización activada</label>' +
+              '<div class="form-group"><label>Proyectos con sprint semanal</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">' + checks + '</div>' +
+                '<div class="text-gray text-xs" style="margin-top:6px;">Si no marcás ninguno, se usan "Turingtech" y "Prospectos" por defecto.</div></div>' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+                '<div class="form-group"><label>La semana empieza el</label><select id="as_dia" class="form-input">' + diaOpts + '</select></div>' +
+                '<div class="form-group"><label>Prefijo del nombre</label><input id="as_prefijo" class="form-input" value="' + esc(cfg.prefijo || 'Sprint semanal') + '"></div>' +
+              '</div>' +
+              '<div style="display:flex;gap:8px;align-items:center;">' +
+                '<button type="submit" class="btn btn-primary" id="as_save">Guardar</button>' +
+                '<button type="button" class="btn btn-secondary btn-small" id="as_run"><i class="fa-solid fa-rotate"></i> Revisar ahora</button>' +
+              '</div>' +
+            '</form>' +
+          '</div>';
+
+        function body() {
+          return {
+            activo: el('as_activo').checked,
+            project_ids: Array.prototype.map.call(el('asForm').querySelectorAll('input[type=checkbox]:not(#as_activo):checked'), function (c) { return Number(c.value); }),
+            dia_inicio: Number(el('as_dia').value),
+            prefijo: el('as_prefijo').value.trim()
+          };
+        }
+        el('asForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var btn = el('as_save'); btn.disabled = true; btn.textContent = 'Guardando...';
+          API.request('/api/board/auto-sprint', { method: 'PUT', body: JSON.stringify(body()) })
+            .then(function () { showAlert('Configuración guardada y aplicada.', 'success'); viewAutoSprint(); })
+            .catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = 'Guardar'; });
+        });
+        el('as_run').addEventListener('click', function () {
+          var b = this; b.disabled = true;
+          API.request('/api/board/auto-sprint/run', { method: 'POST', body: '{}' })
+            .then(function () { showAlert('Sprints semanales revisados.', 'success'); })
+            .catch(function (err) { showAlert(err.message, 'error'); })
+            .then(function () { b.disabled = false; });
+        });
       });
     }
 
