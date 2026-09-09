@@ -1,6 +1,84 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// DigitalOcean bloquea los puertos SMTP salientes (25/465/587) en el droplet, así
+// que en producción el envío va por la API de Microsoft Graph (HTTPS 443) usando
+// las cuentas de M365 del dominio turingtech.com.ec. Si no hay credenciales de
+// Graph configuradas, cae al SMTP clásico (útil en local).
+const GRAPH_ENABLED = !!(
+  process.env.MS_TENANT_ID &&
+  process.env.MS_CLIENT_ID &&
+  process.env.MS_CLIENT_SECRET &&
+  process.env.MAIL_SENDER
+);
+
+const FROM_NAME = process.env.MAIL_FROM_NAME || 'TURINGTECH';
+
+// --- Microsoft Graph ---------------------------------------------------------
+
+let cachedToken = null; // { value, expiresAt }
+
+async function getGraphToken() {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value;
+
+  const url = `https://login.microsoftonline.com/${process.env.MS_TENANT_ID}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    client_id: process.env.MS_CLIENT_ID,
+    client_secret: process.env.MS_CLIENT_SECRET,
+    scope: 'https://graph.microsoft.com/.default',
+    grant_type: 'client_credentials',
+  });
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const data = await resp.json();
+  if (!resp.ok) {
+    throw new Error(`OAuth ${resp.status}: ${data.error} - ${data.error_description || ''}`);
+  }
+
+  cachedToken = {
+    value: data.access_token,
+    // renovar 5 min antes de que expire
+    expiresAt: Date.now() + (data.expires_in - 300) * 1000,
+  };
+  return cachedToken.value;
+}
+
+async function sendViaGraph(to, subject, html) {
+  const token = await getGraphToken();
+  const sender = process.env.MAIL_SENDER;
+  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(sender)}/sendMail`;
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: {
+        subject,
+        body: { contentType: 'HTML', content: html },
+        toRecipients: [{ emailAddress: { address: to } }],
+        from: { emailAddress: { address: sender, name: FROM_NAME } },
+      },
+      saveToSentItems: false,
+    }),
+  });
+
+  if (resp.status === 202) {
+    console.log(`Email enviado a ${to} vía Graph (${sender})`);
+    return true;
+  }
+  const detail = await resp.text();
+  throw new Error(`Graph sendMail ${resp.status}: ${detail}`);
+}
+
+// --- SMTP (fallback local) -------------------------------------------------
+
 let transporter = null;
 
 function getTransporter() {
@@ -19,19 +97,24 @@ function getTransporter() {
   return transporter;
 }
 
+async function sendViaSmtp(to, subject, html) {
+  const transport = getTransporter();
+  const info = await transport.sendMail({
+    from: `"${FROM_NAME}" <${process.env.MAIL_SENDER || process.env.SMTP_USER || 'noreply@turingtech.com.ec'}>`,
+    to,
+    subject,
+    html,
+  });
+  console.log(`Email enviado a ${to} vía SMTP: ${info.messageId}`);
+  return true;
+}
+
 async function sendEmail(to, subject, html) {
   try {
-    const transport = getTransporter();
-    const info = await transport.sendMail({
-      from: `"TURINGTECH" <${process.env.SMTP_USER || 'noreply@turingtech.com.ec'}>`,
-      to,
-      subject,
-      html,
-    });
-    console.log(`Email enviado a ${to}: ${info.messageId}`);
-    return true;
+    if (GRAPH_ENABLED) return await sendViaGraph(to, subject, html);
+    return await sendViaSmtp(to, subject, html);
   } catch (err) {
-    console.error('Error enviando email:', err.message);
+    console.error(`Error enviando email a ${to} [${subject}]:`, err.message);
     return false;
   }
 }
