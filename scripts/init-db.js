@@ -214,14 +214,64 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS prospecto_interacciones (
         id SERIAL PRIMARY KEY,
         prospecto_id INTEGER NOT NULL REFERENCES prospectos(id) ON DELETE CASCADE,
-        tipo VARCHAR(20) NOT NULL,           -- llamada | email | whatsapp | reunion | nota
+        tipo VARCHAR(30) NOT NULL,           -- slug de prospecto_tipos_interaccion
         resultado VARCHAR(30),               -- contacto | no_contesto | agendo | propuesta | descartado | otro
         nota TEXT,
         user_id INTEGER REFERENCES users(id),
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    console.log('[OK] Tabla prospectos / prospecto_interacciones');
+    // Catálogo configurable (el admin lo edita): estados del pipeline + tipos de interacción
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS prospecto_estados (
+        id SERIAL PRIMARY KEY,
+        slug VARCHAR(30) UNIQUE NOT NULL,
+        label VARCHAR(60) NOT NULL,
+        color VARCHAR(9) NOT NULL DEFAULT '#94a3b8',
+        board_estado VARCHAR(30) NOT NULL DEFAULT 'En curso',
+        orden INTEGER NOT NULL DEFAULT 0,
+        activo BOOLEAN NOT NULL DEFAULT true
+      );
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS prospecto_tipos_interaccion (
+        id SERIAL PRIMARY KEY,
+        slug VARCHAR(30) UNIQUE NOT NULL,
+        label VARCHAR(60) NOT NULL,
+        icono VARCHAR(40) NOT NULL DEFAULT 'fa-solid fa-note-sticky',
+        orden INTEGER NOT NULL DEFAULT 0,
+        activo BOOLEAN NOT NULL DEFAULT true
+      );
+    `);
+    // valores por defecto (idempotente)
+    for (const [i, [slug, label, color, be]] of [
+      ['nuevo', 'Nuevo', '#94a3b8', 'Tareas por hacer'],
+      ['contactado', 'Contactado', '#3b82f6', 'En curso'],
+      ['en_seguimiento', 'En seguimiento', '#a78bfa', 'En curso'],
+      ['reunion', 'Reunión agendada', '#f59e0b', 'En curso'],
+      ['propuesta', 'Propuesta enviada', '#f97316', 'En curso'],
+      ['ganado', 'Ganado', '#10b981', 'Finalizada'],
+      ['perdido', 'Perdido', '#ef4444', 'Finalizada'],
+      ['no_responde', 'No responde', '#64748b', 'Finalizada'],
+    ].entries()) {
+      await db.query(
+        "INSERT INTO prospecto_estados (slug, label, color, board_estado, orden) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (slug) DO NOTHING",
+        [slug, label, color, be, i]
+      );
+    }
+    for (const [i, [slug, label, icono]] of [
+      ['llamada', 'Llamada', 'fa-solid fa-phone'],
+      ['email', 'Email', 'fa-solid fa-envelope'],
+      ['whatsapp', 'WhatsApp', 'fa-brands fa-whatsapp'],
+      ['reunion', 'Reunión', 'fa-solid fa-handshake'],
+      ['nota', 'Nota', 'fa-solid fa-note-sticky'],
+    ].entries()) {
+      await db.query(
+        "INSERT INTO prospecto_tipos_interaccion (slug, label, icono, orden) VALUES ($1,$2,$3,$4) ON CONFLICT (slug) DO NOTHING",
+        [slug, label, icono, i]
+      );
+    }
+    console.log('[OK] Tablas prospectos / prospecto_interacciones / prospecto_estados / prospecto_tipos_interaccion');
 
     // ---------------- notificaciones ----------------
     await db.query(`

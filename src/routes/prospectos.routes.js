@@ -18,22 +18,28 @@ const FIELDS = [
   'fecha_fase', 'extension_pbx', 'horario_preferido', 'notas',
 ];
 
-// Pipeline comercial (CRM)
-const ESTADOS = ['nuevo', 'contactado', 'en_seguimiento', 'reunion', 'propuesta', 'ganado', 'perdido', 'no_responde'];
-const INTER_TIPOS = ['llamada', 'email', 'whatsapp', 'reunion', 'nota'];
+// Pipeline comercial (CRM) — resultados fijos; estados y tipos vienen de la BD (catálogo editable)
 const INTER_RESULTADOS = ['contacto', 'no_contesto', 'agendo', 'propuesta', 'descartado', 'otro'];
-// estado del prospecto -> estado de la tarea del tablero
-const ESTADO_A_BOARD = {
-  nuevo: 'Tareas por hacer',
-  contactado: 'En curso', en_seguimiento: 'En curso', reunion: 'En curso', propuesta: 'En curso',
-  ganado: 'Finalizada', perdido: 'Finalizada', no_responde: 'Finalizada',
-};
+const BOARD_ESTADOS = ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
+const slugify = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
+
+async function estadosActivos() {
+  return (await db.query('SELECT slug, label, color, board_estado, orden FROM prospecto_estados WHERE activo = true ORDER BY orden, id')).rows;
+}
+async function tiposActivos() {
+  return (await db.query('SELECT slug, label, icono, orden FROM prospecto_tipos_interaccion WHERE activo = true ORDER BY orden, id')).rows;
+}
+async function boardEstadoDe(slug) {
+  const r = await db.query('SELECT board_estado FROM prospecto_estados WHERE slug = $1', [slug]);
+  return r.rows.length ? r.rows[0].board_estado : 'En curso';
+}
 
 // Solo colaboradores TURINGTECH y admins
 router.use(authMiddleware, (req, res, next) => {
   if (req.user.role === 'admin' || req.user.account_type === 'colaborador') return next();
   return res.status(403).json({ error: 'Acceso solo para colaboradores TURINGTECH' });
 });
+const isAdmin = (req) => req.user.role === 'admin';
 
 // proyecto "Prospectos" del tablero (lo crea si no existe, con todos los colaboradores)
 async function prospectosProjectId(createdBy) {
@@ -101,7 +107,12 @@ router.get('/', async (req, res) => {
     res.json({
       prospectos: result.rows,
       total: result.rows.length,
-      meta: { estados: ESTADOS, tipos: INTER_TIPOS, resultados: INTER_RESULTADOS, colaboradores },
+      meta: {
+        estados: await estadosActivos(),
+        tipos: await tiposActivos(),
+        resultados: INTER_RESULTADOS,
+        colaboradores,
+      },
     });
   } catch (err) {
     console.error('Error en prospectos list:', err.message);
@@ -112,16 +123,16 @@ router.get('/', async (req, res) => {
 // PATCH /api/prospectos/:id/estado
 router.patch('/:id/estado', async (req, res) => {
   try {
-    const estado = ESTADOS.includes(req.body.estado) ? req.body.estado : null;
-    if (!estado) return res.status(400).json({ error: 'Estado no válido' });
+    const e = (await db.query('SELECT slug, board_estado FROM prospecto_estados WHERE slug = $1 AND activo = true', [req.body.estado])).rows[0];
+    if (!e) return res.status(400).json({ error: 'Estado no válido' });
     const cur = (await db.query('SELECT id, task_id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
     if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
 
-    await db.query('UPDATE prospectos SET estado = $1 WHERE id = $2', [estado, req.params.id]);
+    await db.query('UPDATE prospectos SET estado = $1 WHERE id = $2', [e.slug, req.params.id]);
     if (cur.task_id) {
-      await db.query('UPDATE board_tasks SET estado = $1, updated_at = NOW() WHERE id = $2', [ESTADO_A_BOARD[estado], cur.task_id]);
+      await db.query('UPDATE board_tasks SET estado = $1, updated_at = NOW() WHERE id = $2', [e.board_estado, cur.task_id]);
     }
-    res.json({ id: Number(req.params.id), estado });
+    res.json({ id: Number(req.params.id), estado: e.slug });
   } catch (err) {
     console.error('Error cambiando estado de prospecto:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -171,7 +182,8 @@ router.post('/:id/interacciones', async (req, res) => {
   try {
     const cur = (await db.query('SELECT id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
     if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
-    const tipo = INTER_TIPOS.includes(req.body.tipo) ? req.body.tipo : 'nota';
+    const tv = (await db.query('SELECT slug FROM prospecto_tipos_interaccion WHERE slug = $1 AND activo = true', [req.body.tipo])).rows[0];
+    const tipo = tv ? tv.slug : 'nota';
     const resultado = INTER_RESULTADOS.includes(req.body.resultado) ? req.body.resultado : null;
     const nota = req.body.nota ? String(req.body.nota).trim() : null;
     if (!nota && !resultado) return res.status(400).json({ error: 'Agrega una nota o un resultado' });
@@ -224,16 +236,17 @@ router.post('/:id/convertir-tarea', async (req, res) => {
       p.email ? 'Email: ' + p.email : null,
       p.pilar ? 'Pilar: ' + p.pilar : null,
     ].filter(Boolean).join('\n');
+    const be = await boardEstadoDe(p.estado);
 
     const ord = (await db.query(
       "SELECT COALESCE(MAX(orden),0)+1 AS n FROM board_tasks WHERE project_id = $1 AND sprint_id IS NULL AND estado = $2",
-      [pid, ESTADO_A_BOARD[p.estado] || 'Tareas por hacer']
+      [pid, be]
     )).rows[0].n;
 
     const t = (await db.query(
       `INSERT INTO board_tasks (titulo, project_id, assignee_id, responsable, tipo, estado, prioridad, observaciones, orden, created_by)
        VALUES ($1,$2,$3,$4,'Tarea',$5,'media',$6,$7,$8) RETURNING id`,
-      ['Prospecto: ' + p.empresa, pid, p.owner_id, responsable, ESTADO_A_BOARD[p.estado] || 'Tareas por hacer', obs, ord, req.user.id]
+      ['Prospecto: ' + p.empresa, pid, p.owner_id, responsable, be, obs, ord, req.user.id]
     )).rows[0];
 
     await db.query('UPDATE prospectos SET task_id = $1 WHERE id = $2', [t.id, req.params.id]);
@@ -312,6 +325,136 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Prospecto eliminado' });
   } catch (err) {
     console.error('Error eliminando prospecto:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+/* ===================== CATÁLOGO CONFIGURABLE (estados / tipos) ===================== */
+
+const requiereAdmin = (req, res, next) => (isAdmin(req) ? next() : res.status(403).json({ error: 'Solo un administrador' }));
+
+// GET /api/prospectos/catalogo  -> todo (incluye inactivos) para el panel de admin
+router.get('/catalogo', async (req, res) => {
+  try {
+    const estados = (await db.query('SELECT * FROM prospecto_estados ORDER BY orden, id')).rows;
+    const tipos = (await db.query('SELECT * FROM prospecto_tipos_interaccion ORDER BY orden, id')).rows;
+    res.json({ estados, tipos, board_estados: BOARD_ESTADOS });
+  } catch (err) {
+    console.error('Error catalogo prospectos:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+function limpiarOrden(v) { return Number.isFinite(Number(v)) ? Number(v) : 0; }
+
+// ---- estados del pipeline ----
+router.post('/catalogo/estados', requiereAdmin, async (req, res) => {
+  try {
+    const label = String(req.body.label || '').trim();
+    if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    let slug = slugify(req.body.slug || label);
+    if (!slug) return res.status(400).json({ error: 'Nombre no válido' });
+    if ((await db.query('SELECT 1 FROM prospecto_estados WHERE slug = $1', [slug])).rows.length) {
+      slug = (slug + '_' + Date.now().toString(36).slice(-4)).slice(0, 30);
+    }
+    const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
+    const board_estado = BOARD_ESTADOS.includes(req.body.board_estado) ? req.body.board_estado : 'En curso';
+    const orden = Number(req.body.orden) || (await db.query('SELECT COALESCE(MAX(orden),0)+1 n FROM prospecto_estados')).rows[0].n;
+    const row = (await db.query(
+      'INSERT INTO prospecto_estados (slug,label,color,board_estado,orden) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [slug, label, color, board_estado, orden]
+    )).rows[0];
+    res.status(201).json({ estado: row });
+  } catch (err) {
+    console.error('Error creando estado:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.put('/catalogo/estados/:eid', requiereAdmin, async (req, res) => {
+  try {
+    const label = String(req.body.label || '').trim();
+    if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
+    const board_estado = BOARD_ESTADOS.includes(req.body.board_estado) ? req.body.board_estado : 'En curso';
+    const row = (await db.query(
+      'UPDATE prospecto_estados SET label=$1,color=$2,board_estado=$3,activo=$4,orden=$5 WHERE id=$6 RETURNING *',
+      [label, color, board_estado, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.eid]
+    )).rows[0];
+    if (!row) return res.status(404).json({ error: 'Estado no encontrado' });
+    res.json({ estado: row });
+  } catch (err) {
+    console.error('Error actualizando estado:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.delete('/catalogo/estados/:eid', requiereAdmin, async (req, res) => {
+  try {
+    const e = (await db.query('SELECT slug FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
+    if (!e) return res.status(404).json({ error: 'Estado no encontrado' });
+    if ((await db.query('SELECT 1 FROM prospectos WHERE estado = $1 LIMIT 1', [e.slug])).rows.length) {
+      return res.status(400).json({ error: 'Hay prospectos con este estado; desactívalo en vez de borrarlo.' });
+    }
+    await db.query('DELETE FROM prospecto_estados WHERE id = $1', [req.params.eid]);
+    res.json({ message: 'Estado eliminado' });
+  } catch (err) {
+    console.error('Error eliminando estado:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ---- tipos de interacción ----
+router.post('/catalogo/tipos', requiereAdmin, async (req, res) => {
+  try {
+    const label = String(req.body.label || '').trim();
+    if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    let slug = slugify(req.body.slug || label);
+    if (!slug) return res.status(400).json({ error: 'Nombre no válido' });
+    if ((await db.query('SELECT 1 FROM prospecto_tipos_interaccion WHERE slug = $1', [slug])).rows.length) {
+      slug = (slug + '_' + Date.now().toString(36).slice(-4)).slice(0, 30);
+    }
+    const icono = String(req.body.icono || '').trim() || 'fa-solid fa-note-sticky';
+    const orden = Number(req.body.orden) || (await db.query('SELECT COALESCE(MAX(orden),0)+1 n FROM prospecto_tipos_interaccion')).rows[0].n;
+    const row = (await db.query(
+      'INSERT INTO prospecto_tipos_interaccion (slug,label,icono,orden) VALUES ($1,$2,$3,$4) RETURNING *',
+      [slug, label, icono, orden]
+    )).rows[0];
+    res.status(201).json({ tipo: row });
+  } catch (err) {
+    console.error('Error creando tipo:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.put('/catalogo/tipos/:tid', requiereAdmin, async (req, res) => {
+  try {
+    const label = String(req.body.label || '').trim();
+    if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    const icono = String(req.body.icono || '').trim() || 'fa-solid fa-note-sticky';
+    const row = (await db.query(
+      'UPDATE prospecto_tipos_interaccion SET label=$1,icono=$2,activo=$3,orden=$4 WHERE id=$5 RETURNING *',
+      [label, icono, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.tid]
+    )).rows[0];
+    if (!row) return res.status(404).json({ error: 'Tipo no encontrado' });
+    res.json({ tipo: row });
+  } catch (err) {
+    console.error('Error actualizando tipo:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.delete('/catalogo/tipos/:tid', requiereAdmin, async (req, res) => {
+  try {
+    const t = (await db.query('SELECT slug FROM prospecto_tipos_interaccion WHERE id = $1', [req.params.tid])).rows[0];
+    if (!t) return res.status(404).json({ error: 'Tipo no encontrado' });
+    if ((await db.query('SELECT 1 FROM prospecto_interacciones WHERE tipo = $1 LIMIT 1', [t.slug])).rows.length) {
+      return res.status(400).json({ error: 'Hay interacciones de este tipo; desactívalo en vez de borrarlo.' });
+    }
+    await db.query('DELETE FROM prospecto_tipos_interaccion WHERE id = $1', [req.params.tid]);
+    res.json({ message: 'Tipo eliminado' });
+  } catch (err) {
+    console.error('Error eliminando tipo:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
