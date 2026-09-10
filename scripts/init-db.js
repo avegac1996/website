@@ -158,6 +158,7 @@ async function initDatabase() {
       ['recompensa_dada', 'BOOLEAN NOT NULL DEFAULT false'],  // +2 turingcoins ya otorgado por terminar a tiempo
       ['recompensa_revertida', 'BOOLEAN NOT NULL DEFAULT false'],  // se reabrió tras finalizar: sin +2 nunca más
       ['en_backlog', 'BOOLEAN NOT NULL DEFAULT false'],  // sacada del sprint a propósito: la automatización no la re-mete
+      ['fecha_fin_set_at', 'TIMESTAMP'],  // cuándo se fijó/editó la fecha de fin: se bloquea 24 h después
     ]) {
       await db.query(`ALTER TABLE board_tasks ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
     }
@@ -312,6 +313,21 @@ async function initDatabase() {
     `);
     console.log('[OK] Tabla admin_config');
 
+    // ---------------- timbrado (control de jornada) ----------------
+    // Marcas de jornada de los colaboradores TURINGTECH: entrada / almuerzo / regreso / salida.
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS time_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        tipo VARCHAR(12) NOT NULL,               -- entrada | almuerzo | regreso | salida
+        ts TIMESTAMP NOT NULL DEFAULT NOW(),     -- momento de la marca (UTC)
+        dia DATE NOT NULL,                       -- día laboral en hora Ecuador (lo fija el backend)
+        nota VARCHAR(200),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('[OK] Tabla time_entries');
+
     // ---------------- índices ----------------
     const indices = [
       'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
@@ -330,6 +346,7 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_prospectos_estado ON prospectos(estado)',
       'CREATE INDEX IF NOT EXISTS idx_prosp_inter_prospecto ON prospecto_interacciones(prospecto_id)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_time_entries_user_dia ON time_entries(user_id, dia)',
     ];
     for (const q of indices) await db.query(q);
     console.log('[OK] Índices');

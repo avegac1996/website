@@ -297,6 +297,9 @@ router.get('/tasks', async (req, res) => {
           `SELECT t.id, t.titulo, t.tipo, t.estado, t.fecha, t.fecha_fin, t.horas, t.observaciones, t.orden,
                   t.project_id, bp.nombre AS proyecto, t.assignee_id, t.sprint_id, t.puntos, t.prioridad,
                   t.parent_id, t.recompensa_dada, t.recompensa_revertida, t.en_backlog,
+                  t.fecha_fin_set_at,
+                  (t.fecha_fin IS NOT NULL AND t.fecha_fin_set_at IS NOT NULL
+                     AND t.fecha_fin_set_at < NOW() - INTERVAL '24 hours') AS fin_bloqueada,
                   u.name AS assignee_nombre, COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable,
                   (SELECT COUNT(*) FROM board_task_files f WHERE f.task_id = t.id)::int AS files_count,
                   t.created_at, t.updated_at
@@ -464,7 +467,7 @@ async function reglaTuringcoins(old, nuevoEstado, nuevaFechaFin) {
 // trae la tarea con todo lo que necesita reglaTuringcoins
 async function tareaParaRegla(id) {
   const r = await db.query(
-    `SELECT t.id, t.titulo, t.estado, t.fecha, t.fecha_fin, t.assignee_id, t.recompensa_dada, t.recompensa_revertida,
+    `SELECT t.id, t.titulo, t.estado, t.fecha, t.fecha_fin, t.fecha_fin_set_at, t.assignee_id, t.recompensa_dada, t.recompensa_revertida,
             t.project_id, t.sprint_id, s.fecha_fin AS sprint_fin
      FROM board_tasks t LEFT JOIN board_sprints s ON s.id = t.sprint_id
      WHERE t.id = $1`,
@@ -607,8 +610,8 @@ router.post('/tasks', async (req, res) => {
     const resp = await nombreAsignado(t.assignee_id);
     const result = await db.query(
       `INSERT INTO board_tasks
-         (titulo, project_id, assignee_id, responsable, sprint_id, parent_id, tipo, estado, prioridad, fecha, fecha_fin, horas, puntos, observaciones, orden, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+         (titulo, project_id, assignee_id, responsable, sprint_id, parent_id, tipo, estado, prioridad, fecha, fecha_fin, horas, puntos, observaciones, orden, created_by, fecha_fin_set_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CASE WHEN $11::date IS NOT NULL THEN NOW() ELSE NULL END) RETURNING id`,
       [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.parent_id, t.tipo, t.estado, t.prioridad,
        t.fecha, t.fecha_fin, t.horas, t.puntos, t.observaciones, ord, req.user.id]
     );
@@ -636,9 +639,37 @@ router.put('/tasks/:id', async (req, res) => {
     let enBacklogSql = 'en_backlog';
     if (t.sprint_id) enBacklogSql = 'false';
     else if (old.sprint_id && !t.sprint_id && !t.parent_id) enBacklogSql = 'true';
+
+    // --- Candado de la fecha de Fin -----------------------------------------
+    // Se corrige libremente durante 24 h desde que se fijó. Después queda
+    // bloqueada: para cambiarla hay que reabrir la tarea (sacarla de "Finalizada"),
+    // lo que ya descuenta 1 Turingcoin. Los admins pueden cambiarla siempre.
+    const finPrev = soloFecha(old.fecha_fin);
+    const finNew = soloFecha(t.fecha_fin);
+    const reabriendo = old.estado === ESTADO_FINAL && t.estado !== ESTADO_FINAL;
+    let finSetAtSql = 'fecha_fin_set_at';
+    if (finPrev !== finNew) {
+      if (!finPrev) {
+        finSetAtSql = 'NOW()';
+      } else {
+        const selladoMs = old.fecha_fin_set_at ? new Date(old.fecha_fin_set_at).getTime() : 0;
+        const dentroVentana = selladoMs && (Date.now() - selladoMs) <= 24 * 3600 * 1000;
+        if (!dentroVentana && !isAdmin(req) && !reabriendo) {
+          return res.status(423).json({
+            code: 'FIN_LOCKED',
+            error: 'La fecha de Fin está bloqueada: pasaron más de 24 h desde que se fijó. Para cambiarla, reabrí la tarea (pasala a "En curso" — eso descuenta 1 Turingcoin) y luego editá la fecha.',
+          });
+        }
+        finSetAtSql = 'NOW()';
+      }
+    } else if (reabriendo && finPrev) {
+      finSetAtSql = 'NOW()';   // al reabrir, la fecha de Fin vuelve a ser editable 24 h
+    }
+
     const result = await db.query(
       `UPDATE board_tasks SET titulo=$1, project_id=$2, assignee_id=$3, responsable=$4, sprint_id=$5, parent_id=$6, tipo=$7, estado=$8,
-              prioridad=$9, fecha=$10, fecha_fin=$11, horas=$12, puntos=$13, observaciones=$14, en_backlog=${enBacklogSql}, updated_at=NOW()
+              prioridad=$9, fecha=$10, fecha_fin=$11, horas=$12, puntos=$13, observaciones=$14, en_backlog=${enBacklogSql},
+              fecha_fin_set_at=${finSetAtSql}, updated_at=NOW()
        WHERE id=$15 RETURNING id`,
       [t.titulo, t.project_id, t.assignee_id, resp, t.sprint_id, t.parent_id, t.tipo, t.estado, t.prioridad,
        t.fecha, t.fecha_fin, t.horas, t.puntos, t.observaciones, req.params.id]
@@ -663,7 +694,10 @@ router.patch('/tasks/:id/estado', async (req, res) => {
     if (!(await puedeProyecto(req, old.project_id))) return res.status(403).json({ error: 'No perteneces a ese proyecto' });
 
     const ord = await siguienteOrden(old.project_id, old.sprint_id, estado);
-    await db.query('UPDATE board_tasks SET estado=$1, orden=$2, updated_at=NOW() WHERE id=$3', [estado, ord, req.params.id]);
+    // al reabrir una tarea finalizada, su fecha de Fin vuelve a ser editable 24 h
+    const reabreFinSql = (old.estado === ESTADO_FINAL && estado !== ESTADO_FINAL && old.fecha_fin)
+      ? ', fecha_fin_set_at=NOW()' : '';
+    await db.query(`UPDATE board_tasks SET estado=$1, orden=$2, updated_at=NOW()${reabreFinSql} WHERE id=$3`, [estado, ord, req.params.id]);
     await reglaTuringcoins(old, estado, old.fecha_fin);
     res.json({ id: Number(req.params.id), estado });
   } catch (err) {
@@ -719,6 +753,10 @@ router.patch('/tasks/:id/mover', async (req, res) => {
     }
     // las subtareas siguen a su tarea principal
     await db.query('UPDATE board_tasks SET sprint_id = $1, en_backlog = $2, updated_at = NOW() WHERE parent_id = $3', [sprint_id, enBacklog, id]);
+    // al reabrir una tarea finalizada, su fecha de Fin vuelve a ser editable 24 h
+    if (old.estado === ESTADO_FINAL && estado !== ESTADO_FINAL && old.fecha_fin) {
+      await db.query('UPDATE board_tasks SET fecha_fin_set_at = NOW() WHERE id = $1', [id]);
+    }
     await db.query('COMMIT');
     await reglaTuringcoins(old, estado, old.fecha_fin);
     res.json({ id, sprint_id, estado });

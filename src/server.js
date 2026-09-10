@@ -10,6 +10,7 @@ const hrRoutes = require('./routes/hr.routes');
 const boardRoutes = require('./routes/board.routes');
 const prospectosRoutes = require('./routes/prospectos.routes');
 const humanizerRoutes = require('./routes/humanizer.routes');
+const timbradoRoutes = require('./routes/timbrado.routes');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/hr', hrRoutes);
 app.use('/api/board', boardRoutes);
 app.use('/api/prospectos', prospectosRoutes);
 app.use('/api/humanizer', humanizerRoutes);
+app.use('/api/timbrado', timbradoRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

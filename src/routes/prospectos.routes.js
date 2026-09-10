@@ -41,15 +41,20 @@ router.use(authMiddleware, (req, res, next) => {
 });
 const isAdmin = (req) => req.user.role === 'admin';
 
-// proyecto "Prospectos" del tablero (lo crea si no existe, con todos los colaboradores)
-async function prospectosProjectId(createdBy) {
-  const r = await db.query("SELECT id FROM board_projects WHERE nombre = 'Prospectos'");
-  if (r.rows.length) return r.rows[0].id;
-  const p = await db.query(
-    "INSERT INTO board_projects (nombre, descripcion, created_by) VALUES ('Prospectos', 'Gestión comercial de prospectos B2B', $1) RETURNING id",
-    [createdBy]
-  );
-  const pid = p.rows[0].id;
+// proyecto "Turingtech" del tablero (lo crea si no existe, con todos los colaboradores).
+// Las tareas nacidas de un prospecto son trabajo de Turingtech y van a su cronograma.
+async function turingtechProjectId(createdBy) {
+  const r = await db.query("SELECT id FROM board_projects WHERE nombre ILIKE 'turingtech'");
+  let pid;
+  if (r.rows.length) {
+    pid = r.rows[0].id;
+  } else {
+    const p = await db.query(
+      "INSERT INTO board_projects (nombre, descripcion, created_by) VALUES ('Turingtech', 'Operación y proyectos internos de Turingtech', $1) RETURNING id",
+      [createdBy]
+    );
+    pid = p.rows[0].id;
+  }
   await db.query(
     "INSERT INTO board_project_members (project_id, user_id) SELECT $1, id FROM users WHERE account_type = 'colaborador' AND active = true ON CONFLICT DO NOTHING",
     [pid]
@@ -222,11 +227,16 @@ router.post('/:id/convertir-tarea', async (req, res) => {
       if (existe.rows.length) return res.json({ task_id: p.task_id, project_id: existe.rows[0].project_id, ya_existia: true });
     }
 
-    const pid = await prospectosProjectId(req.user.id);
+    const pid = await turingtechProjectId(req.user.id);
     let responsable = null;
     if (p.owner_id) {
       const u = await db.query('SELECT name FROM users WHERE id = $1', [p.owner_id]);
       responsable = u.rows.length ? String(u.rows[0].name).trim().split(/\s+/)[0] : null;
+      // el responsable tiene que ser miembro del proyecto Turingtech
+      await db.query(
+        'INSERT INTO board_project_members (project_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [pid, p.owner_id]
+      );
     }
     const contacto = [p.contacto_nombre, p.contacto_apellido].filter(Boolean).join(' ');
     const obs = [
@@ -236,21 +246,23 @@ router.post('/:id/convertir-tarea', async (req, res) => {
       p.email ? 'Email: ' + p.email : null,
       p.pilar ? 'Pilar: ' + p.pilar : null,
     ].filter(Boolean).join('\n');
-    const be = await boardEstadoDe(p.estado);
+    // arranca "En curso": es trabajo de Turingtech con responsable asignado
+    const estado = 'En curso';
+    const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
 
     const ord = (await db.query(
       "SELECT COALESCE(MAX(orden),0)+1 AS n FROM board_tasks WHERE project_id = $1 AND sprint_id IS NULL AND estado = $2",
-      [pid, be]
+      [pid, estado]
     )).rows[0].n;
 
     const t = (await db.query(
-      `INSERT INTO board_tasks (titulo, project_id, assignee_id, responsable, tipo, estado, prioridad, observaciones, orden, created_by)
-       VALUES ($1,$2,$3,$4,'Tarea',$5,'media',$6,$7,$8) RETURNING id`,
-      ['Prospecto: ' + p.empresa, pid, p.owner_id, responsable, be, obs, ord, req.user.id]
+      `INSERT INTO board_tasks (titulo, project_id, assignee_id, responsable, tipo, estado, prioridad, fecha, observaciones, orden, created_by)
+       VALUES ($1,$2,$3,$4,'Tarea',$5,'media',$6,$7,$8,$9) RETURNING id`,
+      ['Prospecto: ' + p.empresa, pid, p.owner_id, responsable, estado, hoy, obs, ord, req.user.id]
     )).rows[0];
 
     await db.query('UPDATE prospectos SET task_id = $1 WHERE id = $2', [t.id, req.params.id]);
-    res.status(201).json({ task_id: t.id, project_id: pid });
+    res.status(201).json({ task_id: t.id, project_id: pid, proyecto: 'Turingtech' });
   } catch (err) {
     console.error('Error convirtiendo prospecto en tarea:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
