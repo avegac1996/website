@@ -221,6 +221,8 @@ async function initDatabase() {
       ['estado', "VARCHAR(24) NOT NULL DEFAULT 'nuevo'"],  // nuevo|contactado|en_seguimiento|reunion|propuesta|ganado|perdido|no_responde
       ['owner_id', 'INTEGER REFERENCES users(id)'],
       ['task_id', 'INTEGER REFERENCES board_tasks(id) ON DELETE SET NULL'],
+      ['proxima_gestion', 'DATE'],                 // próxima actividad programada (seguimiento)
+      ['proxima_gestion_nota', 'VARCHAR(200)'],
     ]) {
       await db.query(`ALTER TABLE prospectos ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
     }
@@ -233,6 +235,19 @@ async function initDatabase() {
         resultado VARCHAR(30),               -- contacto | no_contesto | agendo | propuesta | descartado | otro
         nota TEXT,
         user_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    // Imágenes / archivos adjuntos a cada interacción (data URL en la BD, como board_task_files)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS prospecto_interaccion_files (
+        id SERIAL PRIMARY KEY,
+        interaccion_id INTEGER NOT NULL REFERENCES prospecto_interacciones(id) ON DELETE CASCADE,
+        nombre VARCHAR(255),
+        mime VARCHAR(120),
+        tamano INTEGER,
+        data TEXT NOT NULL,
+        uploaded_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
@@ -347,6 +362,9 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_prosp_inter_prospecto ON prospecto_interacciones(prospecto_id)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_time_entries_user_dia ON time_entries(user_id, dia)',
+      'CREATE INDEX IF NOT EXISTS idx_prosp_inter_files ON prospecto_interaccion_files(interaccion_id)',
+      'CREATE INDEX IF NOT EXISTS idx_prospectos_proxima ON prospectos(proxima_gestion)',
+      'CREATE INDEX IF NOT EXISTS idx_prospectos_owner ON prospectos(owner_id)',
     ];
     for (const q of indices) await db.query(q);
     console.log('[OK] Índices');

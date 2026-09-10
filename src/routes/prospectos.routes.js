@@ -1,8 +1,22 @@
 const express = require('express');
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const J = require('../utils/jornada');
 
 const router = express.Router();
+
+// Adjuntos de interacciones (data URL en la BD, igual que board_task_files)
+const FILE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf'];
+const FILE_MAX = 5 * 1024 * 1024;   // 5 MB del binario decodificado
+const FILE_MAX_COUNT = 8;
+
+function parseDataUrl(data) {
+  const m = /^data:([^;,]+)(;base64)?,(.*)$/s.exec(String(data || ''));
+  if (!m) return null;
+  const mime = m[1].toLowerCase();
+  const bytes = m[2] ? Math.floor(m[3].length * 3 / 4) : m[3].length;
+  return { mime, bytes };
+}
 
 // Cabeceras del .txt (CSV separado por ; — compatible con Excel ecuatoriano)
 const CSV_HEADERS = [
@@ -100,7 +114,8 @@ router.get('/', async (req, res) => {
       `SELECT p.*, u.name AS owner_nombre,
               (SELECT max(created_at) FROM prospecto_interacciones i WHERE i.prospecto_id = p.id) AS ultima_gestion,
               (SELECT count(*) FROM prospecto_interacciones i WHERE i.prospecto_id = p.id)::int AS interacciones,
-              t.estado AS task_estado, t.project_id AS task_project_id
+              t.estado AS task_estado, t.project_id AS task_project_id,
+              t.titulo AS task_titulo, t.created_at AS task_created_at, t.fecha_fin AS task_fecha_fin
        FROM prospectos p
        LEFT JOIN users u ON u.id = p.owner_id
        LEFT JOIN board_tasks t ON t.id = p.task_id
@@ -167,7 +182,7 @@ router.patch('/:id/owner', async (req, res) => {
   }
 });
 
-// GET /api/prospectos/:id/interacciones
+// GET /api/prospectos/:id/interacciones  -> historial + adjuntos de cada interacción
 router.get('/:id/interacciones', async (req, res) => {
   try {
     const rows = (await db.query(
@@ -175,6 +190,17 @@ router.get('/:id/interacciones', async (req, res) => {
        FROM prospecto_interacciones i LEFT JOIN users u ON u.id = i.user_id
        WHERE i.prospecto_id = $1 ORDER BY i.created_at DESC`, [req.params.id]
     )).rows;
+    const ids = rows.map((r) => r.id);
+    let files = [];
+    if (ids.length) {
+      files = (await db.query(
+        'SELECT id, interaccion_id, nombre, mime, data FROM prospecto_interaccion_files WHERE interaccion_id = ANY($1) ORDER BY id',
+        [ids]
+      )).rows;
+    }
+    const byInter = {};
+    files.forEach((f) => { (byInter[f.interaccion_id] = byInter[f.interaccion_id] || []).push(f); });
+    rows.forEach((r) => { r.files = byInter[r.id] || []; });
     res.json({ interacciones: rows });
   } catch (err) {
     console.error('Error listando interacciones:', err.message);
@@ -182,7 +208,7 @@ router.get('/:id/interacciones', async (req, res) => {
   }
 });
 
-// POST /api/prospectos/:id/interacciones   body: { tipo, resultado, nota }
+// POST /api/prospectos/:id/interacciones   body: { tipo, resultado, nota, files:[{nombre,data}], proxima_gestion, proxima_gestion_nota }
 router.post('/:id/interacciones', async (req, res) => {
   try {
     const cur = (await db.query('SELECT id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
@@ -191,14 +217,40 @@ router.post('/:id/interacciones', async (req, res) => {
     const tipo = tv ? tv.slug : 'nota';
     const resultado = INTER_RESULTADOS.includes(req.body.resultado) ? req.body.resultado : null;
     const nota = req.body.nota ? String(req.body.nota).trim() : null;
-    if (!nota && !resultado) return res.status(400).json({ error: 'Agrega una nota o un resultado' });
+
+    const filesIn = Array.isArray(req.body.files) ? req.body.files.slice(0, FILE_MAX_COUNT) : [];
+    if (!nota && !resultado && !filesIn.length) return res.status(400).json({ error: 'Agrega una nota, un resultado o una imagen' });
+    for (const f of filesIn) {
+      const info = parseDataUrl(f && f.data);
+      if (!info || !FILE_MIMES.includes(info.mime)) return res.status(400).json({ error: 'Formato de archivo no admitido (imágenes o PDF)' });
+      if (info.bytes > FILE_MAX) return res.status(400).json({ error: 'Cada archivo debe pesar máximo 5 MB' });
+    }
 
     const row = (await db.query(
       `INSERT INTO prospecto_interacciones (prospecto_id, tipo, resultado, nota, user_id)
        VALUES ($1,$2,$3,$4,$5) RETURNING id, tipo, resultado, nota, created_at`,
       [req.params.id, tipo, resultado, nota, req.user.id]
     )).rows[0];
-    res.status(201).json({ interaccion: row });
+
+    row.files = [];
+    for (const f of filesIn) {
+      const info = parseDataUrl(f.data);
+      const fr = (await db.query(
+        `INSERT INTO prospecto_interaccion_files (interaccion_id, nombre, mime, tamano, data, uploaded_by)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, interaccion_id, nombre, mime, data`,
+        [row.id, String(f.nombre || 'imagen.png').slice(0, 255), info.mime, info.bytes, f.data, req.user.id]
+      )).rows[0];
+      row.files.push(fr);
+    }
+
+    // fija la próxima gestión si vino en el mismo formulario
+    const pg = /^\d{4}-\d{2}-\d{2}$/.test(req.body.proxima_gestion || '') ? req.body.proxima_gestion : null;
+    if (pg || req.body.proxima_gestion === '') {
+      await db.query('UPDATE prospectos SET proxima_gestion = $1, proxima_gestion_nota = $2 WHERE id = $3',
+        [pg, req.body.proxima_gestion_nota ? String(req.body.proxima_gestion_nota).slice(0, 200) : null, req.params.id]);
+    }
+
+    res.status(201).json({ interaccion: row, proxima_gestion: pg });
   } catch (err) {
     console.error('Error creando interacción:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -213,6 +265,176 @@ router.delete('/:id/interacciones/:iid', async (req, res) => {
     res.json({ message: 'Interacción eliminada' });
   } catch (err) {
     console.error('Error eliminando interacción:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/prospectos/:id/interacciones/:iid/files/:fid  -> quita una imagen del historial
+router.delete('/:id/interacciones/:iid/files/:fid', async (req, res) => {
+  try {
+    const r = await db.query(
+      `DELETE FROM prospecto_interaccion_files f
+       USING prospecto_interacciones i
+       WHERE f.id = $1 AND f.interaccion_id = i.id AND i.id = $2 AND i.prospecto_id = $3 RETURNING f.id`,
+      [req.params.fid, req.params.iid, req.params.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Adjunto no encontrado' });
+    res.json({ message: 'Adjunto eliminado' });
+  } catch (err) {
+    console.error('Error eliminando adjunto de interacción:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PATCH /api/prospectos/:id/proxima-gestion  { proxima_gestion, nota }
+router.patch('/:id/proxima-gestion', async (req, res) => {
+  try {
+    const cur = (await db.query('SELECT id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
+    if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
+    const pg = /^\d{4}-\d{2}-\d{2}$/.test(req.body.proxima_gestion || '') ? req.body.proxima_gestion : null;
+    const nota = req.body.nota ? String(req.body.nota).slice(0, 200) : null;
+    await db.query('UPDATE prospectos SET proxima_gestion = $1, proxima_gestion_nota = $2 WHERE id = $3', [pg, nota, req.params.id]);
+    res.json({ id: Number(req.params.id), proxima_gestion: pg, proxima_gestion_nota: nota });
+  } catch (err) {
+    console.error('Error en proxima-gestion:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/prospectos/resumen  -> dashboard del admin (prospectos + equipo)
+router.get('/resumen', async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Solo administradores' });
+    const hoy = J.hoyISO();
+    const estados = await estadosActivos();
+    const cerrados = estados.filter((e) => e.board_estado === 'Finalizada').map((e) => e.slug);
+    const abiertoSql = cerrados.length ? `AND p.estado <> ALL($1)` : '';
+    const abiertoParams = cerrados.length ? [cerrados] : [];
+
+    // pipeline por estado
+    const porEstadoRows = (await db.query(
+      'SELECT estado, count(*)::int AS n FROM prospectos GROUP BY estado'
+    )).rows;
+    const porEstadoMap = {};
+    porEstadoRows.forEach((r) => { porEstadoMap[r.estado] = r.n; });
+    const por_estado = estados.map((e) => ({ slug: e.slug, label: e.label, color: e.color, count: porEstadoMap[e.slug] || 0 }));
+    const total = porEstadoRows.reduce((a, r) => a + r.n, 0);
+
+    // seguimiento (solo prospectos "abiertos")
+    const seg = (await db.query(
+      `SELECT
+         count(*) FILTER (WHERE p.proxima_gestion IS NULL) ::int AS sin_programar,
+         count(*) FILTER (WHERE p.proxima_gestion < $${abiertoParams.length + 1}::date) ::int AS atrasados,
+         count(*) FILTER (WHERE p.proxima_gestion >= $${abiertoParams.length + 1}::date) ::int AS al_dia,
+         count(*) FILTER (WHERE p.task_id IS NOT NULL) ::int AS con_tarea,
+         count(*) ::int AS abiertos
+       FROM prospectos p WHERE true ${abiertoSql}`,
+      [...abiertoParams, hoy]
+    )).rows[0];
+
+    // interacciones últimos 14 días (por día, hora Ecuador)
+    const inter = (await db.query(
+      `SELECT to_char((created_at - interval '5 hours')::date, 'YYYY-MM-DD') AS dia, count(*)::int AS n
+       FROM prospecto_interacciones
+       WHERE created_at >= NOW() - interval '14 days'
+       GROUP BY 1 ORDER BY 1`
+    )).rows;
+    const interPorDia = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(new Date(hoy + 'T00:00:00Z').getTime() - i * 86400000).toISOString().slice(0, 10);
+      const hit = inter.find((x) => x.dia === d);
+      interPorDia.push({ dia: d, n: hit ? hit.n : 0 });
+    }
+
+    // por responsable comercial
+    const porResp = (await db.query(
+      `SELECT u.id, u.name,
+         count(p.id)::int AS prospectos,
+         count(p.id) FILTER (WHERE p.proxima_gestion IS NULL AND (p.estado <> ALL($1)))::int AS sin_programar,
+         count(p.id) FILTER (WHERE p.proxima_gestion < $2::date AND (p.estado <> ALL($1)))::int AS atrasados,
+         (SELECT count(*)::int FROM prospecto_interacciones i
+            WHERE i.user_id = u.id AND i.created_at >= NOW() - interval '7 days') AS interacciones_7d
+       FROM users u
+       LEFT JOIN prospectos p ON p.owner_id = u.id
+       WHERE u.account_type = 'colaborador' AND u.active = true
+       GROUP BY u.id, u.name ORDER BY prospectos DESC, u.name`,
+      [cerrados.length ? cerrados : ['__none__'], hoy]
+    )).rows;
+
+    // prospectos que necesitan atención (atrasados o sin programar), abiertos
+    const atencion = (await db.query(
+      `SELECT p.id, p.empresa, p.estado, p.proxima_gestion, p.proxima_gestion_nota, u.name AS owner_nombre,
+              (CASE WHEN p.proxima_gestion IS NOT NULL THEN ($1::date - p.proxima_gestion) ELSE NULL END) AS dias_atraso
+       FROM prospectos p LEFT JOIN users u ON u.id = p.owner_id
+       WHERE (p.proxima_gestion IS NULL OR p.proxima_gestion < $1::date)
+         ${cerrados.length ? 'AND p.estado <> ALL($2)' : ''}
+       ORDER BY (p.proxima_gestion IS NULL), p.proxima_gestion ASC NULLS LAST, p.ts ASC
+       LIMIT 25`,
+      cerrados.length ? [hoy, cerrados] : [hoy]
+    )).rows;
+
+    // ---- equipo: tareas del tablero ----
+    const tareas = (await db.query(
+      `SELECT COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable,
+              count(*) FILTER (WHERE t.estado <> 'Finalizada')::int AS abiertas,
+              count(*) FILTER (WHERE t.estado = 'En curso')::int AS en_curso,
+              count(*) FILTER (WHERE t.fecha_fin < $1::date AND t.estado <> 'Finalizada')::int AS atrasadas,
+              count(*) FILTER (WHERE t.estado = 'Finalizada' AND t.updated_at >= NOW() - interval '7 days')::int AS finalizadas_7d
+       FROM board_tasks t LEFT JOIN users u ON u.id = t.assignee_id
+       WHERE t.parent_id IS NULL
+       GROUP BY 1 ORDER BY abiertas DESC NULLS LAST`,
+      [hoy]
+    )).rows.filter((r) => r.responsable);
+
+    const tareasAtrasadas = (await db.query(
+      `SELECT t.id, t.titulo, t.fecha_fin, t.estado, COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable, bp.nombre AS proyecto
+       FROM board_tasks t LEFT JOIN users u ON u.id = t.assignee_id LEFT JOIN board_projects bp ON bp.id = t.project_id
+       WHERE t.parent_id IS NULL AND t.fecha_fin < $1::date AND t.estado <> 'Finalizada'
+       ORDER BY t.fecha_fin ASC LIMIT 20`,
+      [hoy]
+    )).rows;
+
+    // ---- equipo: timbrado de la semana en curso ----
+    const lunes = J.lunesDeSemana(hoy);
+    const users = (await db.query(
+      "SELECT id, name FROM users WHERE account_type = 'colaborador' AND active = true ORDER BY name"
+    )).rows;
+    const marcas = (await db.query(
+      'SELECT user_id, tipo, ts, dia FROM time_entries WHERE dia BETWEEN $1 AND $2 ORDER BY dia, ts, id',
+      [lunes, hoy]
+    )).rows;
+    const porU = {};
+    marcas.forEach((e) => { (porU[e.user_id] = porU[e.user_id] || []).push(e); });
+    const timbrado_semana = users.map((u) => {
+      const r = J.resumenRango(porU[u.id] || [], lunes, hoy);
+      return { user_id: u.id, name: u.name, total_min: r.total_min, total_horas: r.total_horas, dias: r.dias_con_marca };
+    });
+
+    res.json({
+      hoy,
+      prospectos: {
+        total,
+        por_estado,
+        seguimiento: {
+          al_dia: seg.al_dia || 0,
+          atrasados: seg.atrasados || 0,
+          sin_programar: seg.sin_programar || 0,
+          con_tarea: seg.con_tarea || 0,
+          abiertos: seg.abiertos || 0,
+        },
+        interacciones_por_dia: interPorDia,
+        por_responsable: porResp,
+        atencion,
+      },
+      equipo: {
+        semana_desde: lunes,
+        tareas_por_responsable: tareas,
+        tareas_atrasadas: tareasAtrasadas,
+        timbrado_semana,
+      },
+    });
+  } catch (err) {
+    console.error('Error en prospectos/resumen:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
