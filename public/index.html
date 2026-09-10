@@ -277,9 +277,9 @@
             margin-top: 1rem;
         }
 
-        /* ===== Turingcoin flotante (lado izquierdo) ===== */
+        /* ===== Turingcoin flotante (siempre en el mismo lugar: centro-izquierda) ===== */
         .tc-fx {
-            position: fixed; left: 22px; top: 100px; z-index: 40;
+            position: fixed; left: 22px; top: 46%; bottom: auto; z-index: 40;
             width: 88px;
             opacity: 0; transform: translateY(16px) scale(.65);
             transition: opacity .55s ease, transform .55s cubic-bezier(.18,.9,.32,1.35);
@@ -318,7 +318,11 @@
         }
         .tc-fx.tc-show .tc-msg { opacity: 1; }
         .tc-msg strong { color: #FF6B00; }
-        .tc-msg i { color: #FF6B00; margin-left: 5px; font-size: 10px; }
+        .tc-dollar {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 17px; height: 17px; margin-left: 6px; border-radius: 50%;
+            background: #FF6B00; color: #0B1528; font-weight: 900; font-size: 12px; line-height: 1;
+        }
         .tc-close {
             position: absolute; top: -7px; right: -7px; width: 21px; height: 21px;
             border-radius: 50%; background: rgba(11,21,40,.95); border: 1px solid rgba(255,255,255,.18);
@@ -340,8 +344,8 @@
         }
 
         @media (max-width: 640px) {
-            .tc-fx { width: 58px; left: 12px; }
-            .tc-coin { width: 58px; height: 58px; }
+            .tc-fx { width: 54px; left: 12px; top: auto; bottom: 18px; }
+            .tc-coin { width: 54px; height: 54px; }
             .tc-msg { font-size: 11px; padding: 5px 9px; margin-left: 9px; }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -1326,7 +1330,7 @@
     <!-- TURINGCOIN FLOTANTE -->
     <div id="turingcoin-fx" class="tc-fx" role="button" tabindex="0" aria-label="Turingcoin — aplica a créditos, click para ver más" hidden>
         <span class="tc-close" aria-hidden="true">&times;</span>
-        <div class="tc-msg">Aplica a <strong>créditos</strong> <i class="fa-solid fa-arrow-right"></i></div>
+        <div class="tc-msg">Aplica a <strong>créditos</strong> <span class="tc-dollar">$</span></div>
         <div class="tc-bob">
             <div class="tc-coin">
                 <div class="tc-face tc-front">
@@ -1339,7 +1343,6 @@
                             <radialGradient id="tcMedF" cx="42%" cy="34%" r="74%">
                                 <stop offset="0" stop-color="#1c2e4c"/><stop offset=".6" stop-color="#0d1830"/><stop offset="1" stop-color="#060d1c"/>
                             </radialGradient>
-                            <path id="tcArcF" d="M100 100 m -64 0 a 64 64 0 1 1 128 0"/>
                         </defs>
                         <circle cx="100" cy="100" r="97" fill="url(#tcMetalF)"/>
                         <circle cx="100" cy="100" r="92" fill="none" stroke="#7a4304" stroke-width="10" stroke-dasharray="3.4 5.2" opacity=".5"/>
@@ -1364,9 +1367,6 @@
                                 <path d="M30.46,21.40 C30.57,21.46 31.60,20.87 31.61,20.50 C31.73,17.03 31.76,13.18 31.81,9.70 C31.67,9.66 30.66,10.79 30.65,11.22 C30.54,14.61 30.51,18.01 30.46,21.40 Z"/>
                             </g>
                         </svg>
-                        <text font-family="Barlow, Arial, sans-serif" font-size="15" font-weight="800" letter-spacing="4" fill="#5c3302">
-                            <textPath href="#tcArcF" startOffset="50%" text-anchor="middle">TURINGTECH</textPath>
-                        </text>
                     </svg>
                 </div>
                 <div class="tc-face tc-back">
@@ -1379,8 +1379,6 @@
                             <radialGradient id="tcMedB" cx="42%" cy="34%" r="74%">
                                 <stop offset="0" stop-color="#1c2e4c"/><stop offset=".6" stop-color="#0d1830"/><stop offset="1" stop-color="#060d1c"/>
                             </radialGradient>
-                            <path id="tcArcBt" d="M100 100 m -64 0 a 64 64 0 1 1 128 0"/>
-                            <path id="tcArcBb" d="M100 100 m -64 0 a 64 64 0 1 0 128 0"/>
                         </defs>
                         <circle cx="100" cy="100" r="97" fill="url(#tcMetalB)"/>
                         <circle cx="100" cy="100" r="92" fill="none" stroke="#7a4304" stroke-width="10" stroke-dasharray="3.4 5.2" opacity=".5"/>
@@ -1388,15 +1386,8 @@
                         <circle cx="100" cy="100" r="66" fill="url(#tcMedB)"/>
                         <circle cx="100" cy="100" r="66" fill="none" stroke="#000" stroke-width="3" opacity=".45"/>
                         <circle cx="100" cy="100" r="66" fill="none" stroke="#4a5f86" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
-                        <g fill="#FF6B00">
-                            <rect x="66" y="72" width="68" height="13" rx="2"/><rect x="93" y="72" width="14" height="58" rx="2"/><rect x="74" y="96" width="52" height="9" rx="2"/>
-                        </g>
-                        <text font-family="Barlow, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="4" fill="#5c3302">
-                            <textPath href="#tcArcBt" startOffset="50%" text-anchor="middle">TURINGCOIN</textPath>
-                        </text>
-                        <text font-family="Barlow, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="3" fill="#5c3302">
-                            <textPath href="#tcArcBb" startOffset="50%" text-anchor="middle">APLICA A CRÉDITOS</textPath>
-                        </text>
+                        <text x="101" y="102" text-anchor="middle" dominant-baseline="central" font-family="Barlow, Arial, sans-serif" font-size="96" font-weight="900" fill="#0B1528" opacity=".9">$</text>
+                        <text x="100" y="100" text-anchor="middle" dominant-baseline="central" font-family="Barlow, Arial, sans-serif" font-size="96" font-weight="900" fill="#FF6B00">$</text>
                     </svg>
                 </div>
             </div>
@@ -1815,29 +1806,18 @@
         window.addEventListener('resize', resizeCanvas);
     </script>
 
-    <!-- Turingcoin flotante: aparece ~3s en las esquinas derechas y lleva a la sección de créditos -->
+    <!-- Turingcoin flotante: aparece 10s en el mismo lugar (centro-izquierda) y lleva a la sección de créditos -->
     <script>
     (function () {
         var fx = document.getElementById('turingcoin-fx');
         if (!fx) return;
         var target = document.getElementById('creditos');
-        var esMovil = function () { return window.innerWidth < 640; };
-        // lado izquierdo, sin tapar contenido
-        var slots = [
-            { top: '100px', bottom: 'auto' },   // arriba-izquierda (bajo el header)
-            { top: '46%',   bottom: 'auto' },    // centro-izquierda
-            { top: 'auto',  bottom: '32px' }     // abajo-izquierda
-        ];
-        var idx = -1, apagado = false, tVisible, tCiclo;
-        var VISIBLE_MS = 5000;   // aparece 5 s
-        var OCULTO_MS = 5000;    // desaparece 5 s
+        var apagado = false, tVisible, tCiclo;
+        var VISIBLE_MS = 10000;  // se muestra 10 s
+        var OCULTO_MS = 7000;    // oculta 7 s y vuelve (siempre en el mismo lugar, definido en el CSS)
 
         function aparecer() {
             if (apagado) return;
-            idx = (idx + 1) % slots.length;
-            if (esMovil() && idx === 1) idx = 2;   // en móvil no usar el centro
-            var s = slots[idx];
-            fx.style.top = s.top; fx.style.bottom = s.bottom;
             fx.hidden = false;
             void fx.offsetWidth;                    // reflow para reactivar la transición
             fx.classList.add('tc-show');
