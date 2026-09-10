@@ -34,11 +34,13 @@ const FIELDS = [
 
 // Pipeline comercial (CRM) — resultados fijos; estados y tipos vienen de la BD (catálogo editable)
 const INTER_RESULTADOS = ['contacto', 'no_contesto', 'agendo', 'propuesta', 'descartado', 'otro'];
+const ACT_TIPOS = ['llamada', 'linkedin', 'whatsapp', 'reunion', 'otro'];
+const KANBAN_COLS = ['por_prospectar', 'prospectando', 'exitoso', 'rechazado'];
 const BOARD_ESTADOS = ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
 const slugify = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
 
 async function estadosActivos() {
-  return (await db.query('SELECT slug, label, color, board_estado, orden FROM prospecto_estados WHERE activo = true ORDER BY orden, id')).rows;
+  return (await db.query('SELECT slug, label, color, board_estado, orden, kanban FROM prospecto_estados WHERE activo = true ORDER BY orden, id')).rows;
 }
 async function tiposActivos() {
   return (await db.query('SELECT slug, label, icono, orden FROM prospecto_tipos_interaccion WHERE activo = true ORDER BY orden, id')).rows;
@@ -111,13 +113,17 @@ function clean(body) {
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT p.*, u.name AS owner_nombre,
+      `SELECT p.*, u.name AS owner_nombre, e.kanban,
               (SELECT max(created_at) FROM prospecto_interacciones i WHERE i.prospecto_id = p.id) AS ultima_gestion,
               (SELECT count(*) FROM prospecto_interacciones i WHERE i.prospecto_id = p.id)::int AS interacciones,
+              (SELECT count(*) FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false)::int AS act_pendientes,
+              (SELECT count(*) FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false AND a.deadline < (NOW() - interval '5 hours')::date)::int AS act_atrasadas,
+              (SELECT min(deadline) FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false) AS act_proxima,
               t.estado AS task_estado, t.project_id AS task_project_id,
               t.titulo AS task_titulo, t.created_at AS task_created_at, t.fecha_fin AS task_fecha_fin
        FROM prospectos p
        LEFT JOIN users u ON u.id = p.owner_id
+       LEFT JOIN prospecto_estados e ON e.slug = p.estado
        LEFT JOIN board_tasks t ON t.id = p.task_id
        ORDER BY p.ts DESC, p.id DESC`
     );
@@ -131,7 +137,16 @@ router.get('/', async (req, res) => {
         estados: await estadosActivos(),
         tipos: await tiposActivos(),
         resultados: INTER_RESULTADOS,
+        actividadTipos: ACT_TIPOS,
+        kanban: [
+          { id: 'por_prospectar', label: 'Por prospectar' },
+          { id: 'prospectando', label: 'Prospectando' },
+          { id: 'exitoso', label: 'Exitosos' },
+          { id: 'rechazado', label: 'Rechazados' },
+        ],
         colaboradores,
+        esAdmin: isAdmin(req),
+        miId: req.user.id,
       },
     });
   } catch (err) {
@@ -301,136 +316,187 @@ router.patch('/:id/proxima-gestion', async (req, res) => {
   }
 });
 
-// GET /api/prospectos/resumen  -> dashboard del admin (prospectos + equipo)
+/* ===================== ACTIVIDADES DEL PROSPECTO ===================== */
+
+// GET /api/prospectos/:id/actividades
+router.get('/:id/actividades', async (req, res) => {
+  try {
+    const rows = (await db.query(
+      `SELECT a.id, a.tipo, a.titulo, a.deadline, a.hecha, a.hecha_at, a.created_at, u.name AS usuario
+       FROM prospecto_actividades a LEFT JOIN users u ON u.id = a.created_by
+       WHERE a.prospecto_id = $1 ORDER BY a.hecha, a.deadline NULLS LAST, a.id`, [req.params.id]
+    )).rows;
+    res.json({ actividades: rows });
+  } catch (err) {
+    console.error('Error listando actividades:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/prospectos/:id/actividades   { tipo, titulo, deadline }
+router.post('/:id/actividades', async (req, res) => {
+  try {
+    const cur = (await db.query('SELECT id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
+    if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
+    const tipo = ACT_TIPOS.includes(req.body.tipo) ? req.body.tipo : 'llamada';
+    const titulo = req.body.titulo ? String(req.body.titulo).slice(0, 200) : null;
+    const deadline = /^\d{4}-\d{2}-\d{2}$/.test(req.body.deadline || '') ? req.body.deadline : null;
+    if (!deadline) return res.status(400).json({ error: 'Poné una fecha límite para la actividad' });
+    const row = (await db.query(
+      `INSERT INTO prospecto_actividades (prospecto_id, tipo, titulo, deadline, created_by)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id, tipo, titulo, deadline, hecha, hecha_at, created_at`,
+      [req.params.id, tipo, titulo, deadline, req.user.id]
+    )).rows[0];
+    res.status(201).json({ actividad: row });
+  } catch (err) {
+    console.error('Error creando actividad:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PATCH /api/prospectos/:id/actividades/:aid   { hecha?, tipo?, titulo?, deadline? }
+router.patch('/:id/actividades/:aid', async (req, res) => {
+  try {
+    const cur = (await db.query('SELECT * FROM prospecto_actividades WHERE id = $1 AND prospecto_id = $2', [req.params.aid, req.params.id])).rows[0];
+    if (!cur) return res.status(404).json({ error: 'Actividad no encontrada' });
+    const tipo = ACT_TIPOS.includes(req.body.tipo) ? req.body.tipo : cur.tipo;
+    const titulo = req.body.titulo !== undefined ? (req.body.titulo ? String(req.body.titulo).slice(0, 200) : null) : cur.titulo;
+    const deadline = req.body.deadline !== undefined
+      ? (/^\d{4}-\d{2}-\d{2}$/.test(req.body.deadline || '') ? req.body.deadline : null)
+      : cur.deadline;
+    const hecha = req.body.hecha !== undefined ? !!req.body.hecha : cur.hecha;
+    const row = (await db.query(
+      `UPDATE prospecto_actividades
+         SET tipo = $1, titulo = $2, deadline = $3, hecha = $4,
+             hecha_at = CASE WHEN $4 AND NOT $5 THEN NOW() WHEN NOT $4 THEN NULL ELSE hecha_at END
+       WHERE id = $6 RETURNING id, tipo, titulo, deadline, hecha, hecha_at, created_at`,
+      [tipo, titulo, deadline, hecha, cur.hecha, req.params.aid]
+    )).rows[0];
+    res.json({ actividad: row });
+  } catch (err) {
+    console.error('Error actualizando actividad:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/prospectos/:id/actividades/:aid
+router.delete('/:id/actividades/:aid', async (req, res) => {
+  try {
+    const r = await db.query('DELETE FROM prospecto_actividades WHERE id = $1 AND prospecto_id = $2 RETURNING id', [req.params.aid, req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Actividad no encontrada' });
+    res.json({ message: 'Actividad eliminada' });
+  } catch (err) {
+    console.error('Error eliminando actividad:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/prospectos/resumen  -> dashboard CRM (admin: todo; no-admin: solo lo suyo)
 router.get('/resumen', async (req, res) => {
   try {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Solo administradores' });
+    const admin = isAdmin(req);
+    const gestor = admin
+      ? (req.query.gestor && /^\d+$/.test(req.query.gestor) ? Number(req.query.gestor) : null)
+      : req.user.id;
     const hoy = J.hoyISO();
     const estados = await estadosActivos();
     const cerrados = estados.filter((e) => e.board_estado === 'Finalizada').map((e) => e.slug);
-    const abiertoSql = cerrados.length ? `AND p.estado <> ALL($1)` : '';
-    const abiertoParams = cerrados.length ? [cerrados] : [];
+    const cerr = cerrados.length ? cerrados : ['__none__'];
+    // $1 = estados cerrados, $2 = hoy, $3 = gestor (null = todos)
+    const P = [cerr, hoy, gestor];
+    const gCond = 'AND ($3::int IS NULL OR p.owner_id = $3)';
+    const abierto = `p.estado <> ALL($1)`;
+    const pendVenc = `EXISTS (SELECT 1 FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false AND a.deadline < $2::date)`;
+    const pendAlguna = `EXISTS (SELECT 1 FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false)`;
 
     // pipeline por estado
     const porEstadoRows = (await db.query(
-      'SELECT estado, count(*)::int AS n FROM prospectos GROUP BY estado'
+      `SELECT estado, count(*)::int AS n FROM prospectos p WHERE ($1::int IS NULL OR p.owner_id = $1) GROUP BY estado`, [gestor]
     )).rows;
     const porEstadoMap = {};
     porEstadoRows.forEach((r) => { porEstadoMap[r.estado] = r.n; });
     const por_estado = estados.map((e) => ({ slug: e.slug, label: e.label, color: e.color, count: porEstadoMap[e.slug] || 0 }));
     const total = porEstadoRows.reduce((a, r) => a + r.n, 0);
 
-    // seguimiento (solo prospectos "abiertos")
+    // seguimiento (solo prospectos abiertos)
     const seg = (await db.query(
       `SELECT
-         count(*) FILTER (WHERE p.proxima_gestion IS NULL) ::int AS sin_programar,
-         count(*) FILTER (WHERE p.proxima_gestion < $${abiertoParams.length + 1}::date) ::int AS atrasados,
-         count(*) FILTER (WHERE p.proxima_gestion >= $${abiertoParams.length + 1}::date) ::int AS al_dia,
-         count(*) FILTER (WHERE p.task_id IS NOT NULL) ::int AS con_tarea,
-         count(*) ::int AS abiertos
-       FROM prospectos p WHERE true ${abiertoSql}`,
-      [...abiertoParams, hoy]
+         count(*) FILTER (WHERE NOT ${pendAlguna})::int AS sin_actividad,
+         count(*) FILTER (WHERE ${pendVenc})::int AS atrasados,
+         count(*) FILTER (WHERE ${pendAlguna} AND NOT ${pendVenc})::int AS al_dia,
+         count(*) FILTER (WHERE p.task_id IS NOT NULL)::int AS con_tarea,
+         count(*)::int AS abiertos
+       FROM prospectos p WHERE ${abierto} ${gCond}`, P
     )).rows[0];
 
-    // interacciones últimos 14 días (por día, hora Ecuador)
-    const inter = (await db.query(
-      `SELECT to_char((created_at - interval '5 hours')::date, 'YYYY-MM-DD') AS dia, count(*)::int AS n
-       FROM prospecto_interacciones
-       WHERE created_at >= NOW() - interval '14 days'
-       GROUP BY 1 ORDER BY 1`
+    // actividad por día (interacciones + actividades completadas), últimos 14 días
+    const act = (await db.query(
+      `SELECT dia, sum(n)::int AS n FROM (
+         SELECT to_char((created_at - interval '5 hours')::date,'YYYY-MM-DD') AS dia, count(*) AS n
+           FROM prospecto_interacciones i
+           WHERE i.created_at >= NOW() - interval '14 days' AND ($1::int IS NULL OR i.user_id = $1)
+           GROUP BY 1
+         UNION ALL
+         SELECT to_char((hecha_at - interval '5 hours')::date,'YYYY-MM-DD') AS dia, count(*) AS n
+           FROM prospecto_actividades a
+           WHERE a.hecha = true AND a.hecha_at >= NOW() - interval '14 days' AND ($1::int IS NULL OR a.created_by = $1)
+           GROUP BY 1
+       ) x GROUP BY dia`,
+      [gestor]
     )).rows;
-    const interPorDia = [];
+    const actPorDia = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date(new Date(hoy + 'T00:00:00Z').getTime() - i * 86400000).toISOString().slice(0, 10);
-      const hit = inter.find((x) => x.dia === d);
-      interPorDia.push({ dia: d, n: hit ? hit.n : 0 });
+      const hit = act.find((x) => x.dia === d);
+      actPorDia.push({ dia: d, n: hit ? hit.n : 0 });
     }
 
     // por responsable comercial
     const porResp = (await db.query(
       `SELECT u.id, u.name,
          count(p.id)::int AS prospectos,
-         count(p.id) FILTER (WHERE p.proxima_gestion IS NULL AND (p.estado <> ALL($1)))::int AS sin_programar,
-         count(p.id) FILTER (WHERE p.proxima_gestion < $2::date AND (p.estado <> ALL($1)))::int AS atrasados,
-         (SELECT count(*)::int FROM prospecto_interacciones i
-            WHERE i.user_id = u.id AND i.created_at >= NOW() - interval '7 days') AS interacciones_7d
+         count(p.id) FILTER (WHERE p.estado <> ALL($1) AND NOT EXISTS (
+           SELECT 1 FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false))::int AS sin_actividad,
+         count(p.id) FILTER (WHERE p.estado <> ALL($1) AND EXISTS (
+           SELECT 1 FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false AND a.deadline < $2::date))::int AS atrasados,
+         (SELECT count(*)::int FROM prospecto_interacciones i WHERE i.user_id = u.id AND i.created_at >= NOW() - interval '7 days') AS interacciones_7d
        FROM users u
        LEFT JOIN prospectos p ON p.owner_id = u.id
-       WHERE u.account_type = 'colaborador' AND u.active = true
+       WHERE u.account_type = 'colaborador' AND u.active = true ${gestor ? 'AND u.id = $3' : ''}
        GROUP BY u.id, u.name ORDER BY prospectos DESC, u.name`,
-      [cerrados.length ? cerrados : ['__none__'], hoy]
+      gestor ? [cerr, hoy, gestor] : [cerr, hoy]
     )).rows;
 
-    // prospectos que necesitan atención (atrasados o sin programar), abiertos
+    // prospectos que necesitan atención: abiertos, sin actividad pendiente o con una vencida
     const atencion = (await db.query(
-      `SELECT p.id, p.empresa, p.estado, p.proxima_gestion, p.proxima_gestion_nota, u.name AS owner_nombre,
-              (CASE WHEN p.proxima_gestion IS NOT NULL THEN ($1::date - p.proxima_gestion) ELSE NULL END) AS dias_atraso
+      `SELECT p.id, p.empresa, p.estado, u.name AS owner_nombre,
+              (SELECT min(deadline) FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false) AS proxima,
+              (SELECT count(*)::int FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false AND a.deadline < $2::date) AS vencidas
        FROM prospectos p LEFT JOIN users u ON u.id = p.owner_id
-       WHERE (p.proxima_gestion IS NULL OR p.proxima_gestion < $1::date)
-         ${cerrados.length ? 'AND p.estado <> ALL($2)' : ''}
-       ORDER BY (p.proxima_gestion IS NULL), p.proxima_gestion ASC NULLS LAST, p.ts ASC
-       LIMIT 25`,
-      cerrados.length ? [hoy, cerrados] : [hoy]
+       WHERE ${abierto} ${gCond}
+         AND (NOT ${pendAlguna} OR ${pendVenc})
+       ORDER BY (NOT ${pendAlguna}), (SELECT min(deadline) FROM prospecto_actividades a WHERE a.prospecto_id = p.id AND a.hecha = false) ASC NULLS FIRST, p.ts ASC
+       LIMIT 30`, P
     )).rows;
-
-    // ---- equipo: tareas del tablero ----
-    const tareas = (await db.query(
-      `SELECT COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable,
-              count(*) FILTER (WHERE t.estado <> 'Finalizada')::int AS abiertas,
-              count(*) FILTER (WHERE t.estado = 'En curso')::int AS en_curso,
-              count(*) FILTER (WHERE t.fecha_fin < $1::date AND t.estado <> 'Finalizada')::int AS atrasadas,
-              count(*) FILTER (WHERE t.estado = 'Finalizada' AND t.updated_at >= NOW() - interval '7 days')::int AS finalizadas_7d
-       FROM board_tasks t LEFT JOIN users u ON u.id = t.assignee_id
-       WHERE t.parent_id IS NULL
-       GROUP BY 1 ORDER BY abiertas DESC NULLS LAST`,
-      [hoy]
-    )).rows.filter((r) => r.responsable);
-
-    const tareasAtrasadas = (await db.query(
-      `SELECT t.id, t.titulo, t.fecha_fin, t.estado, COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable, bp.nombre AS proyecto
-       FROM board_tasks t LEFT JOIN users u ON u.id = t.assignee_id LEFT JOIN board_projects bp ON bp.id = t.project_id
-       WHERE t.parent_id IS NULL AND t.fecha_fin < $1::date AND t.estado <> 'Finalizada'
-       ORDER BY t.fecha_fin ASC LIMIT 20`,
-      [hoy]
-    )).rows;
-
-    // ---- equipo: timbrado de la semana en curso ----
-    const lunes = J.lunesDeSemana(hoy);
-    const users = (await db.query(
-      "SELECT id, name FROM users WHERE account_type = 'colaborador' AND active = true ORDER BY name"
-    )).rows;
-    const marcas = (await db.query(
-      'SELECT user_id, tipo, ts, dia FROM time_entries WHERE dia BETWEEN $1 AND $2 ORDER BY dia, ts, id',
-      [lunes, hoy]
-    )).rows;
-    const porU = {};
-    marcas.forEach((e) => { (porU[e.user_id] = porU[e.user_id] || []).push(e); });
-    const timbrado_semana = users.map((u) => {
-      const r = J.resumenRango(porU[u.id] || [], lunes, hoy);
-      return { user_id: u.id, name: u.name, total_min: r.total_min, total_horas: r.total_horas, dias: r.dias_con_marca };
-    });
 
     res.json({
       hoy,
+      esAdmin: admin,
+      gestor,
+      colaboradores: admin ? (await db.query("SELECT id, name FROM users WHERE account_type = 'colaborador' AND active = true ORDER BY name")).rows : [],
       prospectos: {
         total,
         por_estado,
         seguimiento: {
           al_dia: seg.al_dia || 0,
           atrasados: seg.atrasados || 0,
-          sin_programar: seg.sin_programar || 0,
+          sin_actividad: seg.sin_actividad || 0,
           con_tarea: seg.con_tarea || 0,
           abiertos: seg.abiertos || 0,
         },
-        interacciones_por_dia: interPorDia,
+        actividad_por_dia: actPorDia,
         por_responsable: porResp,
         atencion,
-      },
-      equipo: {
-        semana_desde: lunes,
-        tareas_por_responsable: tareas,
-        tareas_atrasadas: tareasAtrasadas,
-        timbrado_semana,
       },
     });
   } catch (err) {
@@ -593,10 +659,11 @@ router.post('/catalogo/estados', requiereAdmin, async (req, res) => {
     }
     const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
     const board_estado = BOARD_ESTADOS.includes(req.body.board_estado) ? req.body.board_estado : 'En curso';
+    const kanban = KANBAN_COLS.includes(req.body.kanban) ? req.body.kanban : 'prospectando';
     const orden = Number(req.body.orden) || (await db.query('SELECT COALESCE(MAX(orden),0)+1 n FROM prospecto_estados')).rows[0].n;
     const row = (await db.query(
-      'INSERT INTO prospecto_estados (slug,label,color,board_estado,orden) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [slug, label, color, board_estado, orden]
+      'INSERT INTO prospecto_estados (slug,label,color,board_estado,kanban,orden) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [slug, label, color, board_estado, kanban, orden]
     )).rows[0];
     res.status(201).json({ estado: row });
   } catch (err) {
@@ -611,9 +678,11 @@ router.put('/catalogo/estados/:eid', requiereAdmin, async (req, res) => {
     if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
     const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
     const board_estado = BOARD_ESTADOS.includes(req.body.board_estado) ? req.body.board_estado : 'En curso';
+    const cur = (await db.query('SELECT kanban FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
+    const kanban = KANBAN_COLS.includes(req.body.kanban) ? req.body.kanban : (cur ? cur.kanban : 'prospectando');
     const row = (await db.query(
-      'UPDATE prospecto_estados SET label=$1,color=$2,board_estado=$3,activo=$4,orden=$5 WHERE id=$6 RETURNING *',
-      [label, color, board_estado, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.eid]
+      'UPDATE prospecto_estados SET label=$1,color=$2,board_estado=$3,kanban=$4,activo=$5,orden=$6 WHERE id=$7 RETURNING *',
+      [label, color, board_estado, kanban, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.eid]
     )).rows[0];
     if (!row) return res.status(404).json({ error: 'Estado no encontrado' });
     res.json({ estado: row });

@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const J = require('../utils/jornada');
 
 const router = express.Router();
 
@@ -353,6 +354,67 @@ router.get('/tasks', async (req, res) => {
     });
   } catch (err) {
     console.error('Error en board tasks:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/board/resumen  -> dashboard de Proyecto (quién trabajó, tareas, timbrado). Solo admin.
+router.get('/resumen', async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Solo administradores' });
+    const hoy = hoyISO();
+    const lunes = J.lunesDeSemana(hoy);
+
+    const proyectos = (await db.query(
+      `SELECT bp.nombre AS proyecto,
+              count(*) FILTER (WHERE t.estado <> 'Finalizada')::int AS abiertas,
+              count(*) FILTER (WHERE t.fecha_fin < $1::date AND t.estado <> 'Finalizada')::int AS atrasadas,
+              count(*) FILTER (WHERE t.estado = 'Finalizada')::int AS finalizadas
+       FROM board_tasks t JOIN board_projects bp ON bp.id = t.project_id
+       WHERE t.parent_id IS NULL
+       GROUP BY bp.nombre ORDER BY abiertas DESC`, [hoy]
+    )).rows;
+
+    const porResponsable = (await db.query(
+      `SELECT COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable,
+              count(*) FILTER (WHERE t.estado <> 'Finalizada')::int AS abiertas,
+              count(*) FILTER (WHERE t.estado = 'En curso')::int AS en_curso,
+              count(*) FILTER (WHERE t.fecha_fin < $1::date AND t.estado <> 'Finalizada')::int AS atrasadas,
+              count(*) FILTER (WHERE t.estado = 'Finalizada' AND t.updated_at >= NOW() - interval '7 days')::int AS finalizadas_7d
+       FROM board_tasks t LEFT JOIN users u ON u.id = t.assignee_id
+       WHERE t.parent_id IS NULL
+       GROUP BY 1 ORDER BY abiertas DESC NULLS LAST`, [hoy]
+    )).rows.filter((r) => r.responsable);
+
+    const tareasAtrasadas = (await db.query(
+      `SELECT t.id, t.titulo, t.fecha_fin, t.estado, COALESCE(t.responsable, split_part(u.name,' ',1)) AS responsable, bp.nombre AS proyecto
+       FROM board_tasks t LEFT JOIN users u ON u.id = t.assignee_id LEFT JOIN board_projects bp ON bp.id = t.project_id
+       WHERE t.parent_id IS NULL AND t.fecha_fin < $1::date AND t.estado <> 'Finalizada'
+       ORDER BY t.fecha_fin ASC LIMIT 25`, [hoy]
+    )).rows;
+
+    // timbrado de la semana + "trabajó hoy?"
+    const users = (await db.query(
+      "SELECT id, name, position FROM users WHERE account_type = 'colaborador' AND active = true ORDER BY name"
+    )).rows;
+    const marcas = (await db.query(
+      'SELECT user_id, tipo, ts, dia FROM time_entries WHERE dia BETWEEN $1 AND $2 ORDER BY dia, ts, id', [lunes, hoy]
+    )).rows;
+    const porU = {};
+    marcas.forEach((e) => { (porU[e.user_id] = porU[e.user_id] || []).push(e); });
+    const equipo = users.map((u) => {
+      const r = J.resumenRango(porU[u.id] || [], lunes, hoy);
+      const hoyMarcas = (porU[u.id] || []).filter((m) => String(m.dia).slice(0, 10) === hoy);
+      return {
+        user_id: u.id, name: u.name, position: u.position || null,
+        total_min: r.total_min, total_horas: r.total_horas, dias: r.dias_con_marca,
+        trabajo_hoy: hoyMarcas.length > 0,
+      };
+    });
+
+    res.json({ hoy, semana_desde: lunes, proyectos, por_responsable: porResponsable, tareas_atrasadas: tareasAtrasadas, equipo });
+  } catch (err) {
+    console.error('Error en board/resumen:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -251,6 +251,20 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+    // Actividades programadas de cada prospecto (llamada / linkedin / whatsapp / reunión) con deadline
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS prospecto_actividades (
+        id SERIAL PRIMARY KEY,
+        prospecto_id INTEGER NOT NULL REFERENCES prospectos(id) ON DELETE CASCADE,
+        tipo VARCHAR(20) NOT NULL DEFAULT 'llamada',   -- llamada | linkedin | whatsapp | reunion | otro
+        titulo VARCHAR(200),
+        deadline DATE,
+        hecha BOOLEAN NOT NULL DEFAULT false,
+        hecha_at TIMESTAMP,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
     // Catálogo configurable (el admin lo edita): estados del pipeline + tipos de interacción
     await db.query(`
       CREATE TABLE IF NOT EXISTS prospecto_estados (
@@ -263,6 +277,8 @@ async function initDatabase() {
         activo BOOLEAN NOT NULL DEFAULT true
       );
     `);
+    // columna de columna kanban: por_prospectar | prospectando | exitoso | rechazado
+    await db.query("ALTER TABLE prospecto_estados ADD COLUMN IF NOT EXISTS kanban VARCHAR(16) NOT NULL DEFAULT 'prospectando'");
     await db.query(`
       CREATE TABLE IF NOT EXISTS prospecto_tipos_interaccion (
         id SERIAL PRIMARY KEY,
@@ -274,20 +290,27 @@ async function initDatabase() {
       );
     `);
     // valores por defecto (idempotente)
-    for (const [i, [slug, label, color, be]] of [
-      ['nuevo', 'Nuevo', '#94a3b8', 'Tareas por hacer'],
-      ['contactado', 'Contactado', '#3b82f6', 'En curso'],
-      ['en_seguimiento', 'En seguimiento', '#a78bfa', 'En curso'],
-      ['reunion', 'Reunión agendada', '#f59e0b', 'En curso'],
-      ['propuesta', 'Propuesta enviada', '#f97316', 'En curso'],
-      ['ganado', 'Ganado', '#10b981', 'Finalizada'],
-      ['perdido', 'Perdido', '#ef4444', 'Finalizada'],
-      ['no_responde', 'No responde', '#64748b', 'Finalizada'],
+    for (const [i, [slug, label, color, be, kb]] of [
+      ['nuevo', 'Nuevo', '#94a3b8', 'Tareas por hacer', 'por_prospectar'],
+      ['contactado', 'Contactado', '#3b82f6', 'En curso', 'prospectando'],
+      ['en_seguimiento', 'En seguimiento', '#a78bfa', 'En curso', 'prospectando'],
+      ['reunion', 'Reunión agendada', '#f59e0b', 'En curso', 'prospectando'],
+      ['propuesta', 'Propuesta enviada', '#f97316', 'En curso', 'prospectando'],
+      ['ganado', 'Ganado', '#10b981', 'Finalizada', 'exitoso'],
+      ['perdido', 'Perdido', '#ef4444', 'Finalizada', 'rechazado'],
+      ['no_responde', 'No responde', '#64748b', 'Finalizada', 'rechazado'],
     ].entries()) {
       await db.query(
-        "INSERT INTO prospecto_estados (slug, label, color, board_estado, orden) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (slug) DO NOTHING",
-        [slug, label, color, be, i]
+        "INSERT INTO prospecto_estados (slug, label, color, board_estado, orden, kanban) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (slug) DO NOTHING",
+        [slug, label, color, be, i, kb]
       );
+    }
+    // backfill kanban por slug para instalaciones que ya tenían los estados sembrados
+    // (columna nueva, todavía nadie la personalizó)
+    for (const [slug, kb] of [
+      ['nuevo', 'por_prospectar'], ['ganado', 'exitoso'], ['perdido', 'rechazado'], ['no_responde', 'rechazado'],
+    ]) {
+      await db.query("UPDATE prospecto_estados SET kanban = $2 WHERE slug = $1", [slug, kb]);
     }
     for (const [i, [slug, label, icono]] of [
       ['llamada', 'Llamada', 'fa-solid fa-phone'],
@@ -365,6 +388,8 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_prosp_inter_files ON prospecto_interaccion_files(interaccion_id)',
       'CREATE INDEX IF NOT EXISTS idx_prospectos_proxima ON prospectos(proxima_gestion)',
       'CREATE INDEX IF NOT EXISTS idx_prospectos_owner ON prospectos(owner_id)',
+      'CREATE INDEX IF NOT EXISTS idx_prosp_act_prospecto ON prospecto_actividades(prospecto_id)',
+      'CREATE INDEX IF NOT EXISTS idx_prosp_act_pend ON prospecto_actividades(hecha, deadline)',
     ];
     for (const q of indices) await db.query(q);
     console.log('[OK] Índices');
