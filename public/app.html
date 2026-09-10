@@ -108,6 +108,7 @@
       var menu = [personal];
       if (state.me.role === 'admin') {
         menu.push({ section: 'Administración', items: [
+          { id: 'admin-resumen',        label: 'Resumen',                 icon: 'fa-chart-pie' },
           { id: 'admin-solicitudes',    label: 'Solicitudes de créditos', icon: 'fa-inbox' },
           { id: 'admin-hr-solicitudes', label: 'Solicitudes RRHH',        icon: 'fa-user-clock' },
           { id: 'admin-usuarios',       label: 'Usuarios',                icon: 'fa-users' },
@@ -226,6 +227,7 @@
       'admin-hr-solicitudes': viewAdminHrSolicitudes,
       'admin-usuarios': viewAdminUsuarios,
       'admin-creditos': viewAdminCreditos,
+      'admin-resumen': viewResumen,
       'admin-prospectos': viewAdminProspectos,
       'admin-timbrado': viewTimbradoEquipo,
       'admin-sprints': viewAutoSprint,
@@ -1961,7 +1963,11 @@
         '<div class="glass-panel" style="padding:24px;margin-bottom:16px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">' +
             '<div>' +
-              '<h2 style="color:#fff;font-size:20px;font-weight:800;margin:0;">' + esc(p.empresa) + '</h2>' +
+              '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                '<span class="mini-chip">PROSPECTO</span>' +
+                (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
+              '</div>' +
+              '<h2 style="color:#fff;font-size:20px;font-weight:800;margin:6px 0 0;">' + esc(p.empresa) + '</h2>' +
               '<div class="text-gray text-sm" style="margin-top:4px;">' + esc(s ? s.icono + ' ' + s.nombre : (p.sector_nombre || 'Sin sector')) +
                 (contacto ? ' · ' + esc(contacto) : '') + (p.cargo ? ' (' + esc(p.cargo) + ')' : '') + '</div>' +
               (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
@@ -1970,12 +1976,15 @@
               '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
             '</div>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;max-width:520px;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:18px;max-width:640px;">' +
             '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado</label>' +
               '<select id="pg_estado" class="form-input">' + estadoSel + '</select></div>' +
             '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
               '<select id="pg_owner" class="form-input">' + ownerSel + '</select></div>' +
+            '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Próxima gestión' + prosProxChip(p) + '</label>' +
+              '<input type="date" id="pg_prox" class="form-input" value="' + esc(dstr(p.proxima_gestion) || '') + '"></div>' +
           '</div>' +
+          (p.proxima_gestion_nota ? '<div class="text-gray text-xs" style="margin-top:6px;">📌 ' + esc(p.proxima_gestion_nota) + '</div>' : '') +
         '</div>' +
 
         '<div class="glass-panel" style="padding:20px;margin-bottom:16px;">' +
@@ -1996,7 +2005,16 @@
             '<select id="pg_res" class="form-input" style="margin-top:10px;"><option value="">Resultado (opcional)…</option>' +
               INTER_RESULTADOS.map(function (r) { return '<option value="' + r.id + '">' + esc(r.label) + '</option>'; }).join('') + '</select>' +
             '<textarea id="pg_nota" class="form-input" rows="3" placeholder="¿Qué pasó? Anotá lo relevante de la conversación…" style="margin-top:10px;"></textarea>' +
-            '<button class="btn btn-primary btn-small" id="pg_addint" style="margin-top:10px;"><i class="fa-solid fa-plus"></i> Agregar al historial</button>' +
+            '<div class="bt-drop" id="pg_drop" style="margin-top:10px;"><i class="fa-solid fa-arrow-up-from-bracket"></i>' +
+              'Pegá (Ctrl+V), arrastrá o hacé clic para adjuntar imagen o PDF' +
+              '<input type="file" id="pg_file_input" accept="image/*,application/pdf" multiple hidden></div>' +
+            '<div id="pg_pend" class="files-grid" style="margin-top:8px;"></div>' +
+            '<label class="text-gray text-xs" style="display:block;margin:12px 0 4px;">Próxima gestión (opcional)</label>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<input type="date" id="pg_nextdate" class="form-input" style="max-width:150px;">' +
+              '<input type="text" id="pg_nextnote" class="form-input" placeholder="Qué toca hacer…">' +
+            '</div>' +
+            '<button class="btn btn-primary btn-small" id="pg_addint" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Agregar al historial</button>' +
           '</div>' +
           '<div class="glass-panel" style="padding:20px;">' +
             '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Historial</div>' +
@@ -2080,15 +2098,67 @@
         location.hash = '#/board';
       });
 
+      // ---- próxima gestión (fecha, sin re-render) ----
+      el('pg_prox').addEventListener('change', function () {
+        var v = this.value || null, prev = p.proxima_gestion;
+        p.proxima_gestion = v;
+        API.request('/api/prospectos/' + p.id + '/proxima-gestion', { method: 'PATCH', body: JSON.stringify({ proxima_gestion: v, nota: p.proxima_gestion_nota || null }) })
+          .then(function () { showAlert('Próxima gestión actualizada.', 'success'); })
+          .catch(function (err) { showAlert(err.message, 'error'); p.proxima_gestion = prev; el('pg_prox').value = dstr(prev) || ''; });
+      });
+
+      // ---- adjuntos de la interacción: pegar / arrastrar / elegir ----
+      var pgPend = [];
+      function pgRenderPend() {
+        el('pg_pend').innerHTML = pgPend.map(function (f, i) {
+          var esImg = /^data:image\//.test(f.data);
+          return '<div class="file-card pending"><span class="file-tag">nueva</span>' +
+            '<span class="file-open">' + (esImg ? '<img src="' + f.data + '" alt="">' : '<div class="file-pdf"><i class="fa-solid fa-file-pdf"></i></div>') + '</span>' +
+            '<div class="file-cap"><span>' + esc((f.nombre || '').slice(0, 16)) + '</span>' +
+            '<button type="button" class="file-del" data-pp="' + i + '"><i class="fa-solid fa-xmark"></i></button></div></div>';
+        }).join('');
+        el('pg_pend').querySelectorAll('[data-pp]').forEach(function (b) {
+          b.addEventListener('click', function () { pgPend.splice(Number(b.getAttribute('data-pp')), 1); pgRenderPend(); });
+        });
+      }
+      function pgEncolar(list) {
+        Array.prototype.slice.call(list || []).forEach(function (file) {
+          if (!/^image\/|^application\/pdf/.test(file.type || '')) { showAlert('"' + (file.name || 'archivo') + '": tipo no admitido.', 'warning'); return; }
+          if (file.size > 5 * 1024 * 1024) { showAlert('"' + (file.name || 'archivo') + '" supera 5 MB.', 'warning'); return; }
+          var rd = new FileReader();
+          rd.onload = function () { pgPend.push({ nombre: file.name || ('captura-' + Date.now() + '.png'), data: rd.result }); pgRenderPend(); };
+          rd.readAsDataURL(file);
+        });
+      }
+      var pgDrop = el('pg_drop');
+      pgDrop.addEventListener('click', function (e) { if (e.target.tagName !== 'INPUT') el('pg_file_input').click(); });
+      pgDrop.addEventListener('dragover', function (e) { e.preventDefault(); pgDrop.classList.add('drag'); });
+      pgDrop.addEventListener('dragleave', function () { pgDrop.classList.remove('drag'); });
+      pgDrop.addEventListener('drop', function (e) { e.preventDefault(); pgDrop.classList.remove('drag'); pgEncolar(e.dataTransfer.files); });
+      el('pg_file_input').addEventListener('change', function () { pgEncolar(this.files); this.value = ''; });
+      if (_btPasteHandler) document.removeEventListener('paste', _btPasteHandler);
+      _btPasteHandler = function (e) {
+        if (!document.getElementById('pg_drop')) { document.removeEventListener('paste', _btPasteHandler); _btPasteHandler = null; return; }
+        var items = (e.clipboardData || {}).items || [], fs = [];
+        for (var i = 0; i < items.length; i++) { if (items[i].kind === 'file') fs.push(items[i].getAsFile()); }
+        if (fs.length) { e.preventDefault(); pgEncolar(fs); }
+      };
+      document.addEventListener('paste', _btPasteHandler);
+
       // ---- registrar interacción — recarga solo el timeline ----
       el('pg_addint').addEventListener('click', function () {
         var nota = el('pg_nota').value.trim(), resultado = el('pg_res').value, tipo = el('pg_tipo').value;
-        if (!nota && !resultado) { showAlert('Escribí una nota o elegí un resultado.', 'warning'); return; }
+        var nextDate = el('pg_nextdate').value || null, nextNote = el('pg_nextnote').value.trim() || null;
+        if (!nota && !resultado && !pgPend.length) { showAlert('Escribí una nota, elegí un resultado o adjuntá una imagen.', 'warning'); return; }
         var b = this; b.disabled = true;
-        API.request('/api/prospectos/' + p.id + '/interacciones', { method: 'POST', body: JSON.stringify({ tipo: tipo, resultado: resultado || null, nota: nota || null }) })
+        var body = { tipo: tipo, resultado: resultado || null, nota: nota || null, files: pgPend };
+        if (nextDate) { body.proxima_gestion = nextDate; body.proxima_gestion_nota = nextNote; }
+        API.request('/api/prospectos/' + p.id + '/interacciones', { method: 'POST', body: JSON.stringify(body) })
           .then(function () {
-            el('pg_nota').value = ''; el('pg_res').value = '';
+            el('pg_nota').value = ''; el('pg_res').value = ''; el('pg_nextdate').value = ''; el('pg_nextnote').value = '';
+            pgPend = []; pgRenderPend();
             p.interacciones = (p.interacciones || 0) + 1; p.ultima_gestion = new Date().toISOString();
+            if (nextDate) { p.proxima_gestion = nextDate; p.proxima_gestion_nota = nextNote; if (el('pg_prox')) el('pg_prox').value = nextDate; }
             showAlert('Interacción registrada.', 'success'); cargarTimeline();
           })
           .catch(function (err) { showAlert(err.message, 'error'); })
@@ -2098,19 +2168,48 @@
       function cargarTimeline() {
         API.request('/api/prospectos/' + p.id + '/interacciones').then(function (r) {
           var tl = el('pg_timeline'); if (!tl) return;
-          tl.innerHTML = (r.interacciones || []).map(function (it) {
+          var eventos = [];
+
+          // evento: convertido en tarea (al principio de la lista, es lo más reciente si aplica)
+          if (p.task_id && p.task_created_at) {
+            eventos.push('<div class="tl-item">' +
+              '<span class="tl-icon" style="background:rgba(255,107,0,.15);"><i class="fa-solid fa-list-check"></i></span>' +
+              '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:#fff;">Convertido en tarea</strong>' +
+                ' <span class="text-gray">— ' + fmtRel(p.task_created_at) + '</span></div>' +
+                '<div class="text-sm" style="margin-top:3px;">' + esc(p.task_titulo || ('Tarea #' + p.task_id)) +
+                (p.task_estado ? ' · <span class="text-accent">' + esc(p.task_estado) + '</span>' : '') + '</div></div></div>');
+          }
+
+          (r.interacciones || []).forEach(function (it) {
             var ti = prosTipoDe(it.tipo);
-            return '<div class="tl-item">' +
+            var imgs = (it.files || []).map(function (f) {
+              var esImg = /^image\//.test(f.mime || '');
+              return '<div class="file-card" data-fid="' + f.id + '" data-iid="' + it.id + '">' +
+                '<a href="' + f.data + '" target="_blank" rel="noopener" class="file-open">' +
+                  (esImg ? '<img src="' + f.data + '" alt="">' : '<div class="file-pdf"><i class="fa-solid fa-file-pdf"></i></div>') + '</a>' +
+                '<div class="file-cap"><span>' + esc((f.nombre || '').slice(0, 14)) + '</span>' +
+                '<button type="button" class="file-del" data-delf="' + f.id + '" data-inter="' + it.id + '"><i class="fa-solid fa-xmark"></i></button></div></div>';
+            }).join('');
+            eventos.push('<div class="tl-item">' +
               '<span class="tl-icon"><i class="' + (ti.icono || 'fa-solid fa-note-sticky') + '"></i></span>' +
               '<div style="flex:1;">' +
                 '<div style="font-size:12px;"><strong style="color:#fff;">' + esc(ti.label) + '</strong>' +
                   (it.resultado ? ' · <span class="text-accent">' + esc(INTER_RES[it.resultado] || it.resultado) + '</span>' : '') +
                   ' <span class="text-gray">— ' + fmtRel(it.created_at) + (it.usuario ? ' · ' + esc(it.usuario) : '') + '</span></div>' +
                 (it.nota ? '<div class="text-sm" style="margin-top:3px;white-space:pre-wrap;">' + esc(it.nota) + '</div>' : '') +
+                (imgs ? '<div class="files-grid" style="margin-top:6px;">' + imgs + '</div>' : '') +
               '</div>' +
               '<button class="tl-del" data-del="' + it.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>' +
-            '</div>';
-          }).join('') || '<span class="text-gray text-xs">Sin interacciones. Registrá la primera arriba.</span>';
+            '</div>');
+          });
+
+          // evento: creado como prospecto (siempre el más antiguo, al final)
+          eventos.push('<div class="tl-item">' +
+            '<span class="tl-icon" style="background:rgba(148,163,184,.15);"><i class="fa-solid fa-flag"></i></span>' +
+            '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:#fff;">Registrado como prospecto</strong>' +
+              ' <span class="text-gray">— ' + fmtRel(p.ts || p.created_at) + '</span></div></div></div>');
+
+          tl.innerHTML = eventos.join('');
           tl.querySelectorAll('[data-del]').forEach(function (b) {
             b.addEventListener('click', function () {
               if (!confirm('¿Eliminar esta interacción del historial?')) return;
@@ -2118,9 +2217,25 @@
                 .then(function () { p.interacciones = Math.max(0, (p.interacciones || 1) - 1); cargarTimeline(); }).catch(function (err) { showAlert(err.message, 'error'); });
             });
           });
+          tl.querySelectorAll('[data-delf]').forEach(function (b) {
+            b.addEventListener('click', function (e) {
+              e.preventDefault();
+              if (!confirm('¿Quitar esta imagen?')) return;
+              API.request('/api/prospectos/' + p.id + '/interacciones/' + b.getAttribute('data-inter') + '/files/' + b.getAttribute('data-delf'), { method: 'DELETE' })
+                .then(cargarTimeline).catch(function (err) { showAlert(err.message, 'error'); });
+            });
+          });
         });
       }
       cargarTimeline();
+    }
+
+    // etiqueta de la próxima gestión: roja si venció, gris si no hay
+    function prosProxChip(p) {
+      if (!p.proxima_gestion) return ' <span class="pg-flag none">sin programar</span>';
+      var d = parseDateLocal(p.proxima_gestion), hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      if (d && d < hoy) return ' <span class="pg-flag late">atrasada</span>';
+      return '';
     }
 
     // refresco silencioso de la lista de prospectos (sin re-render)
@@ -2232,6 +2347,126 @@
           });
         }
         wire();
+      });
+    }
+
+    /* ===== Admin: Resumen (dashboard prospectos + equipo) ===== */
+    function rzTile(label, value, cls) {
+      return '<div class="rz-tile ' + (cls || '') + '"><div class="rz-tile-v">' + esc(String(value)) + '</div><div class="rz-tile-l">' + esc(label) + '</div></div>';
+    }
+    function rzBars(rows) {
+      var max = Math.max.apply(null, rows.map(function (r) { return r.value; }).concat([1]));
+      return '<div class="rz-bars">' + rows.map(function (r) {
+        var w = Math.round((r.value / max) * 100);
+        return '<div class="rz-bar-row">' +
+          '<span class="rz-bar-lbl" title="' + esc(r.label) + '">' + esc(r.label) + '</span>' +
+          '<span class="rz-bar-track"><span class="rz-bar-fill" style="width:' + w + '%;background:' + (r.color || 'var(--color-accent)') + ';"></span></span>' +
+          '<span class="rz-bar-val">' + esc(String(r.value)) + (r.sub ? ' <span class="text-gray">' + esc(r.sub) + '</span>' : '') + '</span>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+    function rzCols(points) {
+      var max = Math.max.apply(null, points.map(function (p) { return p.n; }).concat([1]));
+      return '<div class="rz-cols">' + points.map(function (p) {
+        var h = Math.round((p.n / max) * 100);
+        var d = parseDateLocal(p.dia);
+        var lbl = d ? (d.getDate() + '/' + (d.getMonth() + 1)) : p.dia;
+        return '<div class="rz-col" title="' + esc(lbl + ': ' + p.n) + '">' +
+          '<span class="rz-col-n">' + (p.n || '') + '</span>' +
+          '<span class="rz-col-bar" style="height:' + Math.max(h, p.n ? 6 : 2) + '%;"></span>' +
+          '<span class="rz-col-x">' + esc(lbl) + '</span>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+    function abrirProspecto(id) {
+      PROS.tab = 'gestion'; PROS.sel = Number(id);
+      location.hash = '#/prospectos';
+    }
+
+    function viewResumen() {
+      return API.request('/api/prospectos/resumen').then(function (r) {
+        var P = r.prospectos, E = r.equipo, S = P.seguimiento;
+
+        var pipeline = rzBars(P.por_estado.map(function (e) {
+          return { label: e.label, value: e.count, color: e.color };
+        }));
+
+        var atencion = P.atencion.length
+          ? P.atencion.map(function (a) {
+              var atrasoTxt = a.proxima_gestion == null ? 'sin próxima gestión'
+                : (a.dias_atraso > 0 ? a.dias_atraso + ' día(s) de atraso' : 'vence hoy');
+              return '<div class="rz-att" data-pid="' + a.id + '">' +
+                '<div><strong>' + esc(a.empresa) + '</strong>' +
+                  '<div class="text-gray text-xs">' + esc(a.owner_nombre || 'Sin responsable') +
+                  (a.proxima_gestion_nota ? ' · ' + esc(a.proxima_gestion_nota) : '') + '</div></div>' +
+                '<span class="rz-att-flag ' + (a.proxima_gestion == null ? 'none' : 'late') + '">' + esc(atrasoTxt) + '</span>' +
+              '</div>';
+            }).join('')
+          : '<p class="text-gray text-xs">Todos los prospectos tienen su próxima gestión al día. 👌</p>';
+
+        var respRows = P.por_responsable.map(function (u) {
+          return '<tr><td>' + esc(u.name) + '</td>' +
+            '<td style="text-align:center;">' + u.prospectos + '</td>' +
+            '<td style="text-align:center;">' + u.interacciones_7d + '</td>' +
+            '<td style="text-align:center;color:' + (u.atrasados ? 'var(--color-error)' : 'inherit') + ';">' + u.atrasados + '</td>' +
+            '<td style="text-align:center;color:' + (u.sin_programar ? 'var(--color-warning)' : 'inherit') + ';">' + u.sin_programar + '</td></tr>';
+        }).join('') || '<tr><td colspan="5" class="text-gray text-xs">Sin datos.</td></tr>';
+
+        var tareaRows = E.tareas_por_responsable.map(function (t) {
+          return '<tr><td>' + esc(t.responsable) + '</td>' +
+            '<td style="text-align:center;">' + t.abiertas + '</td>' +
+            '<td style="text-align:center;">' + t.en_curso + '</td>' +
+            '<td style="text-align:center;color:' + (t.atrasadas ? 'var(--color-error)' : 'inherit') + ';">' + t.atrasadas + '</td>' +
+            '<td style="text-align:center;">' + t.finalizadas_7d + '</td></tr>';
+        }).join('') || '<tr><td colspan="5" class="text-gray text-xs">Sin tareas asignadas.</td></tr>';
+
+        var jornadaBars = rzBars(E.timbrado_semana.map(function (u) {
+          return { label: u.name.split(' ')[0], value: Math.round(u.total_min / 6) / 10, sub: u.total_horas + ' · ' + u.dias + 'd' };
+        }));
+
+        var atrasadasList = E.tareas_atrasadas.length
+          ? E.tareas_atrasadas.map(function (t) {
+              return '<div class="rz-att"><div><strong>' + esc(t.titulo) + '</strong>' +
+                '<div class="text-gray text-xs">' + esc(t.proyecto || '') + ' · ' + esc(t.responsable || 'Sin responsable') + '</div></div>' +
+                '<span class="rz-att-flag late">venció ' + esc(fmtDate(t.fecha_fin)) + '</span></div>';
+            }).join('')
+          : '<p class="text-gray text-xs">Ninguna tarea atrasada. 🎉</p>';
+
+        el('view').innerHTML =
+          '<div class="rz-tiles">' +
+            rzTile('Prospectos', P.total, '') +
+            rzTile('Al día', S.al_dia, 'ok') +
+            rzTile('Atrasados', S.atrasados, 'err') +
+            rzTile('Sin próxima gestión', S.sin_programar, 'warn') +
+            rzTile('Con tarea', S.con_tarea, '') +
+          '</div>' +
+          '<div class="rz-grid">' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Pipeline por estado</div>' + pipeline + '</div>' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Interacciones · últimos 14 días</div>' + rzCols(P.interacciones_por_dia) + '</div>' +
+          '</div>' +
+          '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
+            '<div class="section-heading">Necesitan seguimiento <span class="text-gray text-xs">(' + P.atencion.length + ')</span></div>' +
+            '<div class="rz-attlist">' + atencion + '</div>' +
+          '</div>' +
+          '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
+            '<div class="section-heading">Por responsable comercial</div>' +
+            '<div class="table-container"><table class="tb-table"><thead><tr><th>Responsable</th><th style="text-align:center;">Prospectos</th><th style="text-align:center;">Interac. 7d</th><th style="text-align:center;">Atrasados</th><th style="text-align:center;">Sin programar</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
+          '</div>' +
+          '<div class="section-heading" style="text-align:left;margin:26px 0 12px;font-size:15px;">Equipo</div>' +
+          '<div class="rz-grid">' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Tareas por responsable</div>' +
+              '<div class="table-container"><table class="tb-table"><thead><tr><th>Responsable</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">En curso</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Fin. 7d</th></tr></thead><tbody>' + tareaRows + '</tbody></table></div></div>' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Timbrado de la semana <span class="text-gray text-xs">(desde ' + esc(fmtDate(E.semana_desde)) + ')</span></div>' + jornadaBars + '</div>' +
+          '</div>' +
+          '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
+            '<div class="section-heading">Tareas atrasadas <span class="text-gray text-xs">(' + E.tareas_atrasadas.length + ')</span></div>' +
+            '<div class="rz-attlist">' + atrasadasList + '</div>' +
+          '</div>';
+
+        el('view').querySelectorAll('.rz-att[data-pid]').forEach(function (n) {
+          n.style.cursor = 'pointer';
+          n.addEventListener('click', function () { abrirProspecto(n.getAttribute('data-pid')); });
+        });
       });
     }
 
