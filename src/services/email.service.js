@@ -92,6 +92,11 @@ function getTransporter() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD,
     },
+    // DigitalOcean bloquea los puertos SMTP salientes: fallar rápido en vez de
+    // colgar la petición ~2 min con el timeout por defecto de nodemailer.
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
   });
 
   return transporter;

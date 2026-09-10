@@ -231,12 +231,14 @@ router.post('/users/:id/credits', async (req, res) => {
     );
     await db.query('COMMIT');
 
-    await sendCreditModifiedEmail(user.email, user.name, parseInt(amount), newBalance, reason);
-
     res.json({
       message: 'Créditos actualizados correctamente',
       new_balance: newBalance,
     });
+
+    // el correo es best-effort: no debe bloquear ni tumbar la respuesta
+    sendCreditModifiedEmail(user.email, user.name, parseInt(amount), newBalance, reason)
+      .catch((e) => console.warn('Aviso de créditos no enviado:', e.message));
   } catch (err) {
     await db.query('ROLLBACK');
     console.error('Error en admin adjust credits:', err.message);
@@ -311,12 +313,13 @@ router.post('/requests/:id/approve', async (req, res) => {
     );
     await db.query('COMMIT');
 
-    await sendApprovedEmail(request.email, request.name, credits);
-
     res.json({
       message: 'Solicitud aprobada correctamente',
       new_balance: newBalance,
     });
+
+    sendApprovedEmail(request.email, request.name, credits)
+      .catch((e) => console.warn('Aviso de aprobación no enviado:', e.message));
   } catch (err) {
     await db.query('ROLLBACK');
     console.error('Error en approve request:', err.message);
@@ -359,9 +362,10 @@ router.post('/requests/:id/reject', async (req, res) => {
     );
     await db.query('COMMIT');
 
-    await sendRejectedEmail(request.email, request.name, notes);
-
     res.json({ message: 'Solicitud rechazada' });
+
+    sendRejectedEmail(request.email, request.name, notes)
+      .catch((e) => console.warn('Aviso de rechazo no enviado:', e.message));
   } catch (err) {
     await db.query('ROLLBACK');
     console.error('Error en reject request:', err.message);

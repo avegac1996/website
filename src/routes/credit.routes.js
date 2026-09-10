@@ -82,18 +82,14 @@ router.post('/request', authMiddleware, async (req, res) => {
       ? configResult.rows[0].value
       : process.env.NOTIFICATION_EMAIL || 'nicole.flores@turingtech.com.ec';
 
-    await sendCreditRequestAdminEmail(
-      adminEmail,
-      req.user.name,
-      req.user.email,
-      project_description,
-      credits
-    );
-
     res.status(201).json({
       message: 'Tu solicitud será aprobada en los siguientes minutos.',
       request: result.rows[0],
     });
+
+    // best-effort: no bloquea la respuesta (los puertos SMTP están bloqueados en prod)
+    sendCreditRequestAdminEmail(adminEmail, req.user.name, req.user.email, project_description, credits)
+      .catch((e) => console.warn('Aviso de solicitud no enviado:', e.message));
   } catch (err) {
     console.error('Error en credit request:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
