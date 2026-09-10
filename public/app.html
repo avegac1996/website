@@ -85,41 +85,55 @@
     ];
     var hrLabel = function (t) { var x = HR_TYPES.filter(function (h) { return h.id === t; })[0]; return x ? x.label : t; };
 
-    // El menú depende del tipo de cuenta: cliente = créditos, colaborador = RRHH.
+    // El menú depende del tipo de cuenta: cliente = créditos; colaborador/admin = áreas de trabajo.
     function buildMenu() {
-      var personal = state.me.account_type === 'colaborador'
-        ? { section: 'Talento y Cultura', items: [
-            { id: 'inicio',         label: 'Mi espacio',            icon: 'fa-house' },
-            { id: 'board',          label: 'Seguimiento de proyectos', icon: 'fa-diagram-project' },
-            { id: 'prospectos',     label: 'Prospectos',            icon: 'fa-crosshairs' },
-            { id: 'timbrado',       label: 'Timbrado',              icon: 'fa-fingerprint' },
-            { id: 'humanizador',    label: 'Humanizador',           icon: 'fa-wand-magic-sparkles' },
-            { id: 'credencial',     label: 'Mi credencial',         icon: 'fa-id-badge' },
-            { id: 'hr-solicitudes', label: 'Mis solicitudes',       icon: 'fa-paper-plane' },
-            { id: 'notificaciones', label: 'Notificaciones',        icon: 'fa-bell' }
-          ].concat(state.me.role === 'admin' ? [] : [{ id: 'config', label: 'Configuración', icon: 'fa-gear' }]) }
-        : { section: 'Mi espacio', items: [
-            { id: 'inicio',         label: 'Mi espacio',         icon: 'fa-house' },
-            { id: 'solicitar',      label: 'Solicitar créditos', icon: 'fa-coins' },
-            { id: 'solicitudes',    label: 'Mis solicitudes',    icon: 'fa-paper-plane' },
-            { id: 'historial',      label: 'Historial',          icon: 'fa-clock-rotate-left' },
-            { id: 'notificaciones', label: 'Notificaciones',     icon: 'fa-bell' }
-          ]};
-      var menu = [personal];
-      if (state.me.role === 'admin') {
-        menu.push({ section: 'Administración', items: [
-          { id: 'admin-resumen',        label: 'Resumen',                 icon: 'fa-chart-pie' },
-          { id: 'admin-solicitudes',    label: 'Solicitudes de créditos', icon: 'fa-inbox' },
-          { id: 'admin-hr-solicitudes', label: 'Solicitudes RRHH',        icon: 'fa-user-clock' },
-          { id: 'admin-usuarios',       label: 'Usuarios',                icon: 'fa-users' },
-          { id: 'admin-creditos',       label: 'Modificar créditos',      icon: 'fa-sliders' },
-          { id: 'admin-prospectos',     label: 'Estados de prospectos',   icon: 'fa-tags' },
-          { id: 'admin-timbrado',       label: 'Jornadas del equipo',     icon: 'fa-business-time' },
-          { id: 'admin-sprints',        label: 'Automatización de sprints', icon: 'fa-calendar-week' },
-          { id: 'admin-config',         label: 'Configuración',           icon: 'fa-gear' }
-        ] });
+      // Clientes: portal de créditos (sin cambios)
+      if (state.me.account_type !== 'colaborador') {
+        return [{ section: 'Mi espacio', items: [
+          { id: 'inicio',         label: 'Mi espacio',         icon: 'fa-house' },
+          { id: 'solicitar',      label: 'Solicitar créditos', icon: 'fa-coins' },
+          { id: 'solicitudes',    label: 'Mis solicitudes',    icon: 'fa-paper-plane' },
+          { id: 'historial',      label: 'Historial',          icon: 'fa-clock-rotate-left' },
+          { id: 'notificaciones', label: 'Notificaciones',     icon: 'fa-bell' }
+        ] }];
       }
-      return menu;
+      var admin = state.me.role === 'admin';
+      var pick = function (arr) { return arr.filter(Boolean); };
+      var menu = [
+        { section: 'Mi espacio', items: [
+          { id: 'inicio', label: 'Mi espacio', icon: 'fa-house' }
+        ] },
+        { section: 'CRM', items: pick([
+          { id: 'crm-dashboard', label: 'Dashboard',             icon: 'fa-chart-pie' },
+          { id: 'crm-tablero',   label: 'Tablero',               icon: 'fa-table-columns' },
+          { id: 'prospectos',    label: 'Prospectos y empresas',  icon: 'fa-crosshairs' },
+          admin ? { id: 'admin-prospectos', label: 'Estados y actividades', icon: 'fa-tags' } : null
+        ]) },
+        { section: 'Proyecto', items: pick([
+          admin ? { id: 'proy-dashboard', label: 'Dashboard', icon: 'fa-gauge-high' } : null,
+          { id: 'board', label: 'Seguimiento de proyectos', icon: 'fa-diagram-project' },
+          admin ? { id: 'admin-sprints', label: 'Automatización de sprints', icon: 'fa-calendar-week' } : null
+        ]) },
+        { section: 'Recursos Humanos', items: pick([
+          admin ? { id: 'admin-hr-solicitudes', label: 'Solicitudes RRHH', icon: 'fa-user-clock' }
+                : { id: 'hr-solicitudes',       label: 'Mis solicitudes',  icon: 'fa-paper-plane' },
+          { id: 'credencial', label: 'Mi credencial', icon: 'fa-id-badge' },
+          { id: 'timbrado',   label: 'Timbrado',      icon: 'fa-fingerprint' },
+          admin ? { id: 'admin-timbrado', label: 'Jornadas del equipo', icon: 'fa-business-time' } : null
+        ]) },
+        admin ? { section: 'Administración', items: [
+          { id: 'admin-solicitudes', label: 'Solicitudes de créditos', icon: 'fa-inbox' },
+          { id: 'admin-usuarios',    label: 'Usuarios',                icon: 'fa-users' },
+          { id: 'admin-creditos',    label: 'Modificar créditos',      icon: 'fa-sliders' },
+          { id: 'admin-config',      label: 'Configuración',           icon: 'fa-gear' }
+        ] } : null,
+        { section: 'Otros', items: pick([
+          { id: 'humanizador',    label: 'Humanizador',    icon: 'fa-wand-magic-sparkles' },
+          { id: 'notificaciones', label: 'Notificaciones', icon: 'fa-bell' },
+          admin ? null : { id: 'config', label: 'Configuración', icon: 'fa-gear' }
+        ]) }
+      ];
+      return menu.filter(Boolean);
     }
 
     var CREDIT_TYPES = [
@@ -220,6 +234,9 @@
       'hr-solicitudes': viewHrSolicitudes,
       'board': viewBoard,
       'prospectos': viewProspectos,
+      'crm-dashboard': viewResumen,
+      'crm-tablero': viewCrmTablero,
+      'proy-dashboard': viewProyectoDashboard,
       'timbrado': viewTimbrado,
       'humanizador': viewHumanizador,
       'config': viewMiConfig,
@@ -1599,7 +1616,7 @@
     var FASES_SOP = window.FASES_SOP || [];
     var PATRONES_EMAIL = window.PATRONES_EMAIL || [];
     var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
-    var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '' }, sel: null };
+    var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '' }, sel: null, view: null, from: null, kbq: '' };
     var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
 
     // estados y tipos vienen del backend (catálogo editable por admin). Fallback por si aún no cargó meta.
@@ -1643,6 +1660,7 @@
     }
 
     function viewProspectos() {
+      PROS.view = null; PROS.from = null;
       return API.request('/api/prospectos').then(function (r) {
         PROS.list = r.prospectos || [];
         PROS.meta = r.meta || {};
@@ -1959,7 +1977,7 @@
         : '<button class="btn btn-primary btn-small" id="pg_convertir"><i class="fa-solid fa-list-check"></i> Convertir en tarea</button>';
 
       el('prosBody').innerHTML =
-        '<button class="btn btn-secondary btn-small" id="pg_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</button>' +
+        '<button class="btn btn-secondary btn-small" id="pg_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> ' + (PROS.from === 'kanban' ? 'Volver al tablero' : 'Volver a la lista') + '</button>' +
         '<div class="glass-panel" style="padding:24px;margin-bottom:16px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">' +
             '<div>' +
@@ -1976,16 +1994,15 @@
               '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
             '</div>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:18px;max-width:640px;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;max-width:520px;">' +
             '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado</label>' +
               '<select id="pg_estado" class="form-input">' + estadoSel + '</select></div>' +
             '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
               '<select id="pg_owner" class="form-input">' + ownerSel + '</select></div>' +
-            '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Próxima gestión' + prosProxChip(p) + '</label>' +
-              '<input type="date" id="pg_prox" class="form-input" value="' + esc(dstr(p.proxima_gestion) || '') + '"></div>' +
           '</div>' +
-          (p.proxima_gestion_nota ? '<div class="text-gray text-xs" style="margin-top:6px;">📌 ' + esc(p.proxima_gestion_nota) + '</div>' : '') +
         '</div>' +
+
+        '<div class="glass-panel" id="pg_act_panel" style="padding:20px;margin-bottom:16px;"></div>' +
 
         '<div class="glass-panel" style="padding:20px;margin-bottom:16px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">' +
@@ -2009,11 +2026,6 @@
               'Pegá (Ctrl+V), arrastrá o hacé clic para adjuntar imagen o PDF' +
               '<input type="file" id="pg_file_input" accept="image/*,application/pdf" multiple hidden></div>' +
             '<div id="pg_pend" class="files-grid" style="margin-top:8px;"></div>' +
-            '<label class="text-gray text-xs" style="display:block;margin:12px 0 4px;">Próxima gestión (opcional)</label>' +
-            '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="pg_nextdate" class="form-input" style="max-width:150px;">' +
-              '<input type="text" id="pg_nextnote" class="form-input" placeholder="Qué toca hacer…">' +
-            '</div>' +
             '<button class="btn btn-primary btn-small" id="pg_addint" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Agregar al historial</button>' +
           '</div>' +
           '<div class="glass-panel" style="padding:20px;">' +
@@ -2022,7 +2034,10 @@
           '</div>' +
         '</div>';
 
-      el('pg_back').addEventListener('click', function () { PROS.sel = null; refrescarProspectos(function () { prosGestion(); }); });
+      el('pg_back').addEventListener('click', function () {
+        if (PROS.from === 'kanban') { PROS.from = null; PROS.sel = null; return viewCrmTablero(); }
+        PROS.sel = null; refrescarProspectos(function () { prosGestion(); });
+      });
       el('pg_del').addEventListener('click', function () {
         if (!confirm('¿Eliminar el prospecto "' + p.empresa + '" y su historial?')) return;
         API.request('/api/prospectos/' + p.id, { method: 'DELETE' })
@@ -2098,14 +2113,7 @@
         location.hash = '#/board';
       });
 
-      // ---- próxima gestión (fecha, sin re-render) ----
-      el('pg_prox').addEventListener('change', function () {
-        var v = this.value || null, prev = p.proxima_gestion;
-        p.proxima_gestion = v;
-        API.request('/api/prospectos/' + p.id + '/proxima-gestion', { method: 'PATCH', body: JSON.stringify({ proxima_gestion: v, nota: p.proxima_gestion_nota || null }) })
-          .then(function () { showAlert('Próxima gestión actualizada.', 'success'); })
-          .catch(function (err) { showAlert(err.message, 'error'); p.proxima_gestion = prev; el('pg_prox').value = dstr(prev) || ''; });
-      });
+      renderActividades(p);
 
       // ---- adjuntos de la interacción: pegar / arrastrar / elegir ----
       var pgPend = [];
@@ -2148,17 +2156,14 @@
       // ---- registrar interacción — recarga solo el timeline ----
       el('pg_addint').addEventListener('click', function () {
         var nota = el('pg_nota').value.trim(), resultado = el('pg_res').value, tipo = el('pg_tipo').value;
-        var nextDate = el('pg_nextdate').value || null, nextNote = el('pg_nextnote').value.trim() || null;
         if (!nota && !resultado && !pgPend.length) { showAlert('Escribí una nota, elegí un resultado o adjuntá una imagen.', 'warning'); return; }
         var b = this; b.disabled = true;
         var body = { tipo: tipo, resultado: resultado || null, nota: nota || null, files: pgPend };
-        if (nextDate) { body.proxima_gestion = nextDate; body.proxima_gestion_nota = nextNote; }
         API.request('/api/prospectos/' + p.id + '/interacciones', { method: 'POST', body: JSON.stringify(body) })
           .then(function () {
-            el('pg_nota').value = ''; el('pg_res').value = ''; el('pg_nextdate').value = ''; el('pg_nextnote').value = '';
+            el('pg_nota').value = ''; el('pg_res').value = '';
             pgPend = []; pgRenderPend();
             p.interacciones = (p.interacciones || 0) + 1; p.ultima_gestion = new Date().toISOString();
-            if (nextDate) { p.proxima_gestion = nextDate; p.proxima_gestion_nota = nextNote; if (el('pg_prox')) el('pg_prox').value = nextDate; }
             showAlert('Interacción registrada.', 'success'); cargarTimeline();
           })
           .catch(function (err) { showAlert(err.message, 'error'); })
@@ -2230,12 +2235,70 @@
       cargarTimeline();
     }
 
-    // etiqueta de la próxima gestión: roja si venció, gris si no hay
-    function prosProxChip(p) {
-      if (!p.proxima_gestion) return ' <span class="pg-flag none">sin programar</span>';
-      var d = parseDateLocal(p.proxima_gestion), hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-      if (d && d < hoy) return ' <span class="pg-flag late">atrasada</span>';
-      return '';
+    /* ---- Panel de actividades programadas del prospecto ---- */
+    function renderActividades(p) {
+      var box = el('pg_act_panel'); if (!box) return;
+      var tipos = (PROS.meta.actividadTipos || ['llamada', 'linkedin', 'whatsapp', 'reunion', 'otro']);
+      function pintar(acts) {
+        var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        var pend = acts.filter(function (a) { return !a.hecha; });
+        var banner = pend.length === 0
+          ? '<div class="act-banner"><i class="fa-solid fa-circle-exclamation"></i> Este prospecto no tiene ninguna actividad programada.</div>' : '';
+        var lista = acts.map(function (a) {
+          var d = parseDateLocal(a.deadline);
+          var venc = !a.hecha && d && d < hoy;
+          return '<div class="act-row' + (a.hecha ? ' done' : '') + (venc ? ' late' : '') + '">' +
+            '<button class="act-check ' + (a.hecha ? 'on' : '') + '" data-done="' + a.id + '" title="' + (a.hecha ? 'Reabrir' : 'Marcar hecha') + '"><i class="fa-solid ' + (a.hecha ? 'fa-circle-check' : 'fa-circle') + '"></i></button>' +
+            '<span class="act-ico"><i class="' + (ACT_ICONO[a.tipo] || 'fa-solid fa-thumbtack') + '"></i></span>' +
+            '<span class="act-main"><strong>' + esc(ACT_LABEL[a.tipo] || a.tipo) + '</strong>' + (a.titulo ? ' · ' + esc(a.titulo) : '') +
+              '<span class="act-date">' + (a.deadline ? fmtDate(a.deadline) : 'sin fecha') + (venc ? ' · vencida' : '') + '</span></span>' +
+            '<button class="act-del" data-del="' + a.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>' +
+          '</div>';
+        }).join('') || '<p class="text-gray text-xs" style="margin:4px 0 8px;">Sin actividades.</p>';
+
+        box.innerHTML =
+          '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">Actividades ' +
+            (pend.length ? '<span class="text-gray text-xs">(' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + ')</span>' : '') + '</div>' +
+          banner +
+          '<div class="act-list">' + lista + '</div>' +
+          '<form id="act_form" class="act-form">' +
+            '<select id="act_tipo" class="form-input">' + tipos.map(function (t) { return '<option value="' + t + '">' + esc(ACT_LABEL[t] || t) + '</option>'; }).join('') + '</select>' +
+            '<input id="act_titulo" class="form-input" placeholder="Detalle (opcional)">' +
+            '<input type="date" id="act_deadline" class="form-input" required title="Fecha límite">' +
+            '<button class="btn btn-primary btn-small" type="submit"><i class="fa-solid fa-plus"></i></button>' +
+          '</form>';
+
+        box.querySelectorAll('[data-done]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var a = acts.filter(function (x) { return String(x.id) === b.getAttribute('data-done'); })[0];
+            API.request('/api/prospectos/' + p.id + '/actividades/' + b.getAttribute('data-done'), { method: 'PATCH', body: JSON.stringify({ hecha: !a.hecha }) })
+              .then(cargar).catch(function (err) { showAlert(err.message, 'error'); });
+          });
+        });
+        box.querySelectorAll('[data-del]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (!confirm('¿Eliminar esta actividad?')) return;
+            API.request('/api/prospectos/' + p.id + '/actividades/' + b.getAttribute('data-del'), { method: 'DELETE' })
+              .then(cargar).catch(function (err) { showAlert(err.message, 'error'); });
+          });
+        });
+        el('act_form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var body = { tipo: el('act_tipo').value, titulo: el('act_titulo').value.trim() || null, deadline: el('act_deadline').value || null };
+          if (!body.deadline) { showAlert('Poné una fecha límite.', 'warning'); return; }
+          API.request('/api/prospectos/' + p.id + '/actividades', { method: 'POST', body: JSON.stringify(body) })
+            .then(function () { showAlert('Actividad agregada.', 'success'); cargar(); })
+            .catch(function (err) { showAlert(err.message, 'error'); });
+        });
+      }
+      function cargar() {
+        return API.request('/api/prospectos/' + p.id + '/actividades').then(function (r) {
+          var acts = r.actividades || [];
+          p.act_pendientes = acts.filter(function (a) { return !a.hecha; }).length;
+          pintar(acts);
+        });
+      }
+      cargar();
     }
 
     // refresco silencioso de la lista de prospectos (sin re-render)
@@ -2254,10 +2317,13 @@
         function estadoRow(e) {
           var isNew = !e.id;
           var beOpts = be.map(function (b) { return '<option' + (b === (e.board_estado || 'En curso') ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('');
+          var KB = [['por_prospectar', 'Por prospectar'], ['prospectando', 'Prospectando'], ['exitoso', 'Exitosos'], ['rechazado', 'Rechazados']];
+          var kbOpts = KB.map(function (k) { return '<option value="' + k[0] + '"' + ((e.kanban || 'prospectando') === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('');
           return '<div class="cat-row" data-id="' + (e.id || '') + '">' +
             '<input type="color" class="cat-color" value="' + (e.color || '#94a3b8') + '">' +
             '<input class="form-input cat-label" placeholder="Nombre del estado" value="' + esc(e.label || '') + '">' +
             '<select class="form-input cat-be" title="Estado equivalente en el tablero">' + beOpts + '</select>' +
+            '<select class="form-input cat-kanban" title="Columna del tablero CRM">' + kbOpts + '</select>' +
             '<input type="number" class="form-input cat-orden" title="Orden" value="' + (e.orden || 0) + '">' +
             (isNew
               ? '<button class="btn btn-primary btn-small cat-add">Agregar</button>'
@@ -2300,6 +2366,7 @@
             label: row.querySelector('.cat-label').value.trim(),
             color: row.querySelector('.cat-color').value,
             board_estado: row.querySelector('.cat-be').value,
+            kanban: row.querySelector('.cat-kanban') ? row.querySelector('.cat-kanban').value : 'prospectando',
             orden: Number(row.querySelector('.cat-orden').value) || 0,
             activo: row.querySelector('.cat-activo') ? row.querySelector('.cat-activo').checked : true
           };
@@ -2379,40 +2446,89 @@
       }).join('') + '</div>';
     }
     function abrirProspecto(id) {
-      PROS.tab = 'gestion'; PROS.sel = Number(id);
+      PROS.tab = 'gestion'; PROS.sel = Number(id); PROS.from = null;
       location.hash = '#/prospectos';
     }
+    var ACT_ICONO = { llamada: 'fa-solid fa-phone', linkedin: 'fa-brands fa-linkedin', whatsapp: 'fa-brands fa-whatsapp', reunion: 'fa-solid fa-handshake', otro: 'fa-solid fa-thumbtack' };
+    var ACT_LABEL = { llamada: 'Llamada', linkedin: 'Mensaje LinkedIn', whatsapp: 'Mensaje WhatsApp', reunion: 'Reunión', otro: 'Otra' };
 
+    var CRM_DASH = { gestor: '' };
     function viewResumen() {
-      return API.request('/api/prospectos/resumen').then(function (r) {
-        var P = r.prospectos, E = r.equipo, S = P.seguimiento;
+      var qs = CRM_DASH.gestor ? '?gestor=' + CRM_DASH.gestor : '';
+      return API.request('/api/prospectos/resumen' + qs).then(function (r) {
+        var P = r.prospectos, S = P.seguimiento;
 
-        var pipeline = rzBars(P.por_estado.map(function (e) {
-          return { label: e.label, value: e.count, color: e.color };
-        }));
+        var filtro = r.esAdmin
+          ? '<div class="rz-filter"><label>Gestor</label><select id="rz_gestor" class="form-input">' +
+              '<option value="">Todos</option>' +
+              (r.colaboradores || []).map(function (c) { return '<option value="' + c.id + '"' + (String(c.id) === String(CRM_DASH.gestor) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') +
+            '</select></div>'
+          : '';
+
+        var pipeline = rzBars(P.por_estado.map(function (e) { return { label: e.label, value: e.count, color: e.color }; }));
 
         var atencion = P.atencion.length
           ? P.atencion.map(function (a) {
-              var atrasoTxt = a.proxima_gestion == null ? 'sin próxima gestión'
-                : (a.dias_atraso > 0 ? a.dias_atraso + ' día(s) de atraso' : 'vence hoy');
+              var txt = a.proxima == null ? 'sin actividad programada'
+                : (a.vencidas > 0 ? a.vencidas + ' actividad(es) vencida(s)' : 'próxima: ' + fmtDate(a.proxima));
               return '<div class="rz-att" data-pid="' + a.id + '">' +
                 '<div><strong>' + esc(a.empresa) + '</strong>' +
-                  '<div class="text-gray text-xs">' + esc(a.owner_nombre || 'Sin responsable') +
-                  (a.proxima_gestion_nota ? ' · ' + esc(a.proxima_gestion_nota) : '') + '</div></div>' +
-                '<span class="rz-att-flag ' + (a.proxima_gestion == null ? 'none' : 'late') + '">' + esc(atrasoTxt) + '</span>' +
+                  '<div class="text-gray text-xs">' + esc(a.owner_nombre || 'Sin responsable') + '</div></div>' +
+                '<span class="rz-att-flag ' + (a.proxima == null ? 'none' : 'late') + '">' + esc(txt) + '</span>' +
               '</div>';
             }).join('')
-          : '<p class="text-gray text-xs">Todos los prospectos tienen su próxima gestión al día. 👌</p>';
+          : '<p class="text-gray text-xs">Todos los prospectos tienen su actividad al día. 👌</p>';
 
         var respRows = P.por_responsable.map(function (u) {
           return '<tr><td>' + esc(u.name) + '</td>' +
             '<td style="text-align:center;">' + u.prospectos + '</td>' +
             '<td style="text-align:center;">' + u.interacciones_7d + '</td>' +
             '<td style="text-align:center;color:' + (u.atrasados ? 'var(--color-error)' : 'inherit') + ';">' + u.atrasados + '</td>' +
-            '<td style="text-align:center;color:' + (u.sin_programar ? 'var(--color-warning)' : 'inherit') + ';">' + u.sin_programar + '</td></tr>';
+            '<td style="text-align:center;color:' + (u.sin_actividad ? 'var(--color-warning)' : 'inherit') + ';">' + u.sin_actividad + '</td></tr>';
         }).join('') || '<tr><td colspan="5" class="text-gray text-xs">Sin datos.</td></tr>';
 
-        var tareaRows = E.tareas_por_responsable.map(function (t) {
+        el('view').innerHTML =
+          (filtro ? '<div class="rz-toolbar">' + filtro + '</div>' : '') +
+          '<div class="rz-tiles">' +
+            rzTile('Prospectos', P.total, '') +
+            rzTile('Al día', S.al_dia, 'ok') +
+            rzTile('Atrasados', S.atrasados, 'err') +
+            rzTile('Sin actividad', S.sin_actividad, 'warn') +
+            rzTile('Con tarea', S.con_tarea, '') +
+          '</div>' +
+          '<div class="rz-grid">' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Pipeline por estado</div>' + pipeline + '</div>' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Actividad · últimos 14 días</div>' + rzCols(P.actividad_por_dia) +
+              '<p class="text-gray text-xs" style="margin-top:8px;">Interacciones registradas + actividades completadas por día.</p></div>' +
+          '</div>' +
+          '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
+            '<div class="section-heading">Necesitan seguimiento <span class="text-gray text-xs">(' + P.atencion.length + ')</span></div>' +
+            '<div class="rz-attlist">' + atencion + '</div>' +
+          '</div>' +
+          '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
+            '<div class="section-heading">Por gestor</div>' +
+            '<div class="table-container"><table class="tb-table"><thead><tr><th>Gestor</th><th style="text-align:center;">Prospectos</th><th style="text-align:center;">Interac. 7d</th><th style="text-align:center;">Atrasados</th><th style="text-align:center;">Sin actividad</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
+          '</div>';
+
+        if (el('rz_gestor')) el('rz_gestor').addEventListener('change', function () { CRM_DASH.gestor = this.value; viewResumen(); });
+        el('view').querySelectorAll('.rz-att[data-pid]').forEach(function (n) {
+          n.style.cursor = 'pointer';
+          n.addEventListener('click', function () { abrirProspecto(n.getAttribute('data-pid')); });
+        });
+      });
+    }
+
+    /* ===== Dashboard de Proyecto (admin): quién trabajó, tareas, timbrado ===== */
+    function viewProyectoDashboard() {
+      return API.request('/api/board/resumen').then(function (r) {
+        var proyRows = r.proyectos.map(function (p) {
+          return '<tr><td>' + esc(p.proyecto) + '</td>' +
+            '<td style="text-align:center;">' + p.abiertas + '</td>' +
+            '<td style="text-align:center;color:' + (p.atrasadas ? 'var(--color-error)' : 'inherit') + ';">' + p.atrasadas + '</td>' +
+            '<td style="text-align:center;">' + p.finalizadas + '</td></tr>';
+        }).join('') || '<tr><td colspan="4" class="text-gray text-xs">Sin proyectos.</td></tr>';
+
+        var respRows = r.por_responsable.map(function (t) {
           return '<tr><td>' + esc(t.responsable) + '</td>' +
             '<td style="text-align:center;">' + t.abiertas + '</td>' +
             '<td style="text-align:center;">' + t.en_curso + '</td>' +
@@ -2420,12 +2536,16 @@
             '<td style="text-align:center;">' + t.finalizadas_7d + '</td></tr>';
         }).join('') || '<tr><td colspan="5" class="text-gray text-xs">Sin tareas asignadas.</td></tr>';
 
-        var jornadaBars = rzBars(E.timbrado_semana.map(function (u) {
-          return { label: u.name.split(' ')[0], value: Math.round(u.total_min / 6) / 10, sub: u.total_horas + ' · ' + u.dias + 'd' };
-        }));
+        var equipo = r.equipo.map(function (u) {
+          return '<div class="rz-att">' +
+            '<div><strong>' + esc(u.name) + '</strong>' + (u.position ? ' <span class="text-gray text-xs">· ' + esc(u.position) + '</span>' : '') +
+              '<div class="text-gray text-xs">' + esc(u.total_horas) + ' esta semana · ' + u.dias + ' día(s)</div></div>' +
+            '<span class="rz-att-flag ' + (u.trabajo_hoy ? 'ok' : 'none') + '">' + (u.trabajo_hoy ? 'timbró hoy' : 'sin timbrar hoy') + '</span>' +
+          '</div>';
+        }).join('');
 
-        var atrasadasList = E.tareas_atrasadas.length
-          ? E.tareas_atrasadas.map(function (t) {
+        var atrasadasList = r.tareas_atrasadas.length
+          ? r.tareas_atrasadas.map(function (t) {
               return '<div class="rz-att"><div><strong>' + esc(t.titulo) + '</strong>' +
                 '<div class="text-gray text-xs">' + esc(t.proyecto || '') + ' · ' + esc(t.responsable || 'Sin responsable') + '</div></div>' +
                 '<span class="rz-att-flag late">venció ' + esc(fmtDate(t.fecha_fin)) + '</span></div>';
@@ -2433,39 +2553,105 @@
           : '<p class="text-gray text-xs">Ninguna tarea atrasada. 🎉</p>';
 
         el('view').innerHTML =
-          '<div class="rz-tiles">' +
-            rzTile('Prospectos', P.total, '') +
-            rzTile('Al día', S.al_dia, 'ok') +
-            rzTile('Atrasados', S.atrasados, 'err') +
-            rzTile('Sin próxima gestión', S.sin_programar, 'warn') +
-            rzTile('Con tarea', S.con_tarea, '') +
-          '</div>' +
           '<div class="rz-grid">' +
-            '<div class="glass-panel rz-panel"><div class="section-heading">Pipeline por estado</div>' + pipeline + '</div>' +
-            '<div class="glass-panel rz-panel"><div class="section-heading">Interacciones · últimos 14 días</div>' + rzCols(P.interacciones_por_dia) + '</div>' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Por proyecto</div>' +
+              '<div class="table-container"><table class="tb-table"><thead><tr><th>Proyecto</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Finalizadas</th></tr></thead><tbody>' + proyRows + '</tbody></table></div></div>' +
+            '<div class="glass-panel rz-panel"><div class="section-heading">Trabajó esta semana <span class="text-gray text-xs">(desde ' + esc(fmtDate(r.semana_desde)) + ')</span></div>' +
+              '<div class="rz-attlist">' + (equipo || '<p class="text-gray text-xs">Sin registros.</p>') + '</div></div>' +
           '</div>' +
           '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
-            '<div class="section-heading">Necesitan seguimiento <span class="text-gray text-xs">(' + P.atencion.length + ')</span></div>' +
-            '<div class="rz-attlist">' + atencion + '</div>' +
+            '<div class="section-heading">Tareas por responsable</div>' +
+            '<div class="table-container"><table class="tb-table"><thead><tr><th>Responsable</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">En curso</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Fin. 7d</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
           '</div>' +
           '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
-            '<div class="section-heading">Por responsable comercial</div>' +
-            '<div class="table-container"><table class="tb-table"><thead><tr><th>Responsable</th><th style="text-align:center;">Prospectos</th><th style="text-align:center;">Interac. 7d</th><th style="text-align:center;">Atrasados</th><th style="text-align:center;">Sin programar</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
-          '</div>' +
-          '<div class="section-heading" style="text-align:left;margin:26px 0 12px;font-size:15px;">Equipo</div>' +
-          '<div class="rz-grid">' +
-            '<div class="glass-panel rz-panel"><div class="section-heading">Tareas por responsable</div>' +
-              '<div class="table-container"><table class="tb-table"><thead><tr><th>Responsable</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">En curso</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Fin. 7d</th></tr></thead><tbody>' + tareaRows + '</tbody></table></div></div>' +
-            '<div class="glass-panel rz-panel"><div class="section-heading">Timbrado de la semana <span class="text-gray text-xs">(desde ' + esc(fmtDate(E.semana_desde)) + ')</span></div>' + jornadaBars + '</div>' +
-          '</div>' +
-          '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
-            '<div class="section-heading">Tareas atrasadas <span class="text-gray text-xs">(' + E.tareas_atrasadas.length + ')</span></div>' +
+            '<div class="section-heading">Tareas atrasadas <span class="text-gray text-xs">(' + r.tareas_atrasadas.length + ')</span></div>' +
             '<div class="rz-attlist">' + atrasadasList + '</div>' +
           '</div>';
+      });
+    }
 
-        el('view').querySelectorAll('.rz-att[data-pid]').forEach(function (n) {
-          n.style.cursor = 'pointer';
-          n.addEventListener('click', function () { abrirProspecto(n.getAttribute('data-pid')); });
+    /* ===== CRM · Tablero Kanban de prospectos ===== */
+    function viewCrmTablero() {
+      PROS.view = 'kanban';
+      return API.request('/api/prospectos').then(function (r) {
+        PROS.list = r.prospectos || []; PROS.meta = r.meta || {};
+        PROS.sel = null;
+        renderCrmKanban();
+      });
+    }
+    function prosActChip(p) {
+      if ((p.act_atrasadas || 0) > 0) return '<span class="kb-act late"><i class="fa-solid fa-triangle-exclamation"></i> ' + p.act_atrasadas + ' vencida' + (p.act_atrasadas > 1 ? 's' : '') + '</span>';
+      if ((p.act_pendientes || 0) === 0) return '<span class="kb-act none"><i class="fa-solid fa-circle-exclamation"></i> sin actividad</span>';
+      return '<span class="kb-act ok"><i class="fa-regular fa-clock"></i> ' + fmtDate(p.act_proxima) + '</span>';
+    }
+    function renderCrmKanban() {
+      var cols = PROS.meta.kanban || [
+        { id: 'por_prospectar', label: 'Por prospectar' }, { id: 'prospectando', label: 'Prospectando' },
+        { id: 'exitoso', label: 'Exitosos' }, { id: 'rechazado', label: 'Rechazados' }
+      ];
+      var estados = PROS.meta.estados || [];
+      var estadoDe = function (slug) { return estados.filter(function (e) { return e.slug === slug; })[0] || { label: slug, color: '#94a3b8' }; };
+      var q = (PROS.kbq || '').toLowerCase();
+      var lista = PROS.list.filter(function (p) { return !q || (p.empresa || '').toLowerCase().indexOf(q) !== -1; });
+
+      var byCol = {};
+      cols.forEach(function (c) { byCol[c.id] = []; });
+      lista.forEach(function (p) { var k = p.kanban || 'prospectando'; (byCol[k] = byCol[k] || []).push(p); });
+
+      var colHtml = cols.map(function (c) {
+        var cards = (byCol[c.id] || []).map(function (p) {
+          var e = estadoDe(p.estado);
+          return '<div class="kb-card' + ((p.act_pendientes || 0) === 0 || (p.act_atrasadas || 0) > 0 ? ' alert' : '') + '" draggable="true" data-id="' + p.id + '">' +
+            '<div class="kb-card-top"><strong>' + esc(p.empresa) + '</strong>' +
+              (p.task_id ? '<span class="kb-tag">tarea</span>' : '') + '</div>' +
+            '<div class="text-gray text-xs">' + esc(p.sector_nombre || 'Sin sector') + (p.owner_nombre ? ' · ' + esc(p.owner_nombre) : '') + '</div>' +
+            '<div class="kb-card-foot">' +
+              '<span class="kb-estado" style="background:' + e.color + '22;color:' + e.color + ';">' + esc(e.label) + '</span>' +
+              prosActChip(p) +
+            '</div>' +
+          '</div>';
+        }).join('') || '<div class="kb-empty">—</div>';
+        return '<div class="kb-col" data-col="' + c.id + '">' +
+          '<div class="kb-col-head">' + esc(c.label) + ' <span class="kb-count">' + (byCol[c.id] || []).length + '</span></div>' +
+          '<div class="kb-col-body" data-col="' + c.id + '">' + cards + '</div>' +
+        '</div>';
+      }).join('');
+
+      el('view').innerHTML =
+        '<div class="bt-toolbar" style="margin-bottom:14px;">' +
+          '<input id="kb_q" class="form-input" placeholder="Buscar empresa…" style="max-width:240px;" value="' + esc(PROS.kbq || '') + '">' +
+          '<span class="text-gray text-xs">Arrastrá las tarjetas entre columnas. Clic para ver el seguimiento.</span>' +
+        '</div>' +
+        '<div class="kb-board">' + colHtml + '</div>';
+
+      el('kb_q').addEventListener('input', function () { PROS.kbq = this.value; renderCrmKanban(); });
+
+      el('view').querySelectorAll('.kb-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+          var p = PROS.list.filter(function (x) { return String(x.id) === card.getAttribute('data-id'); })[0];
+          if (p) { PROS.sel = p.id; PROS.from = 'kanban'; el('view').innerHTML = '<div id="prosBody"></div>'; prosGestionar(p); }
+        });
+        card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', card.getAttribute('data-id')); card.classList.add('kb-dragging'); });
+        card.addEventListener('dragend', function () { card.classList.remove('kb-dragging'); });
+      });
+      el('view').querySelectorAll('.kb-col-body').forEach(function (body) {
+        body.addEventListener('dragover', function (e) { e.preventDefault(); body.classList.add('kb-over'); });
+        body.addEventListener('dragleave', function () { body.classList.remove('kb-over'); });
+        body.addEventListener('drop', function (e) {
+          e.preventDefault(); body.classList.remove('kb-over');
+          var id = e.dataTransfer.getData('text/plain');
+          var p = PROS.list.filter(function (x) { return String(x.id) === id; })[0];
+          var col = body.getAttribute('data-col');
+          if (!p || p.kanban === col) return;
+          // estado destino: primer estado activo de esa columna kanban
+          var dest = estados.filter(function (e2) { return e2.kanban === col; })[0];
+          if (!dest) { showAlert('Esa columna no tiene un estado configurado.', 'warning'); return; }
+          var prevK = p.kanban, prevE = p.estado;
+          p.kanban = col; p.estado = dest.slug;
+          renderCrmKanban();
+          API.request('/api/prospectos/' + p.id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: dest.slug }) })
+            .then(function () { showAlert('Movido a "' + dest.label + '".', 'success'); })
+            .catch(function (err) { showAlert(err.message, 'error'); p.kanban = prevK; p.estado = prevE; renderCrmKanban(); });
         });
       });
     }
