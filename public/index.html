@@ -277,9 +277,9 @@
             margin-top: 1rem;
         }
 
-        /* ===== Turingcoin flotante (esquinas derechas) ===== */
+        /* ===== Turingcoin flotante (lado izquierdo) ===== */
         .tc-fx {
-            position: fixed; right: 22px; top: 100px; z-index: 40;
+            position: fixed; left: 22px; top: 100px; z-index: 40;
             width: 88px;
             opacity: 0; transform: translateY(16px) scale(.65);
             transition: opacity .55s ease, transform .55s cubic-bezier(.18,.9,.32,1.35);
@@ -308,8 +308,8 @@
             mix-blend-mode: screen; animation: tc-sheen 3.6s linear infinite;
         }
         .tc-msg {
-            position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
-            margin-right: 12px; white-space: nowrap;
+            position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+            margin-left: 12px; white-space: nowrap;
             background: rgba(11,21,40,.94); border: 1px solid rgba(255,107,0,.4);
             color: #fff; font-family: 'Inter', Arial, sans-serif; font-size: 12px; font-weight: 700;
             padding: 7px 13px; border-radius: 999px;
@@ -320,11 +320,12 @@
         .tc-msg strong { color: #FF6B00; }
         .tc-msg i { color: #FF6B00; margin-left: 5px; font-size: 10px; }
         .tc-close {
-            position: absolute; top: -7px; left: -7px; width: 21px; height: 21px;
+            position: absolute; top: -7px; right: -7px; width: 21px; height: 21px;
             border-radius: 50%; background: rgba(11,21,40,.95); border: 1px solid rgba(255,255,255,.18);
             color: #9aa4b2; font-size: 12px; line-height: 1; display: flex; align-items: center; justify-content: center;
             cursor: pointer; opacity: 0; transition: opacity .25s ease;
         }
+        .tc-fx.tc-show .tc-close { opacity: .55; }
         .tc-fx.tc-show:hover .tc-close { opacity: 1; }
         .tc-close:hover { color: #fff; }
 
@@ -339,9 +340,9 @@
         }
 
         @media (max-width: 640px) {
-            .tc-fx { width: 60px; right: 12px; }
-            .tc-coin { width: 60px; height: 60px; }
-            .tc-msg { font-size: 11px; padding: 5px 10px; margin-right: 9px; }
+            .tc-fx { width: 58px; left: 12px; }
+            .tc-coin { width: 58px; height: 58px; }
+            .tc-msg { font-size: 11px; padding: 5px 9px; margin-left: 9px; }
         }
         @media (prefers-reduced-motion: reduce) {
             .tc-coin, .tc-bob, .tc-face::after { animation: none !important; }
@@ -1335,25 +1336,35 @@
                                 <stop offset="0" stop-color="#ffe7b0"/><stop offset=".4" stop-color="#f4a53a"/>
                                 <stop offset=".76" stop-color="#d67c14"/><stop offset="1" stop-color="#8f4d08"/>
                             </radialGradient>
-                            <radialGradient id="tcInnerF" cx="42%" cy="36%" r="72%">
-                                <stop offset="0" stop-color="#f9cd82"/><stop offset=".65" stop-color="#df8f2b"/><stop offset="1" stop-color="#a95d0d"/>
+                            <radialGradient id="tcMedF" cx="42%" cy="34%" r="74%">
+                                <stop offset="0" stop-color="#1c2e4c"/><stop offset=".6" stop-color="#0d1830"/><stop offset="1" stop-color="#060d1c"/>
                             </radialGradient>
-                            <path id="tcArcF" d="M100 100 m -63 0 a 63 63 0 1 1 126 0"/>
+                            <path id="tcArcF" d="M100 100 m -64 0 a 64 64 0 1 1 128 0"/>
                         </defs>
                         <circle cx="100" cy="100" r="97" fill="url(#tcMetalF)"/>
                         <circle cx="100" cy="100" r="92" fill="none" stroke="#7a4304" stroke-width="10" stroke-dasharray="3.4 5.2" opacity=".5"/>
                         <circle cx="100" cy="100" r="84" fill="none" stroke="#ffe9c2" stroke-width="2" opacity=".55"/>
                         <circle cx="100" cy="100" r="84" fill="none" stroke="#6f3f04" stroke-width="1.5" opacity=".4" transform="translate(0 2)"/>
-                        <circle cx="100" cy="100" r="65" fill="url(#tcInnerF)"/>
-                        <circle cx="100" cy="100" r="65" fill="none" stroke="#6f3f04" stroke-width="2" opacity=".4"/>
-                        <circle cx="100" cy="100" r="65" fill="none" stroke="#ffedcb" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
-                        <g fill="#fff3da" opacity=".45" transform="translate(-2.5 -2.5)">
-                            <path d="M60 130 L88 68 L96 68 L68 130 Z"/><path d="M84 130 L110 74 L118 74 L92 130 Z"/><path d="M108 130 L130 82 L138 82 L116 130 Z"/>
-                        </g>
-                        <g fill="#6b3a03" opacity=".9">
-                            <path d="M60 130 L88 68 L96 68 L68 130 Z"/><path d="M84 130 L110 74 L118 74 L92 130 Z"/><path d="M108 130 L130 82 L138 82 L116 130 Z"/>
-                        </g>
-                        <text font-family="Barlow, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="3.5" fill="#5c3302">
+                        <circle cx="100" cy="100" r="66" fill="url(#tcMedF)"/>
+                        <circle cx="100" cy="100" r="66" fill="none" stroke="#000" stroke-width="3" opacity=".45"/>
+                        <circle cx="100" cy="100" r="66" fill="none" stroke="#4a5f86" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
+                        <svg x="53" y="66" width="94" height="71" viewBox="0 0 49.72 37.61" overflow="visible">
+                            <g fill="#FFFFFF">
+                                <path d="M19.97,20.49 C21.85,24.04 23.83,27.53 25.81,31.03 C26.43,32.11 27.15,33.15 27.82,34.21 C27.98,34.17 28.15,34.14 28.31,34.11 C28.75,33.22 29.30,32.36 29.58,31.43 C29.76,30.84 29.77,30.04 29.48,29.52 C27.67,26.20 25.79,22.91 23.85,19.67 C23.47,19.03 22.79,18.40 22.09,18.15 C21.64,17.99 20.74,18.37 20.37,18.78 C20.01,19.18 19.75,20.07 19.97,20.49 Z"/>
+                                <path d="M19.32,18.10 C15.71,17.51 14.29,18.26 13.36,20.37 C12.06,23.29 10.79,26.22 9.50,29.14 C8.35,31.75 7.18,34.35 5.94,37.14 C7.17,37.12 8.20,37.03 9.21,37.12 C10.32,37.21 10.89,36.78 11.28,35.79 C12.00,33.98 12.79,32.19 13.61,30.42 C15.49,26.31 17.41,22.22 19.32,18.10 Z"/>
+                                <path d="M13.24,17.96 C9.90,17.34 8.49,18.08 7.15,21.06 C5.71,24.27 4.22,27.47 2.75,30.68 C1.84,32.65 0.92,34.62 0.00,36.61 C3.60,37.46 4.38,37.07 5.75,34.09 C8.22,28.70 10.74,23.33 13.24,17.96 Z"/>
+                                <path d="M27.24,35.90 C24.45,31.09 21.77,26.47 18.99,21.67 C18.42,22.85 18.03,23.76 17.57,24.64 C17.09,25.56 17.13,26.34 17.69,27.27 C19.23,29.87 20.63,32.56 22.10,35.21 C23.32,37.42 25.69,37.61 27.24,35.90 Z"/>
+                            </g>
+                            <g fill="#FF6B00">
+                                <path d="M47.00,25.58 C47.82,25.78 48.67,25.87 49.72,26.04 C48.37,22.11 47.11,18.39 45.69,14.25 C43.43,19.07 41.37,23.49 39.27,27.90 C37.81,30.97 36.29,34.01 34.79,37.06 C35.26,37.06 36.03,37.07 36.80,37.06 C39.19,37.03 41.29,35.75 42.26,33.57 C43.35,31.13 44.13,29.02 45.22,26.58 C45.58,25.78 46.02,25.35 47.00,25.58 Z"/>
+                                <path d="M35.30,18.29 C35.30,18.29 35.41,11.21 35.27,7.60 L33.68,8.51 C33.62,12.17 33.57,15.82 33.51,19.49 C33.66,19.37 34.88,18.72 35.30,18.29 Z"/>
+                                <path d="M42.93,10.63 C42.95,9.64 42.82,8.63 43.01,7.66 C43.62,4.50 41.24,2.76 39.54,0.62 C39.47,5.52 39.39,10.41 39.32,15.35 C42.43,14.17 42.88,13.57 42.93,10.63 Z"/>
+                                <path d="M35.75,17.93 C37.12,17.43 37.71,16.86 37.72,15.56 C37.73,10.74 37.88,5.91 37.96,1.09 C37.97,0.75 37.89,0.42 37.84,0.08 C37.73,0.06 37.61,0.03 37.49,0.00 C36.54,2.33 33.43,3.43 33.54,6.65 C34.40,6.20 35.06,5.86 35.94,5.41 C35.87,9.70 35.81,13.69 35.75,17.93 Z"/>
+                                <path d="M35.83,32.61 C36.11,31.80 36.51,31.03 36.88,30.25 C39.35,25.00 41.36,19.79 43.83,14.54 C43.74,14.46 43.64,14.38 43.55,14.31 C39.60,17.08 36.12,19.81 31.88,22.78 C32.99,22.99 33.68,23.13 34.71,23.32 C32.52,27.94 30.41,32.40 28.32,36.83 C31.48,37.29 34.57,36.28 35.83,32.61 Z"/>
+                                <path d="M30.46,21.40 C30.57,21.46 31.60,20.87 31.61,20.50 C31.73,17.03 31.76,13.18 31.81,9.70 C31.67,9.66 30.66,10.79 30.65,11.22 C30.54,14.61 30.51,18.01 30.46,21.40 Z"/>
+                            </g>
+                        </svg>
+                        <text font-family="Barlow, Arial, sans-serif" font-size="15" font-weight="800" letter-spacing="4" fill="#5c3302">
                             <textPath href="#tcArcF" startOffset="50%" text-anchor="middle">TURINGTECH</textPath>
                         </text>
                     </svg>
@@ -1365,29 +1376,26 @@
                                 <stop offset="0" stop-color="#ffe7b0"/><stop offset=".4" stop-color="#f4a53a"/>
                                 <stop offset=".76" stop-color="#d67c14"/><stop offset="1" stop-color="#8f4d08"/>
                             </radialGradient>
-                            <radialGradient id="tcInnerB" cx="42%" cy="36%" r="72%">
-                                <stop offset="0" stop-color="#f9cd82"/><stop offset=".65" stop-color="#df8f2b"/><stop offset="1" stop-color="#a95d0d"/>
+                            <radialGradient id="tcMedB" cx="42%" cy="34%" r="74%">
+                                <stop offset="0" stop-color="#1c2e4c"/><stop offset=".6" stop-color="#0d1830"/><stop offset="1" stop-color="#060d1c"/>
                             </radialGradient>
-                            <path id="tcArcBt" d="M100 100 m -63 0 a 63 63 0 1 1 126 0"/>
-                            <path id="tcArcBb" d="M100 100 m -63 0 a 63 63 0 1 0 126 0"/>
+                            <path id="tcArcBt" d="M100 100 m -64 0 a 64 64 0 1 1 128 0"/>
+                            <path id="tcArcBb" d="M100 100 m -64 0 a 64 64 0 1 0 128 0"/>
                         </defs>
                         <circle cx="100" cy="100" r="97" fill="url(#tcMetalB)"/>
                         <circle cx="100" cy="100" r="92" fill="none" stroke="#7a4304" stroke-width="10" stroke-dasharray="3.4 5.2" opacity=".5"/>
                         <circle cx="100" cy="100" r="84" fill="none" stroke="#ffe9c2" stroke-width="2" opacity=".55"/>
-                        <circle cx="100" cy="100" r="65" fill="url(#tcInnerB)"/>
-                        <circle cx="100" cy="100" r="65" fill="none" stroke="#6f3f04" stroke-width="2" opacity=".4"/>
-                        <circle cx="100" cy="100" r="65" fill="none" stroke="#ffedcb" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
-                        <g fill="#fff3da" opacity=".45" transform="translate(-2.5 -2.5)">
-                            <rect x="62" y="66" width="76" height="14" rx="2"/><rect x="92" y="66" width="16" height="66" rx="2"/><rect x="72" y="92" width="56" height="10" rx="2"/>
+                        <circle cx="100" cy="100" r="66" fill="url(#tcMedB)"/>
+                        <circle cx="100" cy="100" r="66" fill="none" stroke="#000" stroke-width="3" opacity=".45"/>
+                        <circle cx="100" cy="100" r="66" fill="none" stroke="#4a5f86" stroke-width="1.6" opacity=".5" transform="translate(0 -2)"/>
+                        <g fill="#FF6B00">
+                            <rect x="66" y="72" width="68" height="13" rx="2"/><rect x="93" y="72" width="14" height="58" rx="2"/><rect x="74" y="96" width="52" height="9" rx="2"/>
                         </g>
-                        <g fill="#6b3a03" opacity=".92">
-                            <rect x="62" y="66" width="76" height="14" rx="2"/><rect x="92" y="66" width="16" height="66" rx="2"/><rect x="72" y="92" width="56" height="10" rx="2"/>
-                        </g>
-                        <text font-family="Barlow, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="3" fill="#5c3302">
+                        <text font-family="Barlow, Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="4" fill="#5c3302">
                             <textPath href="#tcArcBt" startOffset="50%" text-anchor="middle">TURINGCOIN</textPath>
                         </text>
-                        <text font-family="Barlow, Arial, sans-serif" font-size="13" font-weight="800" letter-spacing="4" fill="#5c3302">
-                            <textPath href="#tcArcBb" startOffset="50%" text-anchor="middle">CRÉDITOS</textPath>
+                        <text font-family="Barlow, Arial, sans-serif" font-size="12" font-weight="800" letter-spacing="3" fill="#5c3302">
+                            <textPath href="#tcArcBb" startOffset="50%" text-anchor="middle">APLICA A CRÉDITOS</textPath>
                         </text>
                     </svg>
                 </div>
@@ -1814,13 +1822,15 @@
         if (!fx) return;
         var target = document.getElementById('creditos');
         var esMovil = function () { return window.innerWidth < 640; };
-        // solo esquinas derechas, sin tapar contenido ni el botón de WhatsApp (abajo-derecha)
+        // lado izquierdo, sin tapar contenido
         var slots = [
-            { top: '100px', bottom: 'auto' },   // arriba-derecha (bajo el header)
-            { top: '46%',   bottom: 'auto' },    // centro-derecha
-            { top: 'auto',  bottom: '96px' }     // abajo-derecha (por encima de WhatsApp)
+            { top: '100px', bottom: 'auto' },   // arriba-izquierda (bajo el header)
+            { top: '46%',   bottom: 'auto' },    // centro-izquierda
+            { top: 'auto',  bottom: '32px' }     // abajo-izquierda
         ];
         var idx = -1, apagado = false, tVisible, tCiclo;
+        var VISIBLE_MS = 5000;   // aparece 5 s
+        var OCULTO_MS = 5000;    // desaparece 5 s
 
         function aparecer() {
             if (apagado) return;
@@ -1833,8 +1843,8 @@
             fx.classList.add('tc-show');
             tVisible = setTimeout(function () {
                 fx.classList.remove('tc-show');
-                tCiclo = setTimeout(aparecer, 700 + 2600 + Math.random() * 3000);
-            }, 3200);
+                tCiclo = setTimeout(aparecer, OCULTO_MS);
+            }, VISIBLE_MS);
         }
 
         function irACreditos() {
@@ -1870,7 +1880,7 @@
 
         var off = false;
         try { off = sessionStorage.getItem('tc_off') === '1'; } catch (x) {}
-        if (!off) setTimeout(aparecer, 4500);
+        if (!off) setTimeout(aparecer, 600);   // apenas carga la página
     })();
     </script>
   <script src="/js/site-header.js"></script>
