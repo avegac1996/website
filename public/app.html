@@ -92,6 +92,7 @@
             { id: 'inicio',         label: 'Mi espacio',            icon: 'fa-house' },
             { id: 'board',          label: 'Seguimiento de proyectos', icon: 'fa-diagram-project' },
             { id: 'prospectos',     label: 'Prospectos',            icon: 'fa-crosshairs' },
+            { id: 'timbrado',       label: 'Timbrado',              icon: 'fa-fingerprint' },
             { id: 'humanizador',    label: 'Humanizador',           icon: 'fa-wand-magic-sparkles' },
             { id: 'credencial',     label: 'Mi credencial',         icon: 'fa-id-badge' },
             { id: 'hr-solicitudes', label: 'Mis solicitudes',       icon: 'fa-paper-plane' },
@@ -112,6 +113,7 @@
           { id: 'admin-usuarios',       label: 'Usuarios',                icon: 'fa-users' },
           { id: 'admin-creditos',       label: 'Modificar créditos',      icon: 'fa-sliders' },
           { id: 'admin-prospectos',     label: 'Estados de prospectos',   icon: 'fa-tags' },
+          { id: 'admin-timbrado',       label: 'Jornadas del equipo',     icon: 'fa-business-time' },
           { id: 'admin-sprints',        label: 'Automatización de sprints', icon: 'fa-calendar-week' },
           { id: 'admin-config',         label: 'Configuración',           icon: 'fa-gear' }
         ] });
@@ -217,6 +219,7 @@
       'hr-solicitudes': viewHrSolicitudes,
       'board': viewBoard,
       'prospectos': viewProspectos,
+      'timbrado': viewTimbrado,
       'humanizador': viewHumanizador,
       'config': viewMiConfig,
       'admin-solicitudes': viewAdminSolicitudes,
@@ -224,6 +227,7 @@
       'admin-usuarios': viewAdminUsuarios,
       'admin-creditos': viewAdminCreditos,
       'admin-prospectos': viewAdminProspectos,
+      'admin-timbrado': viewTimbradoEquipo,
       'admin-sprints': viewAutoSprint,
       'admin-config': viewAdminConfig
     };
@@ -685,6 +689,12 @@
       return API.request('/api/board/tasks').then(function (r) {
         boardState.tasks = r.tasks || [];
         boardState.meta = r.meta || {};
+        var abrir = boardState._openTask;
+        boardState._openTask = null;
+        if (abrir) {
+          var tt = boardState.tasks.filter(function (x) { return String(x.id) === String(abrir); })[0];
+          if (tt) { boardEdit(tt); return; }
+        }
         boardRender();
       });
     }
@@ -1297,6 +1307,7 @@
       var prioridades = m.prioridades || ['baja', 'media', 'alta', 'urgente'];
       var esSub = !!t.parent_id;
       var padre = esSub ? boardTareaLocal(t.parent_id) : null;
+      var finBloqueada = !isNew && !!t.fin_bloqueada;
       var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
       var curProj = t.project_id ? Number(t.project_id) : (projs[0] ? projs[0].id : '');
 
@@ -1341,7 +1352,10 @@
               '<div class="form-group"><label>Estado</label><select id="bt_f_estado" class="form-input">' + opt(BOARD_ESTADOS, t.estado) + '</select></div>' +
               '<div class="form-group"><label>Prioridad</label><select id="bt_f_prio" class="form-input">' + opt(prioridades, t.prioridad || 'media') + '</select></div>' +
               '<div class="form-group"><label>Inicio</label><input type="date" id="bt_f_fecha" class="form-input" value="' + esc(dstr(t.fecha) || '') + '"></div>' +
-              '<div class="form-group"><label>Fin</label><input type="date" id="bt_f_fin" class="form-input" value="' + esc(dstr(t.fecha_fin) || '') + '"></div>' +
+              '<div class="form-group"><label>Fin' + (finBloqueada ? ' <i class="fa-solid fa-lock bt-lock" title="Bloqueada"></i>' : '') + '</label>' +
+                '<input type="date" id="bt_f_fin" class="form-input" value="' + esc(dstr(t.fecha_fin) || '') + '"' + (finBloqueada ? ' disabled' : '') + '>' +
+                (finBloqueada ? '<div class="bt-lock-hint"><i class="fa-solid fa-lock"></i> Pasaron más de 24 h. Reabrí la tarea (pasala a «En curso») para poder cambiarla.</div>' : '') +
+              '</div>' +
               '<div class="form-group"><label>Horas</label><input type="number" step="0.5" min="0" id="bt_f_horas" class="form-input" value="' + esc(t.horas != null ? t.horas : '') + '"></div>' +
             '</div>' +
             '<div class="bt-cohint"><i class="fa-solid fa-trophy"></i> Con fecha de inicio y fin: terminá a tiempo y ganás <strong>+2 Turingcoins</strong>; mover la fecha de fin sin terminar cuesta <strong>−3</strong>.</div>' +
@@ -1354,9 +1368,10 @@
           '</form>' +
         '</div>' +
         (!isNew && !esSub ? '<div class="glass-panel" id="bt_subs_panel" style="padding:24px;max-width:660px;margin-top:16px;"></div>' : '') +
-        (!isNew ? '<div class="glass-panel" id="bt_files_panel" style="padding:24px;max-width:660px;margin-top:16px;"></div>' : '');
+        '<div class="glass-panel" id="bt_files_panel" style="padding:24px;max-width:660px;margin-top:16px;"></div>';
 
       var puntosSel = (t.puntos != null ? String(t.puntos) : '');
+      var pendientes = [];   // adjuntos en cola: se suben al tocar Guardar/Crear
       el('bt_back').addEventListener('click', boardRender);
       if (el('bt_goparent')) el('bt_goparent').addEventListener('click', function () { if (padre) boardEdit(padre); });
       if (el('bt_f_proj')) el('bt_f_proj').addEventListener('change', function () {
@@ -1369,8 +1384,26 @@
           c.classList.add('active'); puntosSel = c.getAttribute('data-v');
         });
       });
+      function subirPendientes(tid) {
+        if (!tid || !pendientes.length) return Promise.resolve();
+        return pendientes.reduce(function (chain, f) {
+          return chain.then(function () {
+            return API.request('/api/board/tasks/' + tid + '/files', { method: 'POST', body: JSON.stringify({ nombre: f.nombre, data: f.data }) });
+          });
+        }, Promise.resolve());
+      }
+
       el('btForm').addEventListener('submit', function (e) {
         e.preventDefault();
+        var finField = el('bt_f_fin');
+        var finVal = finField.disabled ? (dstr(t.fecha_fin) || null) : (finField.value || null);
+        var finAntes = dstr(t.fecha_fin) || null;
+        if (!isNew && finAntes && finVal && finVal !== finAntes && el('bt_f_estado').value !== ESTADO_FINAL) {
+          var msg = (finVal > finAntes)
+            ? 'Vas a mover la fecha de Fin más adelante. Si la tarea no termina a tiempo, esto te descuenta 3 Turingcoins.\n¿Seguro que querés cambiarla?'
+            : 'Vas a cambiar la fecha de Fin de esta tarea.\n¿Seguro?';
+          if (!confirm(msg)) return;
+        }
         var btn = el('bt_save'); btn.disabled = true; btn.textContent = 'Guardando...';
         var body = {
           titulo: el('bt_titulo').value.trim(),
@@ -1379,18 +1412,19 @@
           parent_id: t.parent_id || null,
           assignee_id: el('bt_f_resp').value || null, tipo: el('bt_f_tipo').value, estado: el('bt_f_estado').value,
           prioridad: el('bt_f_prio').value,
-          fecha: el('bt_f_fecha').value || null, fecha_fin: el('bt_f_fin').value || null,
+          fecha: el('bt_f_fecha').value || null, fecha_fin: finVal,
           horas: el('bt_f_horas').value, puntos: puntosSel === '' ? null : puntosSel,
           observaciones: el('bt_f_obs').value.trim()
         };
         var req = isNew
           ? API.request('/api/board/tasks', { method: 'POST', body: JSON.stringify(body) })
           : API.request('/api/board/tasks/' + t.id, { method: 'PUT', body: JSON.stringify(body) });
-        req.then(function () {
-          showAlert(isNew ? 'Creado.' : 'Guardado.', 'success');
-          if (isNew && esSub && padre) { reloadBoardTasks().then(function () { boardEdit(boardTareaLocal(padre.id) || padre); }); }
-          else viewBoard();
-        }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear' : 'Guardar'; });
+        req.then(function (r) { return subirPendientes(isNew ? (r && r.id) : t.id); })
+          .then(function () {
+            showAlert(isNew ? 'Creado.' : 'Guardado.', 'success');
+            if (isNew && esSub && padre) { reloadBoardTasks().then(function () { boardEdit(boardTareaLocal(padre.id) || padre); }); }
+            else viewBoard();
+          }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = isNew ? 'Crear' : 'Guardar'; });
       });
       var del = el('bt_del');
       if (del) del.addEventListener('click', function () {
@@ -1405,7 +1439,7 @@
       });
 
       if (!isNew && !esSub) renderSubtareasPanel(t);
-      if (!isNew) renderAdjuntosPanel(t);
+      renderAdjuntosPanel(t, pendientes);
     }
 
     /* ---- Panel de subtareas ---- */
@@ -1469,56 +1503,91 @@
       });
     }
 
-    /* ---- Panel de adjuntos (imágenes / PDF) ---- */
-    function renderAdjuntosPanel(t) {
+    /* ---- Panel de adjuntos (imágenes / PDF): pegar, arrastrar o elegir; se guardan al Guardar ---- */
+    var _btPasteHandler = null;
+    function renderAdjuntosPanel(t, pendientes) {
       var box = el('bt_files_panel'); if (!box) return;
-      box.innerHTML = '<div class="section-heading" style="text-align:left;margin-bottom:10px;">Adjuntos</div><div id="bt_files_grid" class="files-grid"><span class="text-gray text-xs">Cargando…</span></div>' +
-        '<label class="btn btn-secondary btn-small" style="margin-top:12px;cursor:pointer;"><i class="fa-solid fa-paperclip"></i> Subir imagen o PDF' +
-        '<input type="file" id="bt_file_input" accept="image/*,application/pdf" multiple hidden></label>' +
-        '<div class="text-gray text-xs" style="margin-top:6px;">Máximo 5 MB por archivo.</div>';
+      var isNew = !t.id;
+      var serverFiles = [];
 
-      function pintar(files) {
-        var g = el('bt_files_grid');
-        g.innerHTML = (files || []).map(function (f) {
-          var esImg = /^image\//.test(f.mime || '');
-          var vista = esImg
-            ? '<img src="' + f.data + '" alt="' + esc(f.nombre) + '">'
-            : '<div class="file-pdf"><i class="fa-solid fa-file-pdf"></i></div>';
-          return '<div class="file-card" data-file="' + f.id + '">' +
-            '<a href="' + f.data + '" target="_blank" rel="noopener" class="file-open">' + vista + '</a>' +
-            '<div class="file-cap"><span title="' + esc(f.nombre) + '">' + esc((f.nombre || '').slice(0, 22)) + '</span>' +
-              '<button type="button" class="file-del" data-del="' + f.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button></div>' +
-          '</div>';
-        }).join('') || '<span class="text-gray text-xs">Sin adjuntos.</span>';
-        g.querySelectorAll('[data-del]').forEach(function (b) {
+      function tarjeta(vista, nombre, delAttr, pending) {
+        return '<div class="file-card' + (pending ? ' pending' : '') + '">' +
+          (pending ? '<span class="file-tag">sin guardar</span>' : '') +
+          '<span class="file-open">' + vista + '</span>' +
+          '<div class="file-cap"><span title="' + esc(nombre) + '">' + esc((nombre || '').slice(0, 22)) + '</span>' +
+            '<button type="button" class="file-del" ' + delAttr + ' title="' + (pending ? 'Quitar' : 'Eliminar') + '"><i class="fa-solid fa-xmark"></i></button></div>' +
+        '</div>';
+      }
+      function vistaDe(src, esImg, nombre) {
+        return esImg ? '<img src="' + src + '" alt="' + esc(nombre || '') + '">' : '<div class="file-pdf"><i class="fa-solid fa-file-pdf"></i></div>';
+      }
+
+      function render() {
+        var cards = serverFiles.map(function (f) {
+          return tarjeta(
+            '<a href="' + f.data + '" target="_blank" rel="noopener" class="file-open">' + vistaDe(f.data, /^image\//.test(f.mime || ''), f.nombre) + '</a>',
+            f.nombre, 'data-del="' + f.id + '"', false
+          );
+        });
+        var pend = pendientes.map(function (f, i) {
+          return tarjeta(vistaDe(f.data, /^data:image\//.test(f.data), f.nombre), f.nombre, 'data-pend="' + i + '"', true);
+        });
+        var grid = cards.concat(pend).join('') || '<span class="text-gray text-xs">Sin adjuntos.</span>';
+        box.innerHTML =
+          '<div class="section-heading" style="text-align:left;margin-bottom:10px;">Adjuntos</div>' +
+          '<div class="files-grid">' + grid + '</div>' +
+          '<div class="bt-drop" id="bt_drop"><i class="fa-solid fa-arrow-up-from-bracket"></i>' +
+            'Arrastrá, <strong>pegá (Ctrl+V)</strong> o hacé clic para elegir imagen o PDF' +
+            '<input type="file" id="bt_file_input" accept="image/*,application/pdf" multiple hidden></div>' +
+          '<div class="text-gray text-xs" style="margin-top:6px;">Máx 5 MB por archivo. Se guardan al tocar «' + (isNew ? 'Crear' : 'Guardar') + '» abajo.</div>';
+
+        var drop = el('bt_drop');
+        drop.addEventListener('click', function (e) { if (e.target.tagName !== 'INPUT') el('bt_file_input').click(); });
+        drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('drag'); });
+        drop.addEventListener('dragleave', function () { drop.classList.remove('drag'); });
+        drop.addEventListener('drop', function (e) { e.preventDefault(); drop.classList.remove('drag'); encolar(e.dataTransfer.files); });
+        el('bt_file_input').addEventListener('change', function () { encolar(this.files); this.value = ''; });
+        box.querySelectorAll('[data-del]').forEach(function (b) {
           b.addEventListener('click', function () {
             if (!confirm('¿Eliminar este adjunto?')) return;
-            API.request('/api/board/files/' + this.getAttribute('data-del'), { method: 'DELETE' })
-              .then(cargar).catch(function (err) { showAlert(err.message, 'error'); });
+            API.request('/api/board/files/' + this.getAttribute('data-del'), { method: 'DELETE' }).then(cargar).catch(function (err) { showAlert(err.message, 'error'); });
           });
         });
+        box.querySelectorAll('[data-pend]').forEach(function (b) {
+          b.addEventListener('click', function () { pendientes.splice(Number(b.getAttribute('data-pend')), 1); render(); });
+        });
       }
-      function cargar() {
-        return API.request('/api/board/tasks/' + t.id + '/files').then(function (r) { pintar(r.files); });
-      }
-      cargar();
 
-      el('bt_file_input').addEventListener('change', function () {
-        var files = Array.prototype.slice.call(this.files || []);
-        this.value = '';
-        (function next(i) {
-          if (i >= files.length) { cargar(); return; }
-          var file = files[i];
-          if (file.size > 5 * 1024 * 1024) { showAlert('"' + file.name + '" supera los 5 MB.', 'warning'); return next(i + 1); }
+      function encolar(fileList) {
+        Array.prototype.slice.call(fileList || []).forEach(function (file) {
+          if (!/^image\/|^application\/pdf/.test(file.type || '')) { showAlert('"' + (file.name || 'archivo') + '": tipo no admitido.', 'warning'); return; }
+          if (file.size > 5 * 1024 * 1024) { showAlert('"' + (file.name || 'archivo') + '" supera los 5 MB.', 'warning'); return; }
           var reader = new FileReader();
           reader.onload = function () {
-            API.request('/api/board/tasks/' + t.id + '/files', { method: 'POST', body: JSON.stringify({ nombre: file.name, data: reader.result }) })
-              .then(function () { next(i + 1); })
-              .catch(function (err) { showAlert(err.message, 'error'); next(i + 1); });
+            pendientes.push({ nombre: file.name || ('captura-' + Date.now() + (/pdf/.test(file.type) ? '.pdf' : '.png')), data: reader.result });
+            render();
           };
           reader.readAsDataURL(file);
-        })(0);
-      });
+        });
+      }
+
+      function cargar() {
+        if (isNew) { render(); return Promise.resolve(); }
+        return API.request('/api/board/tasks/' + t.id + '/files').then(function (r) { serverFiles = r.files || []; render(); });
+      }
+
+      function onPaste(e) {
+        if (!document.getElementById('bt_files_panel')) { document.removeEventListener('paste', onPaste); _btPasteHandler = null; return; }
+        var items = (e.clipboardData || {}).items || [];
+        var fs = [];
+        for (var i = 0; i < items.length; i++) { if (items[i].kind === 'file') fs.push(items[i].getAsFile()); }
+        if (fs.length) { e.preventDefault(); encolar(fs); }
+      }
+      if (_btPasteHandler) document.removeEventListener('paste', _btPasteHandler);
+      _btPasteHandler = onPaste;
+      document.addEventListener('paste', onPaste);
+
+      cargar();
     }
 
     /* ===== Prospectos: CRM de prospección B2B Ecuador ===== */
@@ -1995,11 +2064,19 @@
       if (el('pg_convertir')) el('pg_convertir').addEventListener('click', function () {
         var b = this; b.disabled = true;
         API.request('/api/prospectos/' + p.id + '/convertir-tarea', { method: 'POST', body: '{}' })
-          .then(function (r) { p.task_id = r.task_id; p.task_project_id = r.project_id; showAlert('Tarea creada en "Prospectos" del tablero.', 'success'); prosGestionar(p); })
+          .then(function (r) {
+            p.task_id = r.task_id; p.task_project_id = r.project_id;
+            showAlert('Tarea creada en el cronograma de Turingtech.', 'success');
+            boardState.proyectoId = r.project_id;
+            boardState.tab = 'cronograma';
+            boardState._openTask = r.task_id;
+            location.hash = '#/board';
+          })
           .catch(function (err) { showAlert(err.message, 'error'); b.disabled = false; });
       });
       if (el('pg_vertarea')) el('pg_vertarea').addEventListener('click', function () {
-        if (p.task_project_id) { boardState.proyectoId = p.task_project_id; boardState.tab = 'tablero'; boardState.tableroMode = 'backlog'; }
+        if (p.task_project_id) { boardState.proyectoId = p.task_project_id; boardState.tab = 'cronograma'; }
+        boardState._openTask = p.task_id;
         location.hash = '#/board';
       });
 
@@ -2155,6 +2232,139 @@
           });
         }
         wire();
+      });
+    }
+
+    /* ===== Timbrado (control de jornada) ===== */
+    var TB_ICONO = { entrada: 'fa-right-to-bracket', almuerzo: 'fa-utensils', regreso: 'fa-mug-hot', salida: 'fa-right-from-bracket' };
+    function tbHoras(min) {
+      min = Math.max(0, Math.round(min || 0));
+      var h = Math.floor(min / 60), m = min % 60;
+      return (h ? h + ' h ' : '') + m + ' min';
+    }
+    function fmtDiaLargo(d) {
+      var dt = parseDateLocal(d); if (!dt) return d;
+      var s = dt.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'short' });
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function viewTimbrado() {
+      return API.request('/api/timbrado/hoy').then(function (hoy) {
+        return API.request('/api/timbrado/resumen').then(function (res) { pintarTimbrado(hoy, res); });
+      });
+    }
+
+    function pintarTimbrado(hoy, res) {
+      var marcadas = {};
+      hoy.marcas.forEach(function (m) { marcadas[m.tipo] = m; });
+
+      var botones = hoy.tipos.map(function (tp) {
+        var hecha = marcadas[tp.id];
+        var sug = hoy.sugerido === tp.id && !hecha;
+        return '<button class="tb-btn' + (hecha ? ' done' : '') + (sug ? ' sug' : '') + '" data-tipo="' + tp.id + '"' + (hecha ? ' disabled' : '') + '>' +
+          '<i class="fa-solid ' + TB_ICONO[tp.id] + '"></i>' +
+          '<span class="tb-btn-lbl">' + esc(tp.label) + '</span>' +
+          '<span class="tb-btn-hora">' + (hecha ? hecha.hora : (sug ? 'Marcar ahora' : '—')) + '</span>' +
+        '</button>';
+      }).join('');
+
+      var timeline = hoy.marcas.length
+        ? hoy.marcas.map(function (m) {
+            return '<div class="tb-tl-item"><i class="fa-solid ' + TB_ICONO[m.tipo] + '"></i>' +
+              '<span class="tb-tl-lbl">' + esc(m.label) + '</span>' +
+              '<span class="tb-tl-hora">' + esc(m.hora) + '</span>' +
+              (hoy.esHoy ? '<button class="tb-tl-del" data-del="' + m.id + '" title="Borrar marca">&times;</button>' : '') +
+            '</div>';
+          }).join('')
+        : '<p class="text-gray text-xs" style="margin:4px 0;">Todavía no marcaste nada hoy.</p>';
+
+      var filas = res.dias.slice().reverse().map(function (d) {
+        return '<tr><td>' + esc(fmtDiaLargo(d.dia)) + '</td><td>' + esc(d.entrada || '—') + '</td><td>' + esc(d.salida || (d.abierto ? 'en curso' : '—')) +
+          '</td><td style="text-align:right;font-weight:600;">' + esc(d.horas || '0m') + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="text-gray text-xs">Sin registros en el rango.</td></tr>';
+
+      el('view').innerHTML =
+        '<div class="glass-panel" style="padding:26px;max-width:640px;">' +
+          '<div class="section-heading" style="text-align:left;margin:0 0 4px;">Timbrado · ' + esc(fmtDiaLargo(hoy.dia)) + '</div>' +
+          '<p class="text-gray text-xs" style="margin:0 0 18px;">Marcá tu jornada. Horas efectivas = (Salida − Entrada) − almuerzo.</p>' +
+          '<div class="tb-grid">' + botones + '</div>' +
+          '<div class="tb-hoy">Trabajado hoy: <strong>' + tbHoras(hoy.resumen.minutos) + '</strong>' +
+            (hoy.resumen.abierto ? ' <span class="tb-live">● en curso</span>' : '') + '</div>' +
+          '<div class="tb-timeline">' + timeline + '</div>' +
+        '</div>' +
+        '<div class="glass-panel" style="padding:22px;max-width:640px;margin-top:16px;">' +
+          '<div class="section-heading" style="text-align:left;margin:0 0 12px;">Últimos días</div>' +
+          '<table class="tb-table"><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th style="text-align:right;">Horas</th></tr></thead>' +
+          '<tbody>' + filas + '</tbody></table>' +
+          '<div class="tb-total">Total del rango: <strong>' + esc(res.total_horas) + '</strong> · ' + res.dias_con_marca + ' día(s)</div>' +
+        '</div>';
+
+      el('view').querySelectorAll('.tb-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var tipo = b.getAttribute('data-tipo');
+          el('view').querySelectorAll('.tb-btn').forEach(function (x) { x.disabled = true; });
+          API.request('/api/timbrado/marcar', { method: 'POST', body: JSON.stringify({ tipo: tipo }) })
+            .then(function (nuevo) {
+              showAlert('Marca registrada: ' + nuevo.marcas[nuevo.marcas.length - 1].label + '.', 'success');
+              return API.request('/api/timbrado/resumen').then(function (res2) { pintarTimbrado(nuevo, res2); });
+            })
+            .catch(function (err) { showAlert(err.message, 'error'); viewTimbrado(); });
+        });
+      });
+      el('view').querySelectorAll('.tb-tl-del').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!confirm('¿Borrar esta marca?')) return;
+          API.request('/api/timbrado/' + b.getAttribute('data-del'), { method: 'DELETE' })
+            .then(function () { showAlert('Marca borrada.', 'success'); viewTimbrado(); })
+            .catch(function (err) { showAlert(err.message, 'error'); });
+        });
+      });
+    }
+
+    /* ---- Admin: jornadas del equipo ---- */
+    function viewTimbradoEquipo() {
+      var q = viewTimbradoEquipo._q || {};
+      var qs = [];
+      if (q.desde) qs.push('desde=' + q.desde);
+      if (q.hasta) qs.push('hasta=' + q.hasta);
+      return API.request('/api/timbrado/equipo' + (qs.length ? '?' + qs.join('&') : '')).then(function (r) {
+        var filas = r.equipo.map(function (u, i) {
+          var detalle = u.dias.slice().reverse().map(function (d) {
+            return '<div class="tbq-day"><span>' + esc(fmtDiaLargo(d.dia)) + '</span>' +
+              '<span class="text-gray text-xs">' + esc(d.entrada || '—') + ' → ' + esc(d.salida || (d.abierto ? 'en curso' : '—')) + '</span>' +
+              '<strong>' + esc(d.horas || '0m') + '</strong></div>';
+          }).join('') || '<div class="text-gray text-xs" style="padding:6px 0;">Sin marcas en el rango.</div>';
+          return '<div class="tbq-row">' +
+            '<button class="tbq-head" data-i="' + i + '">' +
+              '<span class="tbq-name">' + esc(u.name) + (u.position ? ' <span class="text-gray text-xs">· ' + esc(u.position) + '</span>' : '') + '</span>' +
+              '<span class="tbq-tot">' + esc(u.total_horas) + ' <span class="text-gray text-xs">/ ' + u.dias_con_marca + 'd</span> <i class="fa-solid fa-chevron-down"></i></span>' +
+            '</button>' +
+            '<div class="tbq-detail" id="tbq_d_' + i + '" hidden>' + detalle + '</div>' +
+          '</div>';
+        }).join('') || '<p class="text-gray">No hay colaboradores.</p>';
+
+        el('view').innerHTML =
+          '<div class="glass-panel" style="padding:24px;max-width:720px;">' +
+            '<div class="section-heading" style="text-align:left;margin:0 0 6px;">Jornadas del equipo</div>' +
+            '<div class="tbq-range">' +
+              '<label>Desde <input type="date" id="tbq_desde" class="form-input" value="' + esc(r.desde) + '"></label>' +
+              '<label>Hasta <input type="date" id="tbq_hasta" class="form-input" value="' + esc(r.hasta) + '"></label>' +
+              '<button class="btn btn-secondary btn-small" id="tbq_apply">Aplicar</button>' +
+            '</div>' +
+            '<div class="tbq-list">' + filas + '</div>' +
+          '</div>';
+
+        el('tbq_apply').addEventListener('click', function () {
+          viewTimbradoEquipo._q = { desde: el('tbq_desde').value || null, hasta: el('tbq_hasta').value || null };
+          viewTimbradoEquipo();
+        });
+        el('view').querySelectorAll('.tbq-head').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var d = el('tbq_d_' + b.getAttribute('data-i'));
+            d.hidden = !d.hidden;
+            b.classList.toggle('open', !d.hidden);
+          });
+        });
       });
     }
 
