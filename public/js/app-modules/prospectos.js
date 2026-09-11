@@ -20,12 +20,13 @@ export var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
 export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '', orden: '' }, sel: null, view: null, from: null, kbq: '', gestionTab: 'actividad', _gestionId: null };
 export var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
 
-// estados y tipos vienen del backend (catálogo editable por admin). Fallback por si aún no cargó meta.
+// estados y tipos vienen del backend (5 estados consolidados). Fallback por si aún no cargó meta.
 export var PROS_ESTADOS_FALLBACK = [
-  { slug: 'nuevo', label: 'Nuevo', color: '#94a3b8' }, { slug: 'contactado', label: 'Contactado', color: '#3b82f6' },
-  { slug: 'en_seguimiento', label: 'En seguimiento', color: '#a78bfa' }, { slug: 'reunion', label: 'Reunión agendada', color: '#f59e0b' },
-  { slug: 'propuesta', label: 'Propuesta enviada', color: '#f97316' }, { slug: 'ganado', label: 'Ganado', color: '#10b981' },
-  { slug: 'perdido', label: 'Perdido', color: '#ef4444' }, { slug: 'no_responde', label: 'No responde', color: '#64748b' }
+  { slug: 'por_prospectar', label: 'Por Prospectar', color: '#94a3b8' },
+  { slug: 'prospectando', label: 'Prospectando', color: '#3b82f6' },
+  { slug: 'propuesta', label: 'Propuesta Enviada', color: '#f97316' },
+  { slug: 'exitoso', label: 'Exitoso', color: '#10b981' },
+  { slug: 'rechazado', label: 'Rechazado', color: '#ef4444' }
 ];
 export var prosEstados = function () { return (PROS.meta.estados && PROS.meta.estados.length) ? PROS.meta.estados : PROS_ESTADOS_FALLBACK; };
 export var prosTipos = function () { return PROS.meta.tipos || [{ slug: 'nota', label: 'Nota', icono: 'fa-solid fa-note-sticky' }]; };
@@ -511,6 +512,13 @@ export function prosGestionar(p, editarDatos) {
   var tareaBtn = p.task_id
     ? '<button class="btn btn-secondary btn-small" id="pg_vertarea"><i class="fa-solid fa-up-right-from-square"></i> Ver en el tablero</button>'
     : '<button class="btn btn-primary btn-small" id="pg_convertir"><i class="fa-solid fa-list-check"></i> Convertir en tarea</button>';
+  // El estado del prospecto sincroniza el de la tarea automáticamente (determinístico) —
+  // por eso normalmente NO mostramos el estado de la tarea, sería repetir el mismo dato.
+  // Solo avisamos cuando alguien la movió a mano en el tablero a un estado que el
+  // prospecto no puede producir solo (Bloqueado, Client Review, Control de calidad).
+  var tareaAviso = p.task_id && p.task_desincronizada
+    ? '<div class="text-xs" style="margin-top:8px;color:#ffb27a;"><i class="fa-solid fa-triangle-exclamation"></i> La tarea vinculada está en "' + esc(p.task_estado) + '" en el tablero (no coincide con este estado).</div>'
+    : '';
 
   var meta = [
     s ? '<span><i class="fa-solid fa-industry"></i>' + esc(s.icono + ' ' + s.nombre) + '</span>' : (p.sector_nombre ? '<span><i class="fa-solid fa-industry"></i>' + esc(p.sector_nombre) + '</span>' : ''),
@@ -533,8 +541,10 @@ export function prosGestionar(p, editarDatos) {
             (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
           '</div>' +
         '</div>' +
-        '<div class="pros-detail-actions">' + tareaBtn +
-          '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
+        '<div class="pros-detail-actions" style="flex-direction:column;align-items:flex-end;">' +
+          '<div>' + tareaBtn +
+            '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
+          '</div>' + tareaAviso +
         '</div>' +
       '</div>' +
       '<div class="pros-status-row">' +
@@ -738,7 +748,7 @@ export function prosGestionar(p, editarDatos) {
           '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:var(--color-white);">Convertido en tarea</strong>' +
             ' <span class="text-gray">— ' + fmtRel(p.task_created_at) + '</span></div>' +
             '<div class="text-sm" style="margin-top:3px;">' + esc(p.task_titulo || ('Tarea #' + p.task_id)) +
-            (p.task_estado ? ' · <span class="text-accent">' + esc(p.task_estado) + '</span>' : '') + '</div></div></div>');
+            (p.task_desincronizada ? ' · <span class="text-accent">Tablero: ' + esc(p.task_estado) + '</span>' : '') + '</div></div></div>');
       }
 
       (r.interacciones || []).forEach(function (it) {
@@ -873,29 +883,9 @@ export function refrescarProspectos(cb) {
   }).catch(function () { if (cb) cb(); });
 }
 
-/* ---- Admin: catálogo de estados y tipos de interacción ---- */
+/* ---- Admin: catálogo de tipos de interacción ---- */
 export function viewAdminProspectos() {
   return API.request('/api/prospectos/catalogo').then(function (r) {
-    var be = r.board_estados || ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
-
-    function estadoRow(e) {
-      var isNew = !e.id;
-      var beOpts = be.map(function (b) { return '<option' + (b === (e.board_estado || 'En curso') ? ' selected' : '') + '>' + esc(b) + '</option>'; }).join('');
-      var KB = [['por_prospectar', 'Por prospectar'], ['prospectando', 'Prospectando'], ['exitoso', 'Exitosos'], ['rechazado', 'Rechazados']];
-      var kbOpts = KB.map(function (k) { return '<option value="' + k[0] + '"' + ((e.kanban || 'prospectando') === k[0] ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('');
-      return '<div class="cat-row" data-id="' + (e.id || '') + '">' +
-        '<input type="color" class="cat-color" value="' + (e.color || '#94a3b8') + '">' +
-        '<input class="form-input cat-label" placeholder="Nombre del estado" value="' + esc(e.label || '') + '">' +
-        '<select class="form-input cat-be" title="Estado equivalente en el tablero">' + beOpts + '</select>' +
-        '<select class="form-input cat-kanban" title="Columna del tablero CRM">' + kbOpts + '</select>' +
-        '<input type="number" class="form-input cat-orden" title="Orden" value="' + (e.orden || 0) + '">' +
-        (isNew
-          ? '<button class="btn btn-primary btn-small cat-add">Agregar</button>'
-          : '<label class="cat-act"><input type="checkbox" class="cat-activo"' + (e.activo ? ' checked' : '') + '> activo</label>' +
-            '<button class="btn btn-secondary btn-small cat-save">Guardar</button>' +
-            '<button class="btn btn-error btn-small cat-del" title="Eliminar">✕</button>') +
-      '</div>';
-    }
     function tipoRow(t) {
       var isNew = !t.id;
       return '<div class="cat-row cat-row-tipo" data-id="' + (t.id || '') + '">' +
@@ -912,12 +902,6 @@ export function viewAdminProspectos() {
     }
 
     el('view').innerHTML =
-      '<div class="glass-panel" style="padding:24px;margin-bottom:16px;">' +
-        '<div class="section-heading" style="text-align:left;margin-bottom:6px;">Estados del pipeline de prospectos</div>' +
-        '<p class="text-gray text-xs mb-3">El color se usa en las etiquetas. "Estado en el tablero" es a qué columna del tablero pasa la tarea vinculada cuando el prospecto llega a este estado.</p>' +
-        '<div id="cat_estados" class="cat-list">' + r.estados.map(estadoRow).join('') + '</div>' +
-        '<div class="cat-list" style="margin-top:10px;">' + estadoRow({}) + '</div>' +
-      '</div>' +
       '<div class="glass-panel" style="padding:24px;">' +
         '<div class="section-heading" style="text-align:left;margin-bottom:6px;">Tipos de interacción</div>' +
         '<p class="text-gray text-xs mb-3">El ícono es una clase de Font Awesome (ej. <code>fa-solid fa-phone</code>, <code>fa-brands fa-whatsapp</code>).</p>' +
@@ -925,16 +909,6 @@ export function viewAdminProspectos() {
         '<div class="cat-list" style="margin-top:10px;">' + tipoRow({}) + '</div>' +
       '</div>';
 
-    function bodyEstado(row) {
-      return {
-        label: row.querySelector('.cat-label').value.trim(),
-        color: row.querySelector('.cat-color').value,
-        board_estado: row.querySelector('.cat-be').value,
-        kanban: row.querySelector('.cat-kanban') ? row.querySelector('.cat-kanban').value : 'prospectando',
-        orden: Number(row.querySelector('.cat-orden').value) || 0,
-        activo: row.querySelector('.cat-activo') ? row.querySelector('.cat-activo').checked : true
-      };
-    }
     function bodyTipo(row) {
       return {
         label: row.querySelector('.cat-label').value.trim(),
@@ -946,7 +920,6 @@ export function viewAdminProspectos() {
     function wire() {
       el('view').querySelectorAll('.cat-row').forEach(function (row) {
         var id = row.getAttribute('data-id');
-        var isTipo = row.classList.contains('cat-row-tipo');
         if (row.querySelector('.cat-icono')) {
           row.querySelector('.cat-icono').addEventListener('input', function () {
             row.querySelector('.cat-icoprev').innerHTML = '<i class="' + esc(this.value || 'fa-solid fa-note-sticky') + '"></i>';
@@ -954,24 +927,24 @@ export function viewAdminProspectos() {
         }
         var add = row.querySelector('.cat-add');
         if (add) add.addEventListener('click', function () {
-          var b = (isTipo ? bodyTipo : bodyEstado)(row);
+          var b = bodyTipo(row);
           if (!b.label) { showAlert('Escribí un nombre.', 'warning'); return; }
-          API.request('/api/prospectos/catalogo/' + (isTipo ? 'tipos' : 'estados'), { method: 'POST', body: JSON.stringify(b) })
+          API.request('/api/prospectos/catalogo/tipos', { method: 'POST', body: JSON.stringify(b) })
             .then(function () { showAlert('Agregado.', 'success'); viewAdminProspectos(); })
             .catch(function (err) { showAlert(err.message, 'error'); });
         });
         var sv = row.querySelector('.cat-save');
         if (sv) sv.addEventListener('click', function () {
-          var b = (isTipo ? bodyTipo : bodyEstado)(row);
+          var b = bodyTipo(row);
           if (!b.label) { showAlert('Escribí un nombre.', 'warning'); return; }
-          API.request('/api/prospectos/catalogo/' + (isTipo ? 'tipos/' : 'estados/') + id, { method: 'PUT', body: JSON.stringify(b) })
+          API.request('/api/prospectos/catalogo/tipos/' + id, { method: 'PUT', body: JSON.stringify(b) })
             .then(function () { showAlert('Guardado.', 'success'); })
             .catch(function (err) { showAlert(err.message, 'error'); });
         });
         var dl = row.querySelector('.cat-del');
         if (dl) dl.addEventListener('click', function () {
           if (!confirm('¿Eliminar? Si está en uso, desactivalo mejor.')) return;
-          API.request('/api/prospectos/catalogo/' + (isTipo ? 'tipos/' : 'estados/') + id, { method: 'DELETE' })
+          API.request('/api/prospectos/catalogo/tipos/' + id, { method: 'DELETE' })
             .then(function () { showAlert('Eliminado.', 'success'); viewAdminProspectos(); })
             .catch(function (err) { showAlert(err.message, 'error'); });
         });

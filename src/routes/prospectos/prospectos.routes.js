@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../../config/database');
-const { INTER_RESULTADOS, ACT_TIPOS } = require('./constants');
-const { isAdmin, estadosActivos, tiposActivos, clean } = require('./helpers');
+const { INTER_RESULTADOS, ACT_TIPOS, PROSPECTO_ESTADOS_LIST } = require('./constants');
+const { isAdmin, tiposActivos, boardEstadoDe, clean } = require('./helpers');
 
 const router = express.Router();
 
@@ -26,20 +26,27 @@ router.get('/', async (req, res) => {
     const colaboradores = (await db.query(
       "SELECT id, name FROM users WHERE account_type = 'colaborador' AND active = true ORDER BY name"
     )).rows;
+    // Columna kanban del CRM = el propio estado del prospecto (1:1, ya no se agrupan varios
+    // estados en una columna) — evita que un estado quede sin columna propia, como pasaba
+    // con "propuesta" antes de esto.
+    const prospectos = result.rows.map((row) => ({
+      ...row,
+      // El mapeo prospecto → tarea es determinístico (boardEstadoDe), pero la tarea puede
+      // moverse a mano en el tablero de tareas hacia un estado que el prospecto no produce
+      // (Bloqueado, Client Review, Control de calidad). Marcamos esos casos para que el
+      // frontend solo avise cuando de verdad divergen, en vez de mostrar siempre el estado
+      // de la tarea junto al del prospecto.
+      task_desincronizada: !!(row.task_id && row.task_estado && row.task_estado !== boardEstadoDe(row)),
+    }));
     res.json({
-      prospectos: result.rows,
-      total: result.rows.length,
+      prospectos,
+      total: prospectos.length,
       meta: {
-        estados: await estadosActivos(),
+        estados: PROSPECTO_ESTADOS_LIST,
         tipos: await tiposActivos(),
         resultados: INTER_RESULTADOS,
         actividadTipos: ACT_TIPOS,
-        kanban: [
-          { id: 'por_prospectar', label: 'Por prospectar' },
-          { id: 'prospectando', label: 'Prospectando' },
-          { id: 'exitoso', label: 'Exitosos' },
-          { id: 'rechazado', label: 'Rechazados' },
-        ],
+        kanban: PROSPECTO_ESTADOS_LIST.map((e) => ({ id: e.slug, label: e.label })),
         colaboradores,
         esAdmin: isAdmin(req),
         miId: req.user.id,
@@ -54,16 +61,22 @@ router.get('/', async (req, res) => {
 // PATCH /api/prospectos/:id/estado
 router.patch('/:id/estado', async (req, res) => {
   try {
-    const e = (await db.query('SELECT slug, board_estado FROM prospecto_estados WHERE slug = $1 AND activo = true', [req.body.estado])).rows[0];
-    if (!e) return res.status(400).json({ error: 'Estado no válido' });
-    const cur = (await db.query('SELECT id, task_id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
+    // Validar que el estado sea uno de los 5 consolidados
+    const estadoValido = PROSPECTO_ESTADOS_LIST.find(e => e.slug === req.body.estado);
+    if (!estadoValido) return res.status(400).json({ error: 'Estado no válido' });
+
+    const cur = (await db.query('SELECT id, task_id, estado FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
     if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
 
-    await db.query('UPDATE prospectos SET estado = $1 WHERE id = $2', [e.slug, req.params.id]);
+    await db.query('UPDATE prospectos SET estado = $1 WHERE id = $2', [req.body.estado, req.params.id]);
+
+    // Sincronizar con tarea si existe (usando mapeo determinístico)
     if (cur.task_id) {
-      await db.query('UPDATE board_tasks SET estado = $1, updated_at = NOW() WHERE id = $2', [e.board_estado, cur.task_id]);
+      const prospecto = { estado: req.body.estado };
+      const taskEstado = boardEstadoDe(prospecto);
+      await db.query('UPDATE board_tasks SET estado = $1, updated_at = NOW() WHERE id = $2', [taskEstado, cur.task_id]);
     }
-    res.json({ id: Number(req.params.id), estado: e.slug });
+    res.json({ id: Number(req.params.id), estado: req.body.estado });
   } catch (err) {
     console.error('Error cambiando estado de prospecto:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });

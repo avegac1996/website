@@ -1,4 +1,5 @@
-// CRM · Tablero Kanban de prospectos (por_prospectar/prospectando/exitoso/rechazado).
+// CRM · Tablero Kanban de prospectos — una columna por cada uno de los 5 estados
+// consolidados (por_prospectar/prospectando/propuesta/exitoso/rechazado).
 // Dividido del <script> monolítico de app.html. Importa PROS y prosGestionar de
 // prospectos.js (abrir una tarjeta del kanban lleva al detalle de gestión).
 import { API } from '../api-bridge.js';
@@ -20,18 +21,19 @@ export function prosActChip(p) {
   return '<span class="kb-act ok"><i class="fa-regular fa-clock"></i> ' + fmtDate(p.act_proxima) + '</span>';
 }
 export function renderCrmKanban() {
-  var cols = PROS.meta.kanban || [
-    { id: 'por_prospectar', label: 'Por prospectar' }, { id: 'prospectando', label: 'Prospectando' },
-    { id: 'exitoso', label: 'Exitosos' }, { id: 'rechazado', label: 'Rechazados' }
-  ];
   var estados = PROS.meta.estados || [];
+  // Columnas del Kanban = los estados del prospecto, 1:1 (ya no hay una columna "kanban"
+  // aparte que agrupe varios estados en una sola casilla).
+  var cols = PROS.meta.kanban || estados.map(function (e) { return { id: e.slug, label: e.label }; });
   var estadoDe = function (slug) { return estados.filter(function (e) { return e.slug === slug; })[0] || { label: slug, color: '#94a3b8' }; };
   var q = (PROS.kbq || '').toLowerCase();
   var lista = PROS.list.filter(function (p) { return !q || (p.empresa || '').toLowerCase().indexOf(q) !== -1; });
 
   var byCol = {};
   cols.forEach(function (c) { byCol[c.id] = []; });
-  lista.forEach(function (p) { var k = p.kanban || 'prospectando'; (byCol[k] = byCol[k] || []).push(p); });
+  // si un prospecto tiene un estado que no es ninguna de las columnas (dato viejo sin
+  // migrar), lo mostramos en la primera columna en vez de que desaparezca del tablero.
+  lista.forEach(function (p) { var k = (p.estado && byCol[p.estado]) ? p.estado : (cols[0] ? cols[0].id : 'prospectando'); byCol[k].push(p); });
 
   var colHtml = cols.map(function (c) {
     var cards = (byCol[c.id] || []).map(function (p) {
@@ -77,16 +79,16 @@ export function renderCrmKanban() {
       var id = e.dataTransfer.getData('text/plain');
       var p = PROS.list.filter(function (x) { return String(x.id) === id; })[0];
       var col = body.getAttribute('data-col');
-      if (!p || p.kanban === col) return;
-      // estado destino: primer estado activo de esa columna kanban
-      var dest = estados.filter(function (e2) { return e2.kanban === col; })[0];
+      if (!p || p.estado === col) return;
+      // columna === slug del estado directamente (1:1), ya no hace falta buscar por "kanban"
+      var dest = estados.filter(function (e2) { return e2.slug === col; })[0];
       if (!dest) { showAlert('Esa columna no tiene un estado configurado.', 'warning'); return; }
-      var prevK = p.kanban, prevE = p.estado;
-      p.kanban = col; p.estado = dest.slug;
+      var prevE = p.estado;
+      p.estado = dest.slug;
       renderCrmKanban();
       API.request('/api/prospectos/' + p.id + '/estado', { method: 'PATCH', body: JSON.stringify({ estado: dest.slug }) })
         .then(function () { showAlert('Movido a "' + dest.label + '".', 'success'); })
-        .catch(function (err) { showAlert(err.message, 'error'); p.kanban = prevK; p.estado = prevE; renderCrmKanban(); });
+        .catch(function (err) { showAlert(err.message, 'error'); p.estado = prevE; renderCrmKanban(); });
     });
   });
 }

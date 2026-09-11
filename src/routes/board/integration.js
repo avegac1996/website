@@ -4,6 +4,7 @@
 // prospectos/convertir-tarea.routes.js llama a esto en vez de escribir esas
 // tablas directamente.
 const db = require('../../config/database');
+const { PROSPECTO_ESTADO_BOARD_MAPPING } = require('../prospectos/constants');
 
 // proyecto "Turingtech" del tablero (lo crea si no existe, con todos los colaboradores).
 // Las tareas nacidas de un prospecto son trabajo de Turingtech y van a su cronograma.
@@ -54,8 +55,8 @@ async function crearTareaDesdeProspecto(prospecto, createdBy) {
     prospecto.email ? 'Email: ' + prospecto.email : null,
     prospecto.pilar ? 'Pilar: ' + prospecto.pilar : null,
   ].filter(Boolean).join('\n');
-  // arranca "En curso": es trabajo de Turingtech con responsable asignado
-  const estado = 'En curso';
+  // El estado de la tarea se determina por el estado actual del prospecto (mapeo determinístico)
+  const estado = PROSPECTO_ESTADO_BOARD_MAPPING[prospecto.estado] || 'En curso';
   const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
 
   const ord = (await db.query(

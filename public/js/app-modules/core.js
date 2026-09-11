@@ -27,7 +27,7 @@ export function buildMenu() {
       { id: 'crm-dashboard', label: 'Dashboard',             icon: 'fa-chart-pie' },
       { id: 'crm-tablero',   label: 'Tablero',               icon: 'fa-table-columns' },
       { id: 'prospectos',    label: 'Prospectos y empresas',  icon: 'fa-crosshairs' },
-      admin ? { id: 'admin-prospectos', label: 'Estados y actividades', icon: 'fa-tags' } : null
+      admin ? { id: 'admin-prospectos', label: 'Tipos de actividad', icon: 'fa-tags' } : null
     ]) },
     { section: 'Proyecto', items: pick([
       admin ? { id: 'proy-dashboard', label: 'Dashboard', icon: 'fa-gauge-high' } : null,
