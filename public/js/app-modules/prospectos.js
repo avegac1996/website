@@ -70,11 +70,16 @@ export function viewProspectos() {
 }
 
 export function prosRender() {
-  var tabs = [['sop', 'Cómo investigar'], ['guia', 'Guía por sector'], ['gestion', 'Gestión (' + PROS.list.length + ')']];
+  // "Gestión" es la acción principal (donde se trabaja); "Cómo investigar" y
+  // "Guía por sector" son contenido de referencia y quedan en 2do plano: van
+  // aparte, empujadas a la derecha y con estilo .tab-sec (más chicas/apagadas).
+  var tabPrimary = '<button class="tab ' + (PROS.tab === 'gestion' ? 'active' : '') + '" data-pt="gestion">Gestión' +
+    '<span class="pros-tab-count">' + PROS.list.length + '</span></button>';
+  var tabsSec = [['sop', 'Cómo investigar'], ['guia', 'Guía por sector']]
+    .map(function (t) { return '<button class="tab tab-sec ' + (PROS.tab === t[0] ? 'active' : '') + '" data-pt="' + t[0] + '">' + esc(t[1]) + '</button>'; })
+    .join('');
   el('view').innerHTML =
-    '<div class="tabs" style="margin-bottom:16px;flex-wrap:wrap;">' +
-      tabs.map(function (t) { return '<button class="tab ' + (PROS.tab === t[0] ? 'active' : '') + '" data-pt="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') +
-    '</div><div id="prosBody"></div>';
+    '<div class="tabs" style="margin-bottom:16px;flex-wrap:wrap;">' + tabPrimary + tabsSec + '</div><div id="prosBody"></div>';
   document.querySelectorAll('.tab[data-pt]').forEach(function (b) {
     b.addEventListener('click', function () { PROS.tab = this.getAttribute('data-pt'); PROS.sel = null; prosRender(); });
   });

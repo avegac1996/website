@@ -43,6 +43,26 @@
 }
 .pill-link:hover { border-color: var(--color-accent); color: var(--color-white); }
 
+/* Jerarquía de navegación de Prospectos: "Gestión" es la acción principal, las
+   guías (SOP / sector) quedan como referencia secundaria — mismo patrón
+   .tabs/.tab de base.css, con una variante más chica y apagada para éstas. */
+.pros-tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 7px; padding: 0 7px; min-width: 18px; height: 18px;
+  background: rgba(255, 107, 0, 0.16); color: var(--color-accent);
+  font-size: 11px; font-weight: 700; border-radius: var(--radius-pill);
+}
+.tab.tab-sec {
+  font-size: 12px; font-weight: 500; color: var(--color-gray); opacity: 0.75;
+  padding: 10px 14px;
+}
+.tab.tab-sec:hover { opacity: 1; }
+.tab.tab-sec.active {
+  color: var(--color-light); opacity: 1;
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+.tab.tab-sec:first-of-type { margin-left: auto; }
+
 .pros-gest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 
 .int-tipos { display: flex; flex-wrap: wrap; gap: 6px; }
