@@ -43,6 +43,8 @@ Cualquier ruta no-API que no matchee un archivo estático cae a `public/index.ht
 
 `board` y `prospectos` son los únicos dominios divididos en carpeta (el resto sigue siendo un solo `*.routes.js`): cada una tiene un `index.js` que monta los sub-routers (no lo toques al agregar un endpoint — andá directo al sub-router del recurso), `constants.js` (datos puros, sin lógica) y `helpers.js`. `board/integration.js` es el único puente permitido entre los dos dominios (prospectos nunca debe escribir tablas de board directamente). El middleware "solo colaboradores/admin" compartido por ambos vive en `src/middleware/collaborator.js`.
 
+**Estados CRM consolidados** (sept 2024): 5 estados únicos (`por_prospectar`, `prospectando`, `propuesta`, `exitoso`, `rechazado`) definidos en `src/routes/prospectos/constants.js` (`PROSPECTO_ESTADOS_LIST`, `PROSPECTO_ESTADO_BOARD_MAPPING`). El mapeo a los 6 estados del board es determinístico (no editable por admin). El cambio incluye una migration en `scripts/migrations/001_consolidate_prospect_states.sql` que remapea prospectos existentes y desactiva estados secundarios.
+
 Nota de datos: las columnas `DATE` de Postgres se devuelven como texto plano `'YYYY-MM-DD'` (ver `types.setTypeParser` en `src/config/database.js`) para evitar corrimientos de zona horaria — no asumas que llegan como objeto `Date` del lado del servidor.
 
 ## Convenciones
