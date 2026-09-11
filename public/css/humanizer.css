@@ -1,0 +1,24 @@
+/* Humanizador de texto — dividido de app.css */
+
+/* Humanizador: barra de progreso */
+.hm-progress { margin-top: 16px; }
+.hm-prog-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.hm-prog-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-accent), #ffa45c);
+  transition: width 0.35s ease;
+}
+.hm-prog-label {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--color-gray);
+  margin-top: 6px;
+}
+.hm-prog-label span:last-child { color: var(--color-accent); font-weight: 700; }
+

@@ -194,3 +194,9 @@ function getNotificationIconClass(type) {
   };
   return classes[type] || 'info';
 }
+
+// Expone API como propiedad de `window` (además del binding `const` de script
+// clásico ya usado por login.html/register.html/verify-email.html) para que
+// los <script type="module"> de app.html puedan importarla vía api-bridge.js.
+// Cambio aditivo: no afecta a nada que ya use `API` como global de script clásico.
+window.API = API;

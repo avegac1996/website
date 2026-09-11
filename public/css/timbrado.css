@@ -1,0 +1,106 @@
+/* Timbrado (control de jornada) — dividido de app.css */
+
+/* ===== Timbrado (control de jornada) ===== */
+.tb-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.tb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 16px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-light);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.1s;
+}
+.tb-btn i { font-size: 20px; color: var(--color-accent); }
+.tb-btn:hover:not(:disabled) { border-color: var(--color-accent); background: rgba(255, 107, 0, 0.07); }
+.tb-btn:active:not(:disabled) { transform: scale(0.97); }
+.tb-btn-lbl { font-size: 12px; font-weight: 600; }
+.tb-btn-hora { font-size: 11px; color: var(--color-text); }
+.tb-btn.sug { border-color: var(--color-accent); box-shadow: var(--shadow-neon-orange); }
+.tb-btn.sug .tb-btn-hora { color: var(--color-accent); font-weight: 700; }
+.tb-btn.done { opacity: 0.55; cursor: default; }
+.tb-btn.done i { color: var(--color-success); }
+.tb-hoy {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 12px;
+}
+.tb-hoy strong { color: var(--color-accent); }
+.tb-live { color: var(--color-success); font-size: 11px; margin-left: 6px; }
+.tb-timeline { display: flex; flex-direction: column; gap: 6px; }
+.tb-tl-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+.tb-tl-item i { color: var(--color-accent); width: 16px; text-align: center; }
+.tb-tl-lbl { flex: 1; }
+.tb-tl-hora { font-weight: 600; }
+.tb-tl-del {
+  border: none;
+  background: none;
+  color: var(--color-gray);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.tb-tl-del:hover { color: var(--color-error); }
+.tb-total { font-size: 13px; margin-top: 12px; }
+.tb-total strong { color: var(--color-accent); }
+
+/* jornadas del equipo (admin) */
+.tbq-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+.tbq-range label { font-size: 11px; color: var(--color-gray); display: flex; flex-direction: column; gap: 3px; }
+.tbq-range input { width: 150px; }
+.tbq-list { display: flex; flex-direction: column; gap: 8px; }
+.tbq-row { border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); overflow: hidden; }
+.tbq-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-light);
+  cursor: pointer;
+  font-size: 13px;
+}
+.tbq-head:hover { background: rgba(255, 255, 255, 0.06); }
+.tbq-tot { white-space: nowrap; font-weight: 600; }
+.tbq-tot i { margin-left: 6px; transition: transform 0.2s; }
+.tbq-head.open .tbq-tot i { transform: rotate(180deg); }
+.tbq-detail { padding: 6px 14px 12px; }
+.tbq-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.tbq-day:last-child { border-bottom: none; }
