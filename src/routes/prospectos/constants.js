@@ -18,8 +18,6 @@ const FIELDS = [
 // Pipeline comercial (CRM) — resultados fijos; estados y tipos vienen de la BD (catálogo editable)
 const INTER_RESULTADOS = ['contacto', 'no_contesto', 'agendo', 'propuesta', 'descartado', 'otro'];
 const ACT_TIPOS = ['llamada', 'linkedin', 'whatsapp', 'reunion', 'otro'];
-const KANBAN_COLS = ['por_prospectar', 'prospectando', 'exitoso', 'rechazado'];
-const BOARD_ESTADOS = ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
 
 // Estados consolidados del prospecto (5 estados = viaje del prospecto)
 // Única fuente de verdad para validación en backend
@@ -48,13 +46,18 @@ const PROSPECTO_ESTADO_BOARD_MAPPING = {
   'rechazado': 'Finalizada'
 };
 
+// Estados que cuentan como "cerrados" para las estadísticas del pipeline (dashboard CRM) —
+// se definen directo sobre el propio estado del prospecto, sin pasar por el vocabulario
+// del tablero de tareas (board_estado).
+const PROSPECTO_ESTADOS_CERRADOS = ['exitoso', 'rechazado'];
+
 // Adjuntos de interacciones (data URL en la BD, igual que board_task_files)
 const FILE_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf'];
 const FILE_MAX = 5 * 1024 * 1024;   // 5 MB del binario decodificado
 const FILE_MAX_COUNT = 8;
 
 module.exports = {
-  CSV_HEADERS, FIELDS, INTER_RESULTADOS, ACT_TIPOS, KANBAN_COLS, BOARD_ESTADOS,
+  CSV_HEADERS, FIELDS, INTER_RESULTADOS, ACT_TIPOS,
   FILE_MIMES, FILE_MAX, FILE_MAX_COUNT,
-  PROSPECTO_ESTADOS, PROSPECTO_ESTADOS_LIST, PROSPECTO_ESTADO_BOARD_MAPPING,
+  PROSPECTO_ESTADOS, PROSPECTO_ESTADOS_LIST, PROSPECTO_ESTADO_BOARD_MAPPING, PROSPECTO_ESTADOS_CERRADOS,
 };

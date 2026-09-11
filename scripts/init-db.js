@@ -218,7 +218,7 @@ async function initDatabase() {
     `);
     // CRM: pipeline + responsable comercial + tarea vinculada en el tablero
     for (const [col, ddl] of [
-      ['estado', "VARCHAR(24) NOT NULL DEFAULT 'nuevo'"],  // nuevo|contactado|en_seguimiento|reunion|propuesta|ganado|perdido|no_responde
+      ['estado', "VARCHAR(24) NOT NULL DEFAULT 'por_prospectar'"],  // por_prospectar|prospectando|propuesta|exitoso|rechazado (ver PROSPECTO_ESTADOS_LIST en src/routes/prospectos/constants.js)
       ['owner_id', 'INTEGER REFERENCES users(id)'],
       ['task_id', 'INTEGER REFERENCES board_tasks(id) ON DELETE SET NULL'],
       // proxima_gestion/proxima_gestion_nota existieron acá pero quedaron
@@ -291,28 +291,21 @@ async function initDatabase() {
         activo BOOLEAN NOT NULL DEFAULT true
       );
     `);
-    // valores por defecto (idempotente)
+    // valores por defecto (idempotente) -- 5 estados consolidados (ver
+    // PROSPECTO_ESTADOS_LIST / PROSPECTO_ESTADO_BOARD_MAPPING en
+    // src/routes/prospectos/constants.js). Instalaciones viejas con los 8
+    // estados originales se actualizan con scripts/migrations/001 y 002.
     for (const [i, [slug, label, color, be, kb]] of [
-      ['nuevo', 'Nuevo', '#94a3b8', 'Tareas por hacer', 'por_prospectar'],
-      ['contactado', 'Contactado', '#3b82f6', 'En curso', 'prospectando'],
-      ['en_seguimiento', 'En seguimiento', '#a78bfa', 'En curso', 'prospectando'],
-      ['reunion', 'Reunión agendada', '#f59e0b', 'En curso', 'prospectando'],
-      ['propuesta', 'Propuesta enviada', '#f97316', 'En curso', 'prospectando'],
-      ['ganado', 'Ganado', '#10b981', 'Finalizada', 'exitoso'],
-      ['perdido', 'Perdido', '#ef4444', 'Finalizada', 'rechazado'],
-      ['no_responde', 'No responde', '#64748b', 'Finalizada', 'rechazado'],
+      ['por_prospectar', 'Por Prospectar', '#94a3b8', 'Tareas por hacer', 'por_prospectar'],
+      ['prospectando', 'Prospectando', '#3b82f6', 'En curso', 'prospectando'],
+      ['propuesta', 'Propuesta Enviada', '#f97316', 'En curso', 'prospectando'],
+      ['exitoso', 'Exitoso', '#10b981', 'Finalizada', 'exitoso'],
+      ['rechazado', 'Rechazado', '#ef4444', 'Finalizada', 'rechazado'],
     ].entries()) {
       await db.query(
         "INSERT INTO prospecto_estados (slug, label, color, board_estado, orden, kanban) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (slug) DO NOTHING",
-        [slug, label, color, be, i, kb]
+        [slug, label, color, be, i + 1, kb]
       );
-    }
-    // backfill kanban por slug para instalaciones que ya tenían los estados sembrados
-    // (columna nueva, todavía nadie la personalizó)
-    for (const [slug, kb] of [
-      ['nuevo', 'por_prospectar'], ['ganado', 'exitoso'], ['perdido', 'rechazado'], ['no_responde', 'rechazado'],
-    ]) {
-      await db.query("UPDATE prospecto_estados SET kanban = $2 WHERE slug = $1", [slug, kb]);
     }
     for (const [i, [slug, label, icono]] of [
       ['llamada', 'Llamada', 'fa-solid fa-phone'],

@@ -1,19 +1,20 @@
 const express = require('express');
 const db = require('../../config/database');
 const { adminMiddleware } = require('../../middleware/auth');
-const { BOARD_ESTADOS, KANBAN_COLS, PROSPECTO_ESTADOS_LIST } = require('./constants');
 const { slugify } = require('./helpers');
 
 const router = express.Router();
 
-/* ===================== CATÁLOGO CONFIGURABLE (estados / tipos) ===================== */
+/* ===================== CATÁLOGO CONFIGURABLE (tipos de interacción) =====================
+   Los "estados" del pipeline de prospectos ya no son parte de este catálogo editable: son
+   los 5 fijos de PROSPECTO_ESTADOS_LIST (./constants.js). El admin ya no puede crear,
+   editar ni eliminar estados desde acá. */
 
-// GET /api/prospectos/catalogo  -> todo (incluye inactivos) para el panel de admin
+// GET /api/prospectos/catalogo  -> tipos de interacción (incluye inactivos) para el panel de admin
 router.get('/catalogo', async (req, res) => {
   try {
-    const estados = (await db.query('SELECT * FROM prospecto_estados ORDER BY orden, id')).rows;
     const tipos = (await db.query('SELECT * FROM prospecto_tipos_interaccion ORDER BY orden, id')).rows;
-    res.json({ estados, tipos, board_estados: BOARD_ESTADOS });
+    res.json({ tipos });
   } catch (err) {
     console.error('Error catalogo prospectos:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -21,59 +22,6 @@ router.get('/catalogo', async (req, res) => {
 });
 
 function limpiarOrden(v) { return Number.isFinite(Number(v)) ? Number(v) : 0; }
-
-// ---- estados del pipeline ----
-// POST /catalogo/estados — ELIMINADO (estados consolidados, no se pueden crear nuevos)
-// Los 5 estados son fijos y se definen en constants.js
-router.post('/catalogo/estados', adminMiddleware, async (req, res) => {
-  res.status(403).json({ error: 'Los estados son consolidados y no se pueden crear nuevos. Usa PUT para editar existentes.' });
-});
-
-router.put('/catalogo/estados/:eid', adminMiddleware, async (req, res) => {
-  try {
-    // Validar que el estado exista y sea uno de los 5 consolidados
-    const cur = (await db.query('SELECT slug FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
-    if (!cur) return res.status(404).json({ error: 'Estado no encontrado' });
-    const estaConsolidado = PROSPECTO_ESTADOS_LIST.some(e => e.slug === cur.slug);
-    if (!estaConsolidado) return res.status(403).json({ error: 'Solo se pueden editar los 5 estados consolidados' });
-
-    // Solo permitir cambiar: label, color, orden, activo
-    // board_estado y kanban son determinísticos y no se pueden cambiar
-    const label = String(req.body.label || '').trim();
-    if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
-    const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
-
-    const row = (await db.query(
-      'UPDATE prospecto_estados SET label=$1,color=$2,activo=$3,orden=$4 WHERE id=$5 RETURNING *',
-      [label, color, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.eid]
-    )).rows[0];
-    res.json({ estado: row });
-  } catch (err) {
-    console.error('Error actualizando estado:', err.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-router.delete('/catalogo/estados/:eid', adminMiddleware, async (req, res) => {
-  try {
-    const e = (await db.query('SELECT slug FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
-    if (!e) return res.status(404).json({ error: 'Estado no encontrado' });
-
-    // Prohibir eliminar estados consolidados
-    const estaConsolidado = PROSPECTO_ESTADOS_LIST.some(x => x.slug === e.slug);
-    if (estaConsolidado) return res.status(403).json({ error: 'No se pueden eliminar estados consolidados. Usa PUT para desactivar si es necesario.' });
-
-    // Para estados secundarios (si existen), verificar si hay prospectos
-    if ((await db.query('SELECT 1 FROM prospectos WHERE estado = $1 LIMIT 1', [e.slug])).rows.length) {
-      return res.status(400).json({ error: 'Hay prospectos con este estado; desactívalo en vez de borrarlo.' });
-    }
-    await db.query('DELETE FROM prospecto_estados WHERE id = $1', [req.params.eid]);
-    res.json({ message: 'Estado eliminado' });
-  } catch (err) {
-    console.error('Error eliminando estado:', err.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
 // ---- tipos de interacción ----
 router.post('/catalogo/tipos', adminMiddleware, async (req, res) => {

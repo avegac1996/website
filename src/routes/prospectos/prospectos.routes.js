@@ -26,20 +26,27 @@ router.get('/', async (req, res) => {
     const colaboradores = (await db.query(
       "SELECT id, name FROM users WHERE account_type = 'colaborador' AND active = true ORDER BY name"
     )).rows;
+    // Columna kanban del CRM = el propio estado del prospecto (1:1, ya no se agrupan varios
+    // estados en una columna) — evita que un estado quede sin columna propia, como pasaba
+    // con "propuesta" antes de esto.
+    const prospectos = result.rows.map((row) => ({
+      ...row,
+      // El mapeo prospecto → tarea es determinístico (boardEstadoDe), pero la tarea puede
+      // moverse a mano en el tablero de tareas hacia un estado que el prospecto no produce
+      // (Bloqueado, Client Review, Control de calidad). Marcamos esos casos para que el
+      // frontend solo avise cuando de verdad divergen, en vez de mostrar siempre el estado
+      // de la tarea junto al del prospecto.
+      task_desincronizada: !!(row.task_id && row.task_estado && row.task_estado !== boardEstadoDe(row)),
+    }));
     res.json({
-      prospectos: result.rows,
-      total: result.rows.length,
+      prospectos,
+      total: prospectos.length,
       meta: {
         estados: PROSPECTO_ESTADOS_LIST,
         tipos: await tiposActivos(),
         resultados: INTER_RESULTADOS,
         actividadTipos: ACT_TIPOS,
-        kanban: [
-          { id: 'por_prospectar', label: 'Por prospectar' },
-          { id: 'prospectando', label: 'Prospectando' },
-          { id: 'exitoso', label: 'Exitosos' },
-          { id: 'rechazado', label: 'Rechazados' },
-        ],
+        kanban: PROSPECTO_ESTADOS_LIST.map((e) => ({ id: e.slug, label: e.label })),
         colaboradores,
         esAdmin: isAdmin(req),
         miId: req.user.id,

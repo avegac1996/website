@@ -5,9 +5,6 @@ const isAdmin = (req) => req.user.role === 'admin';
 
 const slugify = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
 
-async function estadosActivos() {
-  return (await db.query('SELECT slug, label, color, board_estado, orden, kanban FROM prospecto_estados WHERE activo = true ORDER BY orden, id')).rows;
-}
 async function tiposActivos() {
   return (await db.query('SELECT slug, label, icono, orden FROM prospecto_tipos_interaccion WHERE activo = true ORDER BY orden, id')).rows;
 }
@@ -30,4 +27,4 @@ function clean(body) {
   return out;
 }
 
-module.exports = { isAdmin, slugify, estadosActivos, tiposActivos, boardEstadoDe, parseDataUrl, clean };
+module.exports = { isAdmin, slugify, tiposActivos, boardEstadoDe, parseDataUrl, clean };

@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../../config/database');
 const J = require('../../utils/jornada');
-const { isAdmin, estadosActivos } = require('./helpers');
+const { isAdmin } = require('./helpers');
+const { PROSPECTO_ESTADOS_LIST, PROSPECTO_ESTADOS_CERRADOS } = require('./constants');
 
 const router = express.Router();
 
@@ -13,9 +14,7 @@ router.get('/resumen', async (req, res) => {
       ? (req.query.gestor && /^\d+$/.test(req.query.gestor) ? Number(req.query.gestor) : null)
       : req.user.id;
     const hoy = J.hoyISO();
-    const estados = await estadosActivos();
-    const cerrados = estados.filter((e) => e.board_estado === 'Finalizada').map((e) => e.slug);
-    const cerr = cerrados.length ? cerrados : ['__none__'];
+    const cerr = PROSPECTO_ESTADOS_CERRADOS;
     // $1 = estados cerrados, $2 = hoy, $3 = gestor (null = todos)
     const P = [cerr, hoy, gestor];
     const gCond = 'AND ($3::int IS NULL OR p.owner_id = $3)';
@@ -29,7 +28,7 @@ router.get('/resumen', async (req, res) => {
     )).rows;
     const porEstadoMap = {};
     porEstadoRows.forEach((r) => { porEstadoMap[r.estado] = r.n; });
-    const por_estado = estados.map((e) => ({ slug: e.slug, label: e.label, color: e.color, count: porEstadoMap[e.slug] || 0 }));
+    const por_estado = PROSPECTO_ESTADOS_LIST.map((e) => ({ slug: e.slug, label: e.label, color: e.color, count: porEstadoMap[e.slug] || 0 }));
     const total = porEstadoRows.reduce((a, r) => a + r.n, 0);
 
     // seguimiento (solo prospectos abiertos)
