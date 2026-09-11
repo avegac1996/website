@@ -64,7 +64,7 @@
         <div class="breadcrumb" id="breadcrumb"></div>
         <h1 class="page-title" id="pageTitle">Mi espacio</h1>
         <div id="alert-container"></div>
-        <div id="view"><p class="text-gray" style="padding:40px 0;text-align:center;">Cargando...</p></div>
+        <div id="view"><div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:24px 0;"><span class="spinner"></span></div></div>
       </div>
     </div>
   </div>
@@ -195,6 +195,23 @@
       if (photo) return '<img src="' + photo + '" alt="" style="width:100%;height:100%;object-fit:cover;">';
       return esc(initials(name));
     };
+    // Mensaje de "no hay datos" reutilizable. Por defecto arma un bloque <p>
+    // centrado para insertar en un contenedor; pasando opts.colspan arma una
+    // fila <tr><td> lista para reemplazar el <tbody> de una tabla vacía.
+    function emptyState(msg, opts) {
+      opts = opts || {};
+      var pad = opts.padding || '24px';
+      var inner = esc(msg);
+      return opts.colspan
+        ? '<tr><td colspan="' + opts.colspan + '" class="text-gray text-center" style="padding:' + pad + ' 0;">' + inner + '</td></tr>'
+        : '<p class="text-gray text-center" style="padding:' + pad + ' 0;">' + inner + '</p>';
+    }
+    // Indicador de carga con el spinner ya definido en app.css, para no seguir
+    // mostrando el texto plano "Cargando...".
+    function loadingHtml(msg) {
+      return '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:24px 0;">' +
+        '<span class="spinner"></span>' + (msg ? '<span class="text-gray text-sm">' + esc(msg) + '</span>' : '') + '</div>';
+    }
     function paintTopbarAvatar() {
       var a = el('userAvatar');
       if (state.me && state.me.photo) {
@@ -294,7 +311,7 @@
       el('breadcrumb').innerHTML = 'TURINGTECH <span class="sep">/</span> ' + esc(meta.section) +
         ' <span class="sep">/</span> <span class="current">' + esc(meta.item.label) + '</span>';
       el('pageTitle').textContent = meta.item.label;
-      el('view').innerHTML = '<p class="text-gray" style="padding:40px 0;text-align:center;">Cargando...</p>';
+      el('view').innerHTML = loadingHtml();
       el('shell').classList.remove('nav-open');
       Promise.resolve(ROUTES[routeId]()).catch(function (e) { showAlert(e.message, 'error'); });
       refreshBell();
@@ -516,9 +533,9 @@
         '<div class="glass-panel" style="padding:28px;max-width:520px;">' +
           '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Cambiar mi contraseña</div>' +
           '<form id="pwForm">' +
-            '<div class="form-group"><label>Contraseña actual <span class="form-required-marker">*</span></label><input type="password" id="pw_cur" class="form-input" required autocomplete="current-password"></div>' +
-            '<div class="form-group"><label>Nueva contraseña <span class="form-required-marker">*</span></label><input type="password" id="pw_new" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
-            '<div class="form-group"><label>Repetir nueva contraseña <span class="form-required-marker">*</span></label><input type="password" id="pw_new2" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
+            '<div class="form-group"><label for="pw_cur">Contraseña actual <span class="form-required-marker">*</span></label><input type="password" id="pw_cur" class="form-input" required autocomplete="current-password"></div>' +
+            '<div class="form-group"><label for="pw_new">Nueva contraseña <span class="form-required-marker">*</span></label><input type="password" id="pw_new" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
+            '<div class="form-group"><label for="pw_new2">Repetir nueva contraseña <span class="form-required-marker">*</span></label><input type="password" id="pw_new2" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
             '<button type="submit" class="btn btn-primary" id="pw_btn">Actualizar contraseña</button>' +
           '</form>' +
         '</div>';
@@ -589,12 +606,12 @@
               '<button class="btn btn-secondary btn-small" id="hrToggle">Crear solicitud</button>' +
             '</div>' +
             '<form id="hrForm" style="display:none;margin-top:18px;max-width:560px;">' +
-              '<div class="form-group"><label>Tipo <span class="form-required-marker">*</span></label><select id="hr_type" class="form-input">' + opts + '</select></div>' +
+              '<div class="form-group"><label for="hr_type">Tipo <span class="form-required-marker">*</span></label><select id="hr_type" class="form-input">' + opts + '</select></div>' +
               '<div id="hr_dates" style="display:none;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-                '<div class="form-group"><label>Desde</label><input type="date" id="hr_start" class="form-input"></div>' +
-                '<div class="form-group"><label>Hasta</label><input type="date" id="hr_end" class="form-input"></div>' +
+                '<div class="form-group"><label for="hr_start">Desde</label><input type="date" id="hr_start" class="form-input"></div>' +
+                '<div class="form-group"><label for="hr_end">Hasta</label><input type="date" id="hr_end" class="form-input"></div>' +
               '</div></div>' +
-              '<div class="form-group"><label>Detalle / motivo</label><textarea id="hr_details" class="form-input" rows="3" placeholder="Información adicional para Talento y Cultura..."></textarea></div>' +
+              '<div class="form-group"><label for="hr_details">Detalle / motivo</label><textarea id="hr_details" class="form-input" rows="3" placeholder="Información adicional para Talento y Cultura..."></textarea></div>' +
               '<button type="submit" class="btn btn-primary" id="hr_btn"><i class="fa-solid fa-check"></i> Enviar solicitud</button>' +
             '</form>' +
           '</div>' +
@@ -647,7 +664,7 @@
         el('view').innerHTML = '<div class="tabs" style="margin-bottom:16px;">' +
           ['pending', 'approved', 'rejected'].map(function (s) {
             return '<button class="tab ' + (s === status ? 'active' : '') + '" data-s="' + s + '">' + statusLabel[s] + '</button>';
-          }).join('') + '</div><div id="hrList"><p class="text-gray text-center" style="padding:24px 0;">Cargando...</p></div>';
+          }).join('') + '</div><div id="hrList">' + loadingHtml() + '</div>';
         document.querySelectorAll('.tab[data-s]').forEach(function (t) {
           t.addEventListener('click', function () { load(this.getAttribute('data-s')); });
         });
@@ -933,8 +950,8 @@
       var form = '<div class="glass-panel" style="padding:22px;margin-bottom:20px;max-width:620px;">' +
         '<div class="section-heading" style="text-align:left;margin-bottom:14px;">' + (p ? 'Editar proyecto' : 'Nuevo proyecto') + '</div>' +
         '<form id="pjForm">' +
-          '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input id="pj_nombre" class="form-input" required value="' + esc(p ? p.nombre : '') + '"></div>' +
-          '<div class="form-group"><label>Descripción</label><textarea id="pj_desc" class="form-input" rows="2">' + esc(p ? (p.descripcion || '') : '') + '</textarea></div>' +
+          '<div class="form-group"><label for="pj_nombre">Nombre <span class="form-required-marker">*</span></label><input id="pj_nombre" class="form-input" required value="' + esc(p ? p.nombre : '') + '"></div>' +
+          '<div class="form-group"><label for="pj_desc">Descripción</label><textarea id="pj_desc" class="form-input" rows="2">' + esc(p ? (p.descripcion || '') : '') + '</textarea></div>' +
           '<div class="form-group"><label>Miembros del proyecto</label>' + checks(p ? (memByProj[p.id] || []).map(function (m) { return m.id; }) : []) + '</div>' +
           '<div style="display:flex;gap:8px;">' +
             '<button type="submit" class="btn btn-primary" id="pj_save">' + (p ? 'Guardar' : 'Crear proyecto') + '</button>' +
@@ -1063,7 +1080,7 @@
           '</div>' +
           body +
         '</div>' +
-        (list.length ? '' : '<p class="text-gray text-center" style="padding:30px 0;">No hay actividades con estos filtros.</p>');
+        (list.length ? '' : emptyState('No hay actividades con estos filtros.'));
 
       document.querySelectorAll('.gt-grouprow .gt-act').forEach(function (c) {
         c.addEventListener('click', function () {
@@ -1170,7 +1187,7 @@
           (t.responsable ? '<span class="bt-resp" title="' + esc(t.responsable) + '">' + esc(initials(t.responsable)) + '</span>' : '<span class="bt-resp bt-resp-none">?</span>') +
           (moverOpts ? '<select class="bl-move form-input" data-id="' + t.id + '"><option value="">→ a sprint…</option>' + moverOpts + '</select>' : '') +
         '</div>';
-      }).join('') || '<p class="text-gray text-center" style="padding:24px 0;">El backlog está vacío. Usá "Nueva tarea".</p>';
+      }).join('') || emptyState('El backlog está vacío. Usá "Nueva tarea".');
 
       el('boardBody').innerHTML =
         '<div class="bl-wrap">' +
@@ -1315,11 +1332,11 @@
         '<div class="glass-panel" style="padding:28px;max-width:520px;margin-top:14px;">' +
           '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? 'Nuevo sprint' : 'Editar sprint') + '</div>' +
           '<form id="sprForm">' +
-            '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input id="spr_nombre" class="form-input" required value="' + esc(s.nombre) + '"></div>' +
-            '<div class="form-group"><label>Objetivo del sprint</label><textarea id="spr_obj" class="form-input" rows="2">' + esc(s.objetivo || '') + '</textarea></div>' +
+            '<div class="form-group"><label for="spr_nombre">Nombre <span class="form-required-marker">*</span></label><input id="spr_nombre" class="form-input" required value="' + esc(s.nombre) + '"></div>' +
+            '<div class="form-group"><label for="spr_obj">Objetivo del sprint</label><textarea id="spr_obj" class="form-input" rows="2">' + esc(s.objetivo || '') + '</textarea></div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-              '<div class="form-group"><label>Inicio</label><input type="date" id="spr_ini" class="form-input" value="' + esc(dstr(s.fecha_inicio) || '') + '"></div>' +
-              '<div class="form-group"><label>Fin</label><input type="date" id="spr_fin" class="form-input" value="' + esc(dstr(s.fecha_fin) || '') + '"></div>' +
+              '<div class="form-group"><label for="spr_ini">Inicio</label><input type="date" id="spr_ini" class="form-input" value="' + esc(dstr(s.fecha_inicio) || '') + '"></div>' +
+              '<div class="form-group"><label for="spr_fin">Fin</label><input type="date" id="spr_fin" class="form-input" value="' + esc(dstr(s.fecha_fin) || '') + '"></div>' +
             '</div>' +
             '<button type="submit" class="btn btn-primary" id="spr_save">' + (isNew ? 'Crear sprint' : 'Guardar') + '</button>' +
           '</form>' +
@@ -1394,25 +1411,25 @@
           '<div class="section-heading" style="text-align:left;margin-bottom:16px;">' + (isNew ? (esSub ? 'Nueva subtarea' : 'Nueva tarea') : (esSub ? 'Editar subtarea' : 'Editar tarea')) + '</div>' +
           banner +
           '<form id="btForm">' +
-            '<div class="form-group"><label>Título / descripción <span class="form-required-marker">*</span></label>' +
+            '<div class="form-group"><label for="bt_titulo">Título / descripción <span class="form-required-marker">*</span></label>' +
               '<textarea id="bt_titulo" class="form-input" rows="2" required>' + esc(t.titulo) + '</textarea></div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-              (esSub ? '' : '<div class="form-group"><label>Proyecto <span class="form-required-marker">*</span></label><select id="bt_f_proj" class="form-input" required>' + projOpts + '</select></div>' +
-                            '<div class="form-group"><label>Sprint</label><select id="bt_f_sprint" class="form-input">' + sprintOptsFor(curProj) + '</select></div>') +
-              '<div class="form-group"><label>Responsable</label><select id="bt_f_resp" class="form-input">' + respOptsFor(curProj) + '</select></div>' +
-              '<div class="form-group"><label>Tipo</label><select id="bt_f_tipo" class="form-input">' + opt(m.tipos || ['Tarea'], t.tipo) + '</select></div>' +
-              '<div class="form-group"><label>Estado</label><select id="bt_f_estado" class="form-input">' + opt(BOARD_ESTADOS, t.estado) + '</select></div>' +
-              '<div class="form-group"><label>Prioridad</label><select id="bt_f_prio" class="form-input">' + opt(prioridades, t.prioridad || 'media') + '</select></div>' +
-              '<div class="form-group"><label>Inicio</label><input type="date" id="bt_f_fecha" class="form-input" value="' + esc(dstr(t.fecha) || '') + '"></div>' +
-              '<div class="form-group"><label>Fin' + (finBloqueada ? ' <i class="fa-solid fa-lock bt-lock" title="Bloqueada"></i>' : '') + '</label>' +
+              (esSub ? '' : '<div class="form-group"><label for="bt_f_proj">Proyecto <span class="form-required-marker">*</span></label><select id="bt_f_proj" class="form-input" required>' + projOpts + '</select></div>' +
+                            '<div class="form-group"><label for="bt_f_sprint">Sprint</label><select id="bt_f_sprint" class="form-input">' + sprintOptsFor(curProj) + '</select></div>') +
+              '<div class="form-group"><label for="bt_f_resp">Responsable</label><select id="bt_f_resp" class="form-input">' + respOptsFor(curProj) + '</select></div>' +
+              '<div class="form-group"><label for="bt_f_tipo">Tipo</label><select id="bt_f_tipo" class="form-input">' + opt(m.tipos || ['Tarea'], t.tipo) + '</select></div>' +
+              '<div class="form-group"><label for="bt_f_estado">Estado</label><select id="bt_f_estado" class="form-input">' + opt(BOARD_ESTADOS, t.estado) + '</select></div>' +
+              '<div class="form-group"><label for="bt_f_prio">Prioridad</label><select id="bt_f_prio" class="form-input">' + opt(prioridades, t.prioridad || 'media') + '</select></div>' +
+              '<div class="form-group"><label for="bt_f_fecha">Inicio</label><input type="date" id="bt_f_fecha" class="form-input" value="' + esc(dstr(t.fecha) || '') + '"></div>' +
+              '<div class="form-group"><label for="bt_f_fin">Fin' + (finBloqueada ? ' <i class="fa-solid fa-lock bt-lock" title="Bloqueada"></i>' : '') + '</label>' +
                 '<input type="date" id="bt_f_fin" class="form-input" value="' + esc(dstr(t.fecha_fin) || '') + '"' + (finBloqueada ? ' disabled' : '') + '>' +
                 (finBloqueada ? '<div class="bt-lock-hint"><i class="fa-solid fa-lock"></i> Pasaron más de 24 h. Reabrí la tarea (pasala a «En curso») para poder cambiarla.</div>' : '') +
               '</div>' +
-              '<div class="form-group"><label>Horas</label><input type="number" step="0.5" min="0" id="bt_f_horas" class="form-input" value="' + esc(t.horas != null ? t.horas : '') + '"></div>' +
+              '<div class="form-group"><label for="bt_f_horas">Horas</label><input type="number" step="0.5" min="0" id="bt_f_horas" class="form-input" value="' + esc(t.horas != null ? t.horas : '') + '"></div>' +
             '</div>' +
             '<div class="bt-cohint"><i class="fa-solid fa-trophy"></i> Con fecha de inicio y fin: terminá a tiempo y ganás <strong>+2 Turingcoins</strong>; mover la fecha de fin sin terminar cuesta <strong>−3</strong>.</div>' +
             '<div class="form-group"><label>Story points</label>' + chipsHtml(t.puntos) + '</div>' +
-            '<div class="form-group"><label>Observaciones</label><textarea id="bt_f_obs" class="form-input" rows="2">' + esc(t.observaciones || '') + '</textarea></div>' +
+            '<div class="form-group"><label for="bt_f_obs">Observaciones</label><textarea id="bt_f_obs" class="form-input" rows="2">' + esc(t.observaciones || '') + '</textarea></div>' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
               '<button type="submit" class="btn btn-primary" id="bt_save">' + (isNew ? 'Crear' : 'Guardar') + '</button>' +
               (isNew ? '' : '<button type="button" class="btn btn-error btn-small" id="bt_del">Eliminar</button>') +
@@ -1720,10 +1737,92 @@
         '</select>';
     }
 
+    // Definición de los campos del formulario de prospecto, compartida entre el
+    // alta (prosRegistrar, prefijo de id "px_") y la edición (prosGestionar,
+    // prefijo "pg_f_") para no mantener 17 campos copy-pasteados en dos lugares.
+    // suf: sufijo de id (el id real es prefix + suf). key: propiedad del objeto
+    // de datos del prospecto que lee/escribe el campo.
+    // type: 'sector' (usa sectorSelectHtml), 'cargo' (input + <datalist> de
+    // cargos sugeridos del sector), 'select' (opts fijas en f.opciones),
+    // 'fase' (opciones de FASES_SOP), 'date', 'email', o texto plano por defecto.
+    // "Notas" queda fuera de este array: ocupa el ancho completo del form y se
+    // arma aparte en prosFormFieldsHTML.
+    var PROS_CAMPOS = [
+      { suf: 'sector', key: 'sector_id', label: 'Sector', type: 'sector' },
+      { suf: 'empresa', key: 'empresa', label: 'Empresa', required: true },
+      { suf: 'ruc', key: 'ruc', label: 'RUC' },
+      { suf: 'web', key: 'web', label: 'Página web', placeholder: 'https://...' },
+      { suf: 'cn', key: 'contacto_nombre', label: 'Contacto — nombre' },
+      { suf: 'ca', key: 'contacto_apellido', label: 'Contacto — apellido' },
+      { suf: 'cargo', key: 'cargo', label: 'Cargo', type: 'cargo' },
+      { suf: 'email', key: 'email', label: 'Email corporativo', type: 'email' },
+      { suf: 'tel', key: 'telefono', label: 'Teléfono / extensión' },
+      { suf: 'li', key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...' },
+      { suf: 'fuente', key: 'fuente', label: 'Fuente', type: 'select', opciones: FUENTES },
+      { suf: 'pilar', key: 'pilar', label: 'Pilar', type: 'select', opciones: PILARES },
+      { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase' },
+      { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date' },
+      { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX' },
+      { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido' }
+    ];
+    // Arma la grilla de campos + el textarea de Notas. prefix es "px_" (alta) o
+    // "pg_f_" (edición); d es el objeto de datos del prospecto (o {} en alta sin
+    // prellenar). Sector no lleva asterisco de obligatorio: ni el backend
+    // (columna nullable) ni este formulario lo validan como tal.
+    function prosFormFieldsHTML(prefix, d) {
+      d = d || {};
+      var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
+      var campos = PROS_CAMPOS.map(function (f) {
+        var id = prefix + f.suf;
+        var control;
+        if (f.type === 'sector') {
+          control = sectorSelectHtml(id, d.sector_id);
+        } else if (f.type === 'cargo') {
+          var sec = sectorById(d.sector_id);
+          var dlId = prefix + 'dl_cargos';
+          var dl = sec ? '<datalist id="' + dlId + '">' + sec.cargosLinkedIn.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>' : '';
+          control = '<input id="' + id + '" class="form-input" list="' + dlId + '" value="' + esc(d.cargo || '') + '">' + dl;
+        } else if (f.type === 'select') {
+          control = '<select id="' + id + '" class="form-input"><option value="">—</option>' + opt(f.opciones, d[f.key]) + '</select>';
+        } else if (f.type === 'fase') {
+          var faseOpts = '<option value="">—</option>' + FASES_SOP.map(function (fx) { return '<option value="' + fx.id + '"' + (String(d.fase_sop) === String(fx.id) ? ' selected' : '') + '>' + esc(fx.nombre) + '</option>'; }).join('');
+          control = '<select id="' + id + '" class="form-input">' + faseOpts + '</select>';
+        } else if (f.type === 'date') {
+          var v = d[f.key] || '';
+          control = '<input type="date" id="' + id + '" class="form-input" value="' + esc(v.slice ? v.slice(0, 10) : '') + '">';
+        } else {
+          var typeAttr = f.type === 'email' ? ' type="email"' : '';
+          var reqAttr = f.required ? ' required' : '';
+          var ph = f.placeholder ? ' placeholder="' + f.placeholder + '"' : '';
+          control = '<input id="' + id + '"' + typeAttr + ' class="form-input"' + ph + reqAttr + ' value="' + esc(d[f.key] || '') + '">';
+        }
+        var reqMark = f.required ? ' <span class="form-required-marker">*</span>' : '';
+        return '<div class="form-group"><label for="' + id + '">' + f.label + reqMark + '</label>' + control + '</div>';
+      }).join('');
+      var notasId = prefix + 'notas';
+      return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">' + campos + '</div>' +
+        '<div class="form-group" style="margin-top:12px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
+    }
+    // Lee del DOM los valores cargados por prosFormFieldsHTML(prefix, ...) y arma
+    // el objeto a enviar al backend. Mismo prefix usado al generar el HTML.
+    function prosFormCollect(prefix) {
+      var g = function (suf) { return el(prefix + suf).value; };
+      var sec = sectorById(g('sector'));
+      return {
+        sector_id: g('sector'), sector_nombre: sec ? sec.nombre : '',
+        empresa: g('empresa').trim(), ruc: g('ruc').trim(), web: g('web').trim(),
+        contacto_nombre: g('cn').trim(), contacto_apellido: g('ca').trim(), cargo: g('cargo').trim(),
+        email: g('email').trim(), telefono: g('tel').trim(), linkedin: g('li').trim(),
+        fuente: g('fuente'), pilar: g('pilar'), fase_sop: g('fase'),
+        fecha_fase: g('fecha') || null, extension_pbx: g('ext').trim(), horario_preferido: g('hora').trim(),
+        notas: g('notas').trim()
+      };
+    }
+
     function prosGuia() {
       var s = sectorById(PROS.sectorId);
       var html = '<div class="glass-panel" style="padding:20px;margin-bottom:18px;max-width:520px;">' +
-        '<label class="text-gray text-sm" style="display:block;margin-bottom:6px;">Sector objetivo</label>' +
+        '<label for="fx_sector" class="text-gray text-sm" style="display:block;margin-bottom:6px;">Sector objetivo</label>' +
         sectorSelectHtml('fx_sector', PROS.sectorId) + '</div>';
       if (s) {
         var tags = function (arr) { return '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + arr.map(function (x) { return chipEstado(x, { variante: 'secondary', solido: true, style: 'font-weight:500;' }); }).join('') + '</div>'; };
@@ -1775,9 +1874,6 @@
     function prosRegistrar(pre) {
       var d = pre || { sector_id: PROS.sectorId || '' };
       var s = sectorById(d.sector_id);
-      var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
-      var faseOpts = '<option value="">—</option>' + FASES_SOP.map(function (f) { return '<option value="' + f.id + '"' + (String(d.fase_sop) === String(f.id) ? ' selected' : '') + '>' + esc(f.nombre) + '</option>'; }).join('');
-      var cargos = s ? '<datalist id="dl_cargos">' + s.cargosLinkedIn.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>' : '';
 
       var intel = s
         ? '<div class="glass-panel pros-intel">' +
@@ -1797,45 +1893,14 @@
         '<button class="btn btn-secondary btn-small" id="px_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</button>' +
         '<div class="pros-form-wrap">' +
         '<div class="glass-panel" style="padding:26px;"><div class="section-heading" style="text-align:left;margin-bottom:16px;">Nuevo prospecto</div><form id="prosForm">' +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">' +
-            '<div class="form-group"><label>Sector <span class="form-required-marker">*</span></label>' + sectorSelectHtml('px_sector', d.sector_id) + '</div>' +
-            '<div class="form-group"><label>Empresa <span class="form-required-marker">*</span></label><input id="px_empresa" class="form-input" required value="' + esc(d.empresa || '') + '"></div>' +
-            '<div class="form-group"><label>RUC</label><input id="px_ruc" class="form-input" value="' + esc(d.ruc || '') + '"></div>' +
-            '<div class="form-group"><label>Página web</label><input id="px_web" class="form-input" placeholder="https://..." value="' + esc(d.web || '') + '"></div>' +
-            '<div class="form-group"><label>Contacto — nombre</label><input id="px_cn" class="form-input" value="' + esc(d.contacto_nombre || '') + '"></div>' +
-            '<div class="form-group"><label>Contacto — apellido</label><input id="px_ca" class="form-input" value="' + esc(d.contacto_apellido || '') + '"></div>' +
-            '<div class="form-group"><label>Cargo</label><input id="px_cargo" class="form-input" list="dl_cargos" value="' + esc(d.cargo || '') + '">' + cargos + '</div>' +
-            '<div class="form-group"><label>Email corporativo</label><input id="px_email" type="email" class="form-input" value="' + esc(d.email || '') + '"></div>' +
-            '<div class="form-group"><label>Teléfono / extensión</label><input id="px_tel" class="form-input" value="' + esc(d.telefono || '') + '"></div>' +
-            '<div class="form-group"><label>LinkedIn</label><input id="px_li" class="form-input" placeholder="https://linkedin.com/in/..." value="' + esc(d.linkedin || '') + '"></div>' +
-            '<div class="form-group"><label>Fuente</label><select id="px_fuente" class="form-input"><option value="">—</option>' + opt(FUENTES, d.fuente) + '</select></div>' +
-            '<div class="form-group"><label>Pilar</label><select id="px_pilar" class="form-input"><option value="">—</option>' + opt(PILARES, d.pilar) + '</select></div>' +
-            '<div class="form-group"><label>Fase del SOP</label><select id="px_fase" class="form-input">' + faseOpts + '</select></div>' +
-            '<div class="form-group"><label>Fecha de la fase</label><input type="date" id="px_fecha" class="form-input" value="' + esc((d.fecha_fase || '').slice ? (d.fecha_fase || '').slice(0, 10) : '') + '"></div>' +
-            '<div class="form-group"><label>Extensión PBX</label><input id="px_ext" class="form-input" value="' + esc(d.extension_pbx || '') + '"></div>' +
-            '<div class="form-group"><label>Horario preferido</label><input id="px_hora" class="form-input" value="' + esc(d.horario_preferido || '') + '"></div>' +
-          '</div>' +
-          '<div class="form-group" style="margin-top:14px;"><label>Notas</label><textarea id="px_notas" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>' +
+          prosFormFieldsHTML('px_', d) +
           '<button type="submit" class="btn btn-primary" id="px_save">💾 Guardar prospecto</button>' +
         '</form></div>' + intel + '</div>';
-
-      function collectPros() {
-        var sec = sectorById(el('px_sector').value);
-        return {
-          sector_id: el('px_sector').value, sector_nombre: sec ? sec.nombre : '',
-          empresa: el('px_empresa').value.trim(), ruc: el('px_ruc').value.trim(), web: el('px_web').value.trim(),
-          contacto_nombre: el('px_cn').value.trim(), contacto_apellido: el('px_ca').value.trim(), cargo: el('px_cargo').value.trim(),
-          email: el('px_email').value.trim(), telefono: el('px_tel').value.trim(), linkedin: el('px_li').value.trim(),
-          fuente: el('px_fuente').value, pilar: el('px_pilar').value, fase_sop: el('px_fase').value,
-          fecha_fase: el('px_fecha').value || null, extension_pbx: el('px_ext').value.trim(), horario_preferido: el('px_hora').value.trim(),
-          notas: el('px_notas').value.trim()
-        };
-      }
 
       el('px_back').addEventListener('click', function () { PROS.tab = 'gestion'; prosRender(); });
       el('px_sector').addEventListener('change', function () {
         PROS.sectorId = this.value;
-        prosRegistrar(Object.assign(collectPros(), { sector_id: this.value }));  // preserva lo tipeado
+        prosRegistrar(Object.assign(prosFormCollect('px_'), { sector_id: this.value }));  // preserva lo tipeado
       });
       document.querySelectorAll('[data-cargo]').forEach(function (b) {
         b.addEventListener('click', function () { el('px_cargo').value = this.getAttribute('data-cargo'); });
@@ -1844,7 +1909,7 @@
 
       el('prosForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var b = collectPros();
+        var b = prosFormCollect('px_');
         if (!b.empresa) { showAlert('El nombre de la empresa es obligatorio.', 'warning'); return; }
         var btn = el('px_save'); btn.disabled = true; btn.textContent = 'Guardando...';
         API.request('/api/prospectos', { method: 'POST', body: JSON.stringify(b) })
@@ -1904,7 +1969,7 @@
           '<td class="text-gray text-xs">' + fmtRel(p.ultima_gestion) + (p.interacciones ? ' · ' + p.interacciones + ' gest.' : '') + '</td>' +
           '<td style="text-align:right;color:var(--color-gray);"><i class="fa-solid fa-chevron-right"></i></td>' +
         '</tr>';
-      }).join('') || '<tr><td colspan="6" class="text-gray text-center" style="padding:28px 0;">Sin prospectos con estos filtros.</td></tr>';
+      }).join('') || emptyState('Sin prospectos con estos filtros.', { colspan: 6 });
 
       var estadoOpts = '<option value="">Todos los estados</option>' + prosEstados().map(function (e) { return '<option value="' + e.slug + '"' + (f.estado === e.slug ? ' selected' : '') + '>' + esc(e.label) + '</option>'; }).join('');
       var ownerOpts = '<option value="">Todos los responsables</option><option value="__none"' + (f.owner === '__none' ? ' selected' : '') + '>Sin asignar</option>' +
@@ -1949,45 +2014,6 @@
     }
 
     /* ---- Panel Gestionar: pipeline + historial + tarea ---- */
-    // grilla de campos editables de un prospecto (ids con prefijo pg_f_)
-    function prosCamposHTML(p) {
-      var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
-      var sc = sectorById(p.sector_id);
-      var cargos = sc ? '<datalist id="pg_dl_cargos">' + sc.cargosLinkedIn.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('') + '</datalist>' : '';
-      var faseOpts = '<option value="">—</option>' + FASES_SOP.map(function (fx) { return '<option value="' + fx.id + '"' + (String(p.fase_sop) === String(fx.id) ? ' selected' : '') + '>' + esc(fx.nombre) + '</option>'; }).join('');
-      return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">' +
-        '<div class="form-group"><label>Sector</label>' + sectorSelectHtml('pg_f_sector', p.sector_id) + '</div>' +
-        '<div class="form-group"><label>Empresa <span class="form-required-marker">*</span></label><input id="pg_f_empresa" class="form-input" required value="' + esc(p.empresa || '') + '"></div>' +
-        '<div class="form-group"><label>RUC</label><input id="pg_f_ruc" class="form-input" value="' + esc(p.ruc || '') + '"></div>' +
-        '<div class="form-group"><label>Página web</label><input id="pg_f_web" class="form-input" placeholder="https://..." value="' + esc(p.web || '') + '"></div>' +
-        '<div class="form-group"><label>Contacto — nombre</label><input id="pg_f_cn" class="form-input" value="' + esc(p.contacto_nombre || '') + '"></div>' +
-        '<div class="form-group"><label>Contacto — apellido</label><input id="pg_f_ca" class="form-input" value="' + esc(p.contacto_apellido || '') + '"></div>' +
-        '<div class="form-group"><label>Cargo</label><input id="pg_f_cargo" class="form-input" list="pg_dl_cargos" value="' + esc(p.cargo || '') + '">' + cargos + '</div>' +
-        '<div class="form-group"><label>Email corporativo</label><input id="pg_f_email" type="email" class="form-input" value="' + esc(p.email || '') + '"></div>' +
-        '<div class="form-group"><label>Teléfono / extensión</label><input id="pg_f_tel" class="form-input" value="' + esc(p.telefono || '') + '"></div>' +
-        '<div class="form-group"><label>LinkedIn</label><input id="pg_f_li" class="form-input" placeholder="https://linkedin.com/in/..." value="' + esc(p.linkedin || '') + '"></div>' +
-        '<div class="form-group"><label>Fuente</label><select id="pg_f_fuente" class="form-input"><option value="">—</option>' + opt(FUENTES, p.fuente) + '</select></div>' +
-        '<div class="form-group"><label>Pilar</label><select id="pg_f_pilar" class="form-input"><option value="">—</option>' + opt(PILARES, p.pilar) + '</select></div>' +
-        '<div class="form-group"><label>Fase del SOP</label><select id="pg_f_fase" class="form-input">' + faseOpts + '</select></div>' +
-        '<div class="form-group"><label>Fecha de la fase</label><input type="date" id="pg_f_fecha" class="form-input" value="' + esc((p.fecha_fase || '').slice ? (p.fecha_fase || '').slice(0, 10) : '') + '"></div>' +
-        '<div class="form-group"><label>Extensión PBX</label><input id="pg_f_ext" class="form-input" value="' + esc(p.extension_pbx || '') + '"></div>' +
-        '<div class="form-group"><label>Horario preferido</label><input id="pg_f_hora" class="form-input" value="' + esc(p.horario_preferido || '') + '"></div>' +
-      '</div>' +
-      '<div class="form-group" style="margin-top:12px;"><label>Notas</label><textarea id="pg_f_notas" class="form-input" rows="3">' + esc(p.notas || '') + '</textarea></div>';
-    }
-    function prosCamposCollect() {
-      var sec = sectorById(el('pg_f_sector').value);
-      return {
-        sector_id: el('pg_f_sector').value, sector_nombre: sec ? sec.nombre : '',
-        empresa: el('pg_f_empresa').value.trim(), ruc: el('pg_f_ruc').value.trim(), web: el('pg_f_web').value.trim(),
-        contacto_nombre: el('pg_f_cn').value.trim(), contacto_apellido: el('pg_f_ca').value.trim(), cargo: el('pg_f_cargo').value.trim(),
-        email: el('pg_f_email').value.trim(), telefono: el('pg_f_tel').value.trim(), linkedin: el('pg_f_li').value.trim(),
-        fuente: el('pg_f_fuente').value, pilar: el('pg_f_pilar').value, fase_sop: el('pg_f_fase').value,
-        fecha_fase: el('pg_f_fecha').value || null, extension_pbx: el('pg_f_ext').value.trim(), horario_preferido: el('pg_f_hora').value.trim(),
-        notas: el('pg_f_notas').value.trim()
-      };
-    }
-
     function prosGestionar(p, editarDatos) {
       var s = sectorById(p.sector_id);
       var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
@@ -2028,9 +2054,9 @@
             '</div>' +
           '</div>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;max-width:520px;">' +
-            '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado</label>' +
+            '<div><label for="pg_estado" class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado</label>' +
               '<select id="pg_estado" class="form-input">' + estadoSel + '</select></div>' +
-            '<div><label class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
+            '<div><label for="pg_owner" class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
               '<select id="pg_owner" class="form-input">' + ownerSel + '</select></div>' +
           '</div>' +
         '</div>' +
@@ -2045,7 +2071,7 @@
                 '<button class="btn btn-primary btn-small" id="pg_savedatos"><i class="fa-solid fa-floppy-disk"></i> Guardar datos</button></div>'
               : '<button class="btn btn-secondary btn-small" id="pg_editdatos"><i class="fa-solid fa-pen"></i> Modificar</button>') +
           '</div>' +
-          '<div id="pg_datos">' + prosCamposHTML(p) + '</div>' +
+          '<div id="pg_datos">' + prosFormFieldsHTML('pg_f_', p) + '</div>' +
         '</div>' +
 
         '<div class="pros-gest-grid">' +
@@ -2063,7 +2089,7 @@
           '</div>' +
           '<div class="glass-panel" style="padding:20px;">' +
             '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Historial</div>' +
-            '<div id="pg_timeline"><span class="text-gray text-xs">Cargando…</span></div>' +
+            '<div id="pg_timeline">' + loadingHtml() + '</div>' +
           '</div>' +
         '</div>';
 
@@ -2105,8 +2131,8 @@
       } else {
         var onSectorChange = function () {
           // re-dibuja la grilla con el sector nuevo (datalist de cargos) preservando lo tipeado
-          var vals = prosCamposCollect();
-          el('pg_datos').innerHTML = prosCamposHTML(Object.assign({}, p, vals, { sector_id: el('pg_f_sector').value }));
+          var vals = prosFormCollect('pg_f_');
+          el('pg_datos').innerHTML = prosFormFieldsHTML('pg_f_', Object.assign({}, p, vals, { sector_id: el('pg_f_sector').value }));
           bloquearCampos(false);
           el('pg_f_sector').addEventListener('change', onSectorChange);
         };
@@ -2114,7 +2140,7 @@
         el('pg_canceldatos').addEventListener('click', function () { prosGestionar(p, false); });
         el('pg_savedatos').addEventListener('click', function () {
           var sd = this;
-          var b = prosCamposCollect();
+          var b = prosFormCollect('pg_f_');
           if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); return; }
           sd.disabled = true; sd.textContent = 'Guardando...';
           API.request('/api/prospectos/' + p.id, { method: 'PUT', body: JSON.stringify(b) })
@@ -2492,7 +2518,7 @@
         var P = r.prospectos, S = P.seguimiento;
 
         var filtro = r.esAdmin
-          ? '<div class="rz-filter"><label>Gestor</label><select id="rz_gestor" class="form-input">' +
+          ? '<div class="rz-filter"><label for="rz_gestor">Gestor</label><select id="rz_gestor" class="form-input">' +
               '<option value="">Todos</option>' +
               (r.colaboradores || []).map(function (c) { return '<option value="' + c.id + '"' + (String(c.id) === String(CRM_DASH.gestor) ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') +
             '</select></div>'
@@ -2518,7 +2544,7 @@
             '<td style="text-align:center;">' + u.interacciones_7d + '</td>' +
             '<td style="text-align:center;color:' + (u.atrasados ? 'var(--color-error)' : 'inherit') + ';">' + u.atrasados + '</td>' +
             '<td style="text-align:center;color:' + (u.sin_actividad ? 'var(--color-warning)' : 'inherit') + ';">' + u.sin_actividad + '</td></tr>';
-        }).join('') || '<tr><td colspan="5" class="text-gray text-xs">Sin datos.</td></tr>';
+        }).join('') || emptyState('Sin datos.', { colspan: 5 });
 
         el('view').innerHTML =
           (filtro ? '<div class="rz-toolbar">' + filtro + '</div>' : '') +
@@ -2735,7 +2761,7 @@
       var filas = res.dias.slice().reverse().map(function (d) {
         return '<tr><td>' + esc(fmtDiaLargo(d.dia)) + '</td><td>' + esc(d.entrada || '—') + '</td><td>' + esc(d.salida || (d.abierto ? 'en curso' : '—')) +
           '</td><td style="text-align:right;font-weight:600;">' + esc(d.horas || '0m') + '</td></tr>';
-      }).join('') || '<tr><td colspan="4" class="text-gray text-xs">Sin registros en el rango.</td></tr>';
+      }).join('') || emptyState('Sin registros en el rango.', { colspan: 4 });
 
       el('view').innerHTML =
         '<div class="glass-panel" style="padding:26px;max-width:640px;">' +
@@ -2795,7 +2821,7 @@
             '</button>' +
             '<div class="tbq-detail" id="tbq_d_' + i + '" hidden>' + detalle + '</div>' +
           '</div>';
-        }).join('') || '<p class="text-gray">No hay colaboradores.</p>';
+        }).join('') || emptyState('No hay colaboradores.');
 
         el('view').innerHTML =
           '<div class="glass-panel" style="padding:24px;max-width:720px;">' +
@@ -2844,8 +2870,8 @@
               '<div class="form-group"><label>Proyectos con sprint semanal</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">' + checks + '</div>' +
                 '<div class="text-gray text-xs" style="margin-top:6px;">Si no marcás ninguno, se usan "Turingtech" y "Prospectos" por defecto.</div></div>' +
               '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-                '<div class="form-group"><label>La semana empieza el</label><select id="as_dia" class="form-input">' + diaOpts + '</select></div>' +
-                '<div class="form-group"><label>Prefijo del nombre</label><input id="as_prefijo" class="form-input" value="' + esc(cfg.prefijo || 'Sprint semanal') + '"></div>' +
+                '<div class="form-group"><label for="as_dia">La semana empieza el</label><select id="as_dia" class="form-input">' + diaOpts + '</select></div>' +
+                '<div class="form-group"><label for="as_prefijo">Prefijo del nombre</label><input id="as_prefijo" class="form-input" value="' + esc(cfg.prefijo || 'Sprint semanal') + '"></div>' +
               '</div>' +
               '<div style="display:flex;gap:8px;align-items:center;">' +
                 '<button type="submit" class="btn btn-primary" id="as_save">Guardar</button>' +
@@ -3059,14 +3085,14 @@
                   '<div class="tier-desc">' + esc(t.desc) + '</div></button>';
               }).join('') + '</div>' +
               '<div class="text-gray text-xs" style="margin-top:8px;">El equipo ajusta el monto final al aprobar, según el alcance real del proyecto.</div></div>' +
-            '<div class="form-group"><label>Nombre del proyecto / caso de uso <span class="form-required-marker">*</span></label>' +
+            '<div class="form-group"><label for="w_project">Nombre del proyecto / caso de uso <span class="form-required-marker">*</span></label>' +
               '<input type="text" id="w_project" class="form-input" placeholder="Automatización de conciliaciones bancarias" value="' + esc(w.project) + '"></div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-              '<div class="form-group"><label>Prioridad</label><select id="w_prio" class="form-input">' +
+              '<div class="form-group"><label for="w_prio">Prioridad</label><select id="w_prio" class="form-input">' +
                 PRIORIDADES.map(function (p) { return '<option ' + (w.prioridad === p ? 'selected' : '') + '>' + p + '</option>'; }).join('') + '</select></div>' +
-              '<div class="form-group"><label>Inicio estimado</label><input type="date" id="w_inicio" class="form-input" value="' + esc(w.inicio) + '"></div>' +
+              '<div class="form-group"><label for="w_inicio">Inicio estimado</label><input type="date" id="w_inicio" class="form-input" value="' + esc(w.inicio) + '"></div>' +
             '</div>' +
-            '<div class="form-group"><label>Justificación / alcance <span class="form-required-marker">*</span></label>' +
+            '<div class="form-group"><label for="w_just">Justificación / alcance <span class="form-required-marker">*</span></label>' +
               '<textarea id="w_just" class="form-input" rows="4" placeholder="Describe el alcance, los procesos involucrados y el resultado esperado...">' + esc(w.justificacion) + '</textarea></div>' +
             '<div style="display:flex;justify-content:space-between;">' +
               '<button class="btn btn-secondary" id="w_back"><i class="fa-solid fa-arrow-left"></i> Atrás</button>' +
@@ -3200,7 +3226,7 @@
         el('view').innerHTML = '<div class="tabs" style="margin-bottom:16px;">' +
           ['pending', 'approved', 'rejected'].map(function (s) {
             return '<button class="tab ' + (s === status ? 'active' : '') + '" data-s="' + s + '">' + statusLabel[s] + '</button>';
-          }).join('') + '</div><div id="reqList"><p class="text-gray text-center" style="padding:24px 0;">Cargando...</p></div>';
+          }).join('') + '</div><div id="reqList">' + loadingHtml() + '</div>';
         document.querySelectorAll('.tab[data-s]').forEach(function (t) {
           t.addEventListener('click', function () { load(this.getAttribute('data-s')); });
         });
@@ -3282,22 +3308,22 @@
         '<div class="glass-panel" style="padding:28px;max-width:600px;margin-top:14px;">' +
           '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Modificar: ' + esc(u.name) + '</div>' +
           '<form id="euForm"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-            '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input id="eu_name" class="form-input" value="' + esc(u.name) + '" required></div>' +
-            '<div class="form-group"><label>Email <span class="form-required-marker">*</span></label><input id="eu_email" type="email" class="form-input" value="' + esc(u.email) + '" required></div>' +
-            '<div class="form-group"><label>Tipo de cuenta</label><select id="eu_type" class="form-input">' +
+            '<div class="form-group"><label for="eu_name">Nombre <span class="form-required-marker">*</span></label><input id="eu_name" class="form-input" value="' + esc(u.name) + '" required></div>' +
+            '<div class="form-group"><label for="eu_email">Email <span class="form-required-marker">*</span></label><input id="eu_email" type="email" class="form-input" value="' + esc(u.email) + '" required></div>' +
+            '<div class="form-group"><label for="eu_type">Tipo de cuenta</label><select id="eu_type" class="form-input">' +
               '<option value="cliente"' + (u.account_type !== 'colaborador' ? ' selected' : '') + '>Cliente (portal de créditos)</option>' +
               '<option value="colaborador"' + (u.account_type === 'colaborador' ? ' selected' : '') + '>Colaborador TURINGTECH (portal RRHH)</option>' +
             '</select></div>' +
-            '<div class="form-group"><label>Rol</label><select id="eu_role" class="form-input">' +
+            '<div class="form-group"><label for="eu_role">Rol</label><select id="eu_role" class="form-input">' +
               '<option value="user"' + (u.role !== 'admin' ? ' selected' : '') + '>Usuario</option>' +
               '<option value="admin"' + (u.role === 'admin' ? ' selected' : '') + '>Administrador</option>' +
             '</select></div>' +
-            '<div class="form-group"><label>Cargo</label><input id="eu_position" class="form-input" value="' + esc(u.position || '') + '"></div>' +
-            '<div class="form-group"><label>Empresa</label><input id="eu_company" class="form-input" value="' + esc(u.company || '') + '"></div>' +
-            '<div class="form-group"><label>Teléfono</label><input id="eu_phone" class="form-input" value="' + esc(u.phone || '') + '"></div>' +
-            '<div class="form-group"><label>Nueva contraseña</label><input id="eu_pass" type="text" class="form-input" placeholder="vacío = no cambiar" minlength="6"></div>' +
-            '<div class="form-group eu-col"><label>Días de vacaciones (total)</label><input id="eu_vt" type="number" min="0" class="form-input" value="' + (u.vacation_total || 0) + '"></div>' +
-            '<div class="form-group eu-col"><label>Vacaciones gozadas</label><input id="eu_vu" type="number" min="0" class="form-input" value="' + (u.vacation_used || 0) + '"></div>' +
+            '<div class="form-group"><label for="eu_position">Cargo</label><input id="eu_position" class="form-input" value="' + esc(u.position || '') + '"></div>' +
+            '<div class="form-group"><label for="eu_company">Empresa</label><input id="eu_company" class="form-input" value="' + esc(u.company || '') + '"></div>' +
+            '<div class="form-group"><label for="eu_phone">Teléfono</label><input id="eu_phone" class="form-input" value="' + esc(u.phone || '') + '"></div>' +
+            '<div class="form-group"><label for="eu_pass">Nueva contraseña</label><input id="eu_pass" type="text" class="form-input" placeholder="vacío = no cambiar" minlength="6"></div>' +
+            '<div class="form-group eu-col"><label for="eu_vt">Días de vacaciones (total)</label><input id="eu_vt" type="number" min="0" class="form-input" value="' + (u.vacation_total || 0) + '"></div>' +
+            '<div class="form-group eu-col"><label for="eu_vu">Vacaciones gozadas</label><input id="eu_vu" type="number" min="0" class="form-input" value="' + (u.vacation_used || 0) + '"></div>' +
           '</div>' +
           '<p class="text-gray text-xs mt-1">Los ' + (u.account_type === 'colaborador' ? 'Turingcoins' : 'créditos') + ' se ajustan en <strong>Administración → Modificar créditos</strong>.</p>' +
           '<button type="submit" class="btn btn-primary" id="eu_btn">Guardar cambios</button></form>' +
@@ -3356,23 +3382,23 @@
             '</div>' +
             '<form id="nuForm" style="display:none;margin-top:18px;">' +
               '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-                '<div class="form-group"><label>Nombre <span class="form-required-marker">*</span></label><input type="text" id="nu_name" class="form-input" required></div>' +
-                '<div class="form-group"><label>Email <span class="form-required-marker">*</span></label><input type="email" id="nu_email" class="form-input" placeholder="nombre@turingtech.com.ec" required></div>' +
-                '<div class="form-group"><label>Contraseña <span class="form-required-marker">*</span></label><input type="text" id="nu_pass" class="form-input" placeholder="mín. 6 caracteres" required minlength="6"></div>' +
-                '<div class="form-group"><label>Tipo de cuenta <span class="form-required-marker">*</span></label><select id="nu_type" class="form-input">' +
+                '<div class="form-group"><label for="nu_name">Nombre <span class="form-required-marker">*</span></label><input type="text" id="nu_name" class="form-input" required></div>' +
+                '<div class="form-group"><label for="nu_email">Email <span class="form-required-marker">*</span></label><input type="email" id="nu_email" class="form-input" placeholder="nombre@turingtech.com.ec" required></div>' +
+                '<div class="form-group"><label for="nu_pass">Contraseña <span class="form-required-marker">*</span></label><input type="text" id="nu_pass" class="form-input" placeholder="mín. 6 caracteres" required minlength="6"></div>' +
+                '<div class="form-group"><label for="nu_type">Tipo de cuenta <span class="form-required-marker">*</span></label><select id="nu_type" class="form-input">' +
                   '<option value="cliente">Cliente (portal de créditos)</option>' +
                   '<option value="colaborador">Colaborador TURINGTECH (portal RRHH)</option>' +
                 '</select></div>' +
-                '<div class="form-group"><label>Rol <span class="form-required-marker">*</span></label><select id="nu_role" class="form-input">' +
+                '<div class="form-group"><label for="nu_role">Rol <span class="form-required-marker">*</span></label><select id="nu_role" class="form-input">' +
                   '<option value="user">Usuario</option>' +
                   '<option value="admin">Administrador (panel completo)</option>' +
                 '</select></div>' +
-                '<div class="form-group" id="nu_position_g"><label>Cargo <span class="form-required-marker" id="nu_pos_req" style="display:none;">*</span></label><input type="text" id="nu_position" class="form-input" placeholder="Data Engineer, Contadora..."></div>' +
-                '<div class="form-group"><label>Empresa</label><input type="text" id="nu_company" class="form-input" value="TURINGTECH Ecuador"></div>' +
-                '<div class="form-group"><label>Teléfono</label><input type="tel" id="nu_phone" class="form-input"></div>' +
-                '<div class="form-group"><label>Saldo inicial (créditos / Turingcoins)</label><input type="number" id="nu_credits" class="form-input" value="0" min="0"></div>' +
-                '<div class="form-group nu-col" style="display:none;"><label>Días de vacaciones (total)</label><input type="number" id="nu_vt" class="form-input" value="10" min="0"></div>' +
-                '<div class="form-group nu-col" style="display:none;"><label>Vacaciones gozadas</label><input type="number" id="nu_vu" class="form-input" value="0" min="0"></div>' +
+                '<div class="form-group" id="nu_position_g"><label for="nu_position">Cargo <span class="form-required-marker" id="nu_pos_req" style="display:none;">*</span></label><input type="text" id="nu_position" class="form-input" placeholder="Data Engineer, Contadora..."></div>' +
+                '<div class="form-group"><label for="nu_company">Empresa</label><input type="text" id="nu_company" class="form-input" value="TURINGTECH Ecuador"></div>' +
+                '<div class="form-group"><label for="nu_phone">Teléfono</label><input type="tel" id="nu_phone" class="form-input"></div>' +
+                '<div class="form-group"><label for="nu_credits">Saldo inicial (créditos / Turingcoins)</label><input type="number" id="nu_credits" class="form-input" value="0" min="0"></div>' +
+                '<div class="form-group nu-col" style="display:none;"><label for="nu_vt">Días de vacaciones (total)</label><input type="number" id="nu_vt" class="form-input" value="10" min="0"></div>' +
+                '<div class="form-group nu-col" style="display:none;"><label for="nu_vu">Vacaciones gozadas</label><input type="number" id="nu_vu" class="form-input" value="0" min="0"></div>' +
               '</div>' +
               '<button type="submit" class="btn btn-primary" id="nu_btn"><i class="fa-solid fa-check"></i> Crear usuario</button>' +
             '</form>' +
@@ -3430,9 +3456,9 @@
       return loadUsers().then(function (users) {
         var opts = users.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + ' — ' + esc(u.email) + ' (' + (u.credits || 0).toLocaleString() + ')</option>'; }).join('');
         el('view').innerHTML = '<div class="glass-panel" style="padding:28px;max-width:520px;"><form id="mcForm">' +
-          '<div class="form-group"><label>Usuario <span class="form-required-marker">*</span></label><select id="mc_user" class="form-input" required>' + opts + '</select></div>' +
-          '<div class="form-group"><label>Cantidad (positivo o negativo) <span class="form-required-marker">*</span></label><input type="number" id="mc_amount" class="form-input" placeholder="500" required></div>' +
-          '<div class="form-group"><label>Motivo <span class="form-required-marker">*</span></label><input type="text" id="mc_reason" class="form-input" placeholder="Bonificación por proyecto" required></div>' +
+          '<div class="form-group"><label for="mc_user">Usuario <span class="form-required-marker">*</span></label><select id="mc_user" class="form-input" required>' + opts + '</select></div>' +
+          '<div class="form-group"><label for="mc_amount">Cantidad (positivo o negativo) <span class="form-required-marker">*</span></label><input type="number" id="mc_amount" class="form-input" placeholder="500" required></div>' +
+          '<div class="form-group"><label for="mc_reason">Motivo <span class="form-required-marker">*</span></label><input type="text" id="mc_reason" class="form-input" placeholder="Bonificación por proyecto" required></div>' +
           '<button type="submit" class="btn btn-primary btn-block" id="mc_btn">Aplicar</button></form></div>';
         el('mcForm').addEventListener('submit', function (e) {
           e.preventDefault();
@@ -3463,7 +3489,7 @@
           '<div class="glass-panel" style="padding:28px;max-width:520px;margin-bottom:22px;">' +
             '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Email de notificaciones</div>' +
             '<form id="cfgForm">' +
-              '<div class="form-group"><label>Email <span class="form-required-marker">*</span></label>' +
+              '<div class="form-group"><label for="cfg_email">Email <span class="form-required-marker">*</span></label>' +
               '<input type="email" id="cfg_email" class="form-input" value="' + esc(cfg.notification_email || '') + '" required></div>' +
               '<p class="text-gray text-sm mb-2">Las solicitudes de créditos se enviarán a este correo.</p>' +
               '<button type="submit" class="btn btn-primary" id="cfg_btn">Guardar</button>' +
@@ -3472,11 +3498,11 @@
           '<div class="glass-panel" style="padding:28px;max-width:520px;">' +
             '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Cambiar mi contraseña</div>' +
             '<form id="pwForm">' +
-              '<div class="form-group"><label>Contraseña actual <span class="form-required-marker">*</span></label>' +
+              '<div class="form-group"><label for="pw_cur">Contraseña actual <span class="form-required-marker">*</span></label>' +
               '<input type="password" id="pw_cur" class="form-input" required autocomplete="current-password"></div>' +
-              '<div class="form-group"><label>Nueva contraseña <span class="form-required-marker">*</span></label>' +
+              '<div class="form-group"><label for="pw_new">Nueva contraseña <span class="form-required-marker">*</span></label>' +
               '<input type="password" id="pw_new" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
-              '<div class="form-group"><label>Repetir nueva contraseña <span class="form-required-marker">*</span></label>' +
+              '<div class="form-group"><label for="pw_new2">Repetir nueva contraseña <span class="form-required-marker">*</span></label>' +
               '<input type="password" id="pw_new2" class="form-input" required minlength="6" autocomplete="new-password"></div>' +
               '<button type="submit" class="btn btn-primary" id="pw_btn">Actualizar contraseña</button>' +
             '</form>' +
