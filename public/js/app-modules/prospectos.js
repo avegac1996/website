@@ -20,12 +20,13 @@ export var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
 export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '', orden: '' }, sel: null, view: null, from: null, kbq: '', gestionTab: 'actividad', _gestionId: null };
 export var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
 
-// estados y tipos vienen del backend (catálogo editable por admin). Fallback por si aún no cargó meta.
+// estados y tipos vienen del backend (5 estados consolidados). Fallback por si aún no cargó meta.
 export var PROS_ESTADOS_FALLBACK = [
-  { slug: 'nuevo', label: 'Nuevo', color: '#94a3b8' }, { slug: 'contactado', label: 'Contactado', color: '#3b82f6' },
-  { slug: 'en_seguimiento', label: 'En seguimiento', color: '#a78bfa' }, { slug: 'reunion', label: 'Reunión agendada', color: '#f59e0b' },
-  { slug: 'propuesta', label: 'Propuesta enviada', color: '#f97316' }, { slug: 'ganado', label: 'Ganado', color: '#10b981' },
-  { slug: 'perdido', label: 'Perdido', color: '#ef4444' }, { slug: 'no_responde', label: 'No responde', color: '#64748b' }
+  { slug: 'por_prospectar', label: 'Por Prospectar', color: '#94a3b8' },
+  { slug: 'prospectando', label: 'Prospectando', color: '#3b82f6' },
+  { slug: 'propuesta', label: 'Propuesta Enviada', color: '#f97316' },
+  { slug: 'exitoso', label: 'Exitoso', color: '#10b981' },
+  { slug: 'rechazado', label: 'Rechazado', color: '#ef4444' }
 ];
 export var prosEstados = function () { return (PROS.meta.estados && PROS.meta.estados.length) ? PROS.meta.estados : PROS_ESTADOS_FALLBACK; };
 export var prosTipos = function () { return PROS.meta.tipos || [{ slug: 'nota', label: 'Nota', icono: 'fa-solid fa-note-sticky' }]; };

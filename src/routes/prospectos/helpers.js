@@ -1,5 +1,5 @@
 const db = require('../../config/database');
-const { FIELDS } = require('./constants');
+const { FIELDS, PROSPECTO_ESTADO_BOARD_MAPPING } = require('./constants');
 
 const isAdmin = (req) => req.user.role === 'admin';
 
@@ -11,9 +11,9 @@ async function estadosActivos() {
 async function tiposActivos() {
   return (await db.query('SELECT slug, label, icono, orden FROM prospecto_tipos_interaccion WHERE activo = true ORDER BY orden, id')).rows;
 }
-async function boardEstadoDe(slug) {
-  const r = await db.query('SELECT board_estado FROM prospecto_estados WHERE slug = $1', [slug]);
-  return r.rows.length ? r.rows[0].board_estado : 'En curso';
+function boardEstadoDe(prospecto) {
+  // Mapeo determinístico: estado prospecto → estado board (no variable, no async)
+  return PROSPECTO_ESTADO_BOARD_MAPPING[prospecto.estado] || 'En curso';
 }
 
 function parseDataUrl(data) {

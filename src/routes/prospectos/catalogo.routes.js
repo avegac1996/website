@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../../config/database');
 const { adminMiddleware } = require('../../middleware/auth');
-const { BOARD_ESTADOS, KANBAN_COLS } = require('./constants');
+const { BOARD_ESTADOS, KANBAN_COLS, PROSPECTO_ESTADOS_LIST } = require('./constants');
 const { slugify } = require('./helpers');
 
 const router = express.Router();
@@ -23,43 +23,30 @@ router.get('/catalogo', async (req, res) => {
 function limpiarOrden(v) { return Number.isFinite(Number(v)) ? Number(v) : 0; }
 
 // ---- estados del pipeline ----
+// POST /catalogo/estados — ELIMINADO (estados consolidados, no se pueden crear nuevos)
+// Los 5 estados son fijos y se definen en constants.js
 router.post('/catalogo/estados', adminMiddleware, async (req, res) => {
-  try {
-    const label = String(req.body.label || '').trim();
-    if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
-    let slug = slugify(req.body.slug || label);
-    if (!slug) return res.status(400).json({ error: 'Nombre no válido' });
-    if ((await db.query('SELECT 1 FROM prospecto_estados WHERE slug = $1', [slug])).rows.length) {
-      slug = (slug + '_' + Date.now().toString(36).slice(-4)).slice(0, 30);
-    }
-    const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
-    const board_estado = BOARD_ESTADOS.includes(req.body.board_estado) ? req.body.board_estado : 'En curso';
-    const kanban = KANBAN_COLS.includes(req.body.kanban) ? req.body.kanban : 'prospectando';
-    const orden = Number(req.body.orden) || (await db.query('SELECT COALESCE(MAX(orden),0)+1 n FROM prospecto_estados')).rows[0].n;
-    const row = (await db.query(
-      'INSERT INTO prospecto_estados (slug,label,color,board_estado,kanban,orden) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [slug, label, color, board_estado, kanban, orden]
-    )).rows[0];
-    res.status(201).json({ estado: row });
-  } catch (err) {
-    console.error('Error creando estado:', err.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
+  res.status(403).json({ error: 'Los estados son consolidados y no se pueden crear nuevos. Usa PUT para editar existentes.' });
 });
 
 router.put('/catalogo/estados/:eid', adminMiddleware, async (req, res) => {
   try {
+    // Validar que el estado exista y sea uno de los 5 consolidados
+    const cur = (await db.query('SELECT slug FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
+    if (!cur) return res.status(404).json({ error: 'Estado no encontrado' });
+    const estaConsolidado = PROSPECTO_ESTADOS_LIST.some(e => e.slug === cur.slug);
+    if (!estaConsolidado) return res.status(403).json({ error: 'Solo se pueden editar los 5 estados consolidados' });
+
+    // Solo permitir cambiar: label, color, orden, activo
+    // board_estado y kanban son determinísticos y no se pueden cambiar
     const label = String(req.body.label || '').trim();
     if (!label) return res.status(400).json({ error: 'El nombre es obligatorio' });
     const color = /^#[0-9a-fA-F]{6}$/.test(req.body.color) ? req.body.color : '#94a3b8';
-    const board_estado = BOARD_ESTADOS.includes(req.body.board_estado) ? req.body.board_estado : 'En curso';
-    const cur = (await db.query('SELECT kanban FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
-    const kanban = KANBAN_COLS.includes(req.body.kanban) ? req.body.kanban : (cur ? cur.kanban : 'prospectando');
+
     const row = (await db.query(
-      'UPDATE prospecto_estados SET label=$1,color=$2,board_estado=$3,kanban=$4,activo=$5,orden=$6 WHERE id=$7 RETURNING *',
-      [label, color, board_estado, kanban, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.eid]
+      'UPDATE prospecto_estados SET label=$1,color=$2,activo=$3,orden=$4 WHERE id=$5 RETURNING *',
+      [label, color, req.body.activo !== false, limpiarOrden(req.body.orden), req.params.eid]
     )).rows[0];
-    if (!row) return res.status(404).json({ error: 'Estado no encontrado' });
     res.json({ estado: row });
   } catch (err) {
     console.error('Error actualizando estado:', err.message);
@@ -71,6 +58,12 @@ router.delete('/catalogo/estados/:eid', adminMiddleware, async (req, res) => {
   try {
     const e = (await db.query('SELECT slug FROM prospecto_estados WHERE id = $1', [req.params.eid])).rows[0];
     if (!e) return res.status(404).json({ error: 'Estado no encontrado' });
+
+    // Prohibir eliminar estados consolidados
+    const estaConsolidado = PROSPECTO_ESTADOS_LIST.some(x => x.slug === e.slug);
+    if (estaConsolidado) return res.status(403).json({ error: 'No se pueden eliminar estados consolidados. Usa PUT para desactivar si es necesario.' });
+
+    // Para estados secundarios (si existen), verificar si hay prospectos
     if ((await db.query('SELECT 1 FROM prospectos WHERE estado = $1 LIMIT 1', [e.slug])).rows.length) {
       return res.status(400).json({ error: 'Hay prospectos con este estado; desactívalo en vez de borrarlo.' });
     }

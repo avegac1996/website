@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../../config/database');
-const { INTER_RESULTADOS, ACT_TIPOS } = require('./constants');
-const { isAdmin, estadosActivos, tiposActivos, clean } = require('./helpers');
+const { INTER_RESULTADOS, ACT_TIPOS, PROSPECTO_ESTADOS_LIST } = require('./constants');
+const { isAdmin, tiposActivos, boardEstadoDe, clean } = require('./helpers');
 
 const router = express.Router();
 
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
       prospectos: result.rows,
       total: result.rows.length,
       meta: {
-        estados: await estadosActivos(),
+        estados: PROSPECTO_ESTADOS_LIST,
         tipos: await tiposActivos(),
         resultados: INTER_RESULTADOS,
         actividadTipos: ACT_TIPOS,
@@ -54,16 +54,22 @@ router.get('/', async (req, res) => {
 // PATCH /api/prospectos/:id/estado
 router.patch('/:id/estado', async (req, res) => {
   try {
-    const e = (await db.query('SELECT slug, board_estado FROM prospecto_estados WHERE slug = $1 AND activo = true', [req.body.estado])).rows[0];
-    if (!e) return res.status(400).json({ error: 'Estado no válido' });
-    const cur = (await db.query('SELECT id, task_id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
+    // Validar que el estado sea uno de los 5 consolidados
+    const estadoValido = PROSPECTO_ESTADOS_LIST.find(e => e.slug === req.body.estado);
+    if (!estadoValido) return res.status(400).json({ error: 'Estado no válido' });
+
+    const cur = (await db.query('SELECT id, task_id, estado FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
     if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
 
-    await db.query('UPDATE prospectos SET estado = $1 WHERE id = $2', [e.slug, req.params.id]);
+    await db.query('UPDATE prospectos SET estado = $1 WHERE id = $2', [req.body.estado, req.params.id]);
+
+    // Sincronizar con tarea si existe (usando mapeo determinístico)
     if (cur.task_id) {
-      await db.query('UPDATE board_tasks SET estado = $1, updated_at = NOW() WHERE id = $2', [e.board_estado, cur.task_id]);
+      const prospecto = { estado: req.body.estado };
+      const taskEstado = boardEstadoDe(prospecto);
+      await db.query('UPDATE board_tasks SET estado = $1, updated_at = NOW() WHERE id = $2', [taskEstado, cur.task_id]);
     }
-    res.json({ id: Number(req.params.id), estado: e.slug });
+    res.json({ id: Number(req.params.id), estado: req.body.estado });
   } catch (err) {
     console.error('Error cambiando estado de prospecto:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
