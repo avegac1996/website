@@ -7,8 +7,8 @@ const authRoutes = require('./routes/auth.routes');
 const creditRoutes = require('./routes/credit.routes');
 const adminRoutes = require('./routes/admin.routes');
 const hrRoutes = require('./routes/hr.routes');
-const boardRoutes = require('./routes/board.routes');
-const prospectosRoutes = require('./routes/prospectos.routes');
+const boardRoutes = require('./routes/board');
+const prospectosRoutes = require('./routes/prospectos');
 const humanizerRoutes = require('./routes/humanizer.routes');
 const timbradoRoutes = require('./routes/timbrado.routes');
 
