@@ -158,6 +158,33 @@
     var el = function (id) { return document.getElementById(id); };
     var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    // Valida que "color" sea un hex de 6 dígitos (#rrggbb). Si no lo es (undefined,
+    // formato corto #fff, nombre de color CSS, etc.) devuelve un gris neutro de
+    // respaldo en vez de concatenar la opacidad sobre un valor inválido.
+    var hexValido = function (color, fallback) {
+      fallback = fallback || '#94a3b8';
+      return (typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color)) ? color : fallback;
+    };
+    // Genera el HTML de un chip de estado/etiqueta, unificando los distintos
+    // sistemas de badge del CRM. label se escapa acá adentro.
+    // opts.color: hex dinámico (catálogo de estados de prospectos), tiene prioridad sobre opts.variante.
+    // opts.variante: paleta fija 'success'|'warning'|'error'|'info'|'accent'|'secondary'|'gray'.
+    // opts.solido: true = fondo lleno + texto blanco (equivalente al .badge de antes).
+    // opts.clase: clases extra (ej. 'chip-sm chip-upper').
+    // opts.style: estilos inline extra a preservar de call-sites puntuales.
+    function chipEstado(label, opts) {
+      opts = opts || {};
+      var cls = 'chip' + (opts.solido ? ' chip-solido' : '') + (opts.clase ? ' ' + opts.clase : '');
+      var style = '';
+      if (opts.color) {
+        var c = hexValido(opts.color);
+        style = 'background:' + c + (opts.solido ? '' : '22') + ';color:' + (opts.solido ? '#fff' : c) + ';';
+      } else if (opts.variante) {
+        cls += ' chip-' + opts.variante;
+      }
+      if (opts.style) style += opts.style;
+      return '<span class="' + cls + '"' + (style ? ' style="' + style + '"' : '') + '">' + esc(label) + '</span>';
+    }
     var initials = function (name) {
       var p = String(name || '').trim().split(/\s+/).filter(Boolean);
       var s = ((p[0] || '')[0] || '') + ((p[1] || '')[0] || '');
@@ -194,6 +221,7 @@
     var fmtDateTime = function (d) { return d ? new Date(d).toLocaleString('es-EC') : '—'; };
     var isTuringtech = function (u) { return u.role === 'admin' || /@turingtech\.com\.ec\s*$/i.test(u.email || ''); };
     var statusLabel = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' };
+    var STATUS_VARIANTE = { pending: 'warning', approved: 'success', rejected: 'error' };
 
     /* ---------- Shell / navegación ---------- */
     function buildSidebar() {
@@ -259,6 +287,10 @@
         if (location.hash !== '#/inicio') { location.hash = '#/inicio'; return; }
       }
       setActive(routeId);
+      // limpiamos alertas de la vista anterior: no tiene sentido que un mensaje
+      // de la pantalla previa quede flotando sobre la vista nueva.
+      var alertContainer = el('alert-container');
+      if (alertContainer) alertContainer.innerHTML = '';
       el('breadcrumb').innerHTML = 'TURINGTECH <span class="sep">/</span> ' + esc(meta.section) +
         ' <span class="sep">/</span> <span class="current">' + esc(meta.item.label) + '</span>';
       el('pageTitle').textContent = meta.item.label;
@@ -326,13 +358,13 @@
           var monto, estado;
           if (a.req) {
             monto = '<span class="text-gray">' + (a.amount || 0).toLocaleString() + '</span>';
-            estado = '<span class="status-pill ' + a.req + '">' + (statusLabel[a.req] || a.req) + '</span>';
+            estado = chipEstado(statusLabel[a.req] || a.req, { variante: STATUS_VARIANTE[a.req] || 'gray' });
           } else if (a.amount < 0) {
             monto = '<span style="color:var(--color-error);font-weight:700;">&minus;' + Math.abs(a.amount).toLocaleString() + '</span>';
-            estado = '<span class="status-pill rejected">Uso</span>';
+            estado = chipEstado('Uso', { variante: 'error' });
           } else {
             monto = '<span style="color:var(--color-success);font-weight:700;">+' + a.amount.toLocaleString() + '</span>';
-            estado = '<span class="status-pill approved">Ingreso</span>';
+            estado = chipEstado('Ingreso', { variante: 'success' });
           }
           return '<tr><td>' + esc(a.label) + '</td><td>' + monto + '</td><td>' + estado + '</td><td>' + fmtDate(a.date) + '</td></tr>';
         }).join('') || '<tr><td colspan="4" class="text-gray text-center" style="padding:24px 0;">No se encontraron registros.</td></tr>';
@@ -544,7 +576,7 @@
         var rows = reqs.map(function (x) {
           var rango = x.start_date ? fmtDate(x.start_date) + (x.end_date ? ' → ' + fmtDate(x.end_date) : '') : '—';
           return '<tr><td>' + esc(hrLabel(x.type)) + '</td><td>' + esc(x.details || '—') + '</td><td>' + rango +
-            '</td><td><span class="status-pill ' + x.status + '">' + (statusLabel[x.status] || x.status) + '</span></td><td>' +
+            '</td><td>' + chipEstado(statusLabel[x.status] || x.status, { variante: STATUS_VARIANTE[x.status] || 'gray' }) + '</td><td>' +
             fmtDate(x.created_at) + '</td><td>' + esc(x.admin_notes || '—') + '</td></tr>';
         }).join('') || '<tr><td colspan="6" class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</td></tr>';
 
@@ -655,6 +687,7 @@
     /* ===== Seguimiento de proyectos: Cronograma (Gantt) + Backlog + Sprint (Scrum) ===== */
     var BOARD_ESTADOS = ['Tareas por hacer', 'En curso', 'Client Review', 'Control de calidad', 'Finalizada', 'Bloqueado'];
     var ESTADO_SLUG = { 'Tareas por hacer': 'todo', 'En curso': 'prog', 'Client Review': 'review', 'Control de calidad': 'qa', 'Finalizada': 'done', 'Bloqueado': 'blocked' };
+    var SPRINT_ESTADO_VARIANTE = { activo: 'success', planificado: 'info', cerrado: 'gray' };
     var ESTADO_FINAL = 'Finalizada';
     var FIBO = [1, 2, 3, 5, 8, 13, 21];
     var PRIO_META = {
@@ -1121,7 +1154,7 @@
       var chips = sprints.map(function (s) {
         var n = boardState.tasks.filter(function (t) { return String(t.sprint_id) === String(s.id); }).length;
         return '<div class="bl-sprint dnd-sprint" data-sprint="' + s.id + '">' +
-          '<div><strong>' + esc(s.nombre) + '</strong>' + (s.estado === 'activo' ? ' <span class="spr-badge activo">activo</span>' : '') + '</div>' +
+          '<div><strong>' + esc(s.nombre) + '</strong>' + (s.estado === 'activo' ? ' ' + chipEstado('activo', { variante: 'success', clase: 'chip-sm chip-upper' }) : '') + '</div>' +
           '<span class="text-gray text-xs">' + n + ' tarea' + (n === 1 ? '' : 's') + ' · soltá una acá</span>' +
         '</div>';
       }).join('') || '<p class="text-gray text-xs">Sin sprints. Creá uno en la pestaña <strong>Sprint</strong>.</p>';
@@ -1228,7 +1261,7 @@
       var header = '<div class="spr-head glass-panel">' +
         '<div class="spr-head-top">' +
           '<select id="spr_sel" class="form-input" style="width:auto;min-width:170px;padding:7px 10px;font-size:13px;">' + selOpts + '</select>' +
-          '<span class="spr-badge ' + sprint.estado + '">' + sprint.estado + '</span>' +
+          chipEstado(sprint.estado, { variante: SPRINT_ESTADO_VARIANTE[sprint.estado] || 'gray', clase: 'chip-sm chip-upper' }) +
           '<button class="btn btn-secondary btn-small" id="spr_new"><i class="fa-solid fa-plus"></i> Sprint</button>' +
           '<div style="flex:1;"></div>' + acciones +
         '</div>' +
@@ -1648,7 +1681,7 @@
     }
     function prosEstadoChip(slug) {
       var e = prosEstadoDe(slug);
-      return '<span class="pipe-badge" style="background:' + e.color + '22;color:' + e.color + ';">' + esc(e.label) + '</span>';
+      return chipEstado(e.label, { color: e.color, clase: 'chip-sm' });
     }
 
     function personalizarScript(s, vend, cont, emp) {
@@ -1693,7 +1726,7 @@
         '<label class="text-gray text-sm" style="display:block;margin-bottom:6px;">Sector objetivo</label>' +
         sectorSelectHtml('fx_sector', PROS.sectorId) + '</div>';
       if (s) {
-        var tags = function (arr) { return '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + arr.map(function (x) { return '<span class="badge badge-secondary" style="font-weight:500;">' + esc(x) + '</span>'; }).join('') + '</div>'; };
+        var tags = function (arr) { return '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + arr.map(function (x) { return chipEstado(x, { variante: 'secondary', solido: true, style: 'font-weight:500;' }); }).join('') + '</div>'; };
         var card = function (title, inner) { return '<div class="glass-panel" style="padding:18px;"><div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">' + title + '</div>' + inner + '</div>'; };
         var scriptPers = personalizarScript(s.script, PROS.sc.vend, PROS.sc.cont, PROS.sc.emp);
         html +=
@@ -1827,7 +1860,7 @@
         return '<div class="glass-panel" style="padding:16px;"><div style="color:var(--color-accent);font-weight:700;font-size:13px;">' + esc(f.nombre) + '</div>' +
           '<p class="text-sm text-gray" style="margin-top:6px;">' + esc(f.desc) + '</p></div>';
       }).join('');
-      var patrones = PATRONES_EMAIL.map(function (p) { return '<span class="badge badge-secondary" style="font-family:monospace;font-weight:500;">' + esc(p) + '</span>'; }).join(' ');
+      var patrones = PATRONES_EMAIL.map(function (p) { return chipEstado(p, { variante: 'secondary', solido: true, style: 'font-family:monospace;font-weight:500;' }); }).join(' ');
       var ejemplos = EJEMPLOS_EMAIL.map(function (e) { return '<tr><td>' + esc(e.empresa) + '</td><td style="font-family:monospace;">' + esc(e.patron) + '</td></tr>'; }).join('');
       el('prosBody').innerHTML =
         '<h2 style="color:var(--color-white);font-size:18px;font-weight:700;margin-bottom:6px;">SOP de Inteligencia e Investigación de Contactos</h2>' +
@@ -1888,7 +1921,7 @@
           '<button class="btn btn-secondary btn-small" id="pr_export"><i class="fa-solid fa-download"></i> .txt</button>' +
           '<button class="btn btn-primary btn-small" id="pr_new"><i class="fa-solid fa-plus"></i> Nuevo prospecto</button>' +
         '</div>' +
-        '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table pros-table">' +
+        '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table table-pipeline">' +
           '<thead><tr><th>Empresa</th><th>Contacto</th><th>Estado</th><th>Responsable</th><th>Última gestión</th><th></th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table></div></div>' +
         '<div class="text-gray text-xs" style="margin-top:8px;">' + list.length + ' de ' + PROS.list.length + ' prospectos · clic en una fila para gestionar</div>';
@@ -2507,7 +2540,7 @@
           '</div>' +
           '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
             '<div class="section-heading">Por gestor</div>' +
-            '<div class="table-container"><table class="tb-table"><thead><tr><th>Gestor</th><th style="text-align:center;">Prospectos</th><th style="text-align:center;">Interac. 7d</th><th style="text-align:center;">Atrasados</th><th style="text-align:center;">Sin actividad</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
+            '<div class="table-container"><table class="table table-compact"><thead><tr><th>Gestor</th><th style="text-align:center;">Prospectos</th><th style="text-align:center;">Interac. 7d</th><th style="text-align:center;">Atrasados</th><th style="text-align:center;">Sin actividad</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
           '</div>';
 
         if (el('rz_gestor')) el('rz_gestor').addEventListener('change', function () { CRM_DASH.gestor = this.value; viewResumen(); });
@@ -2555,13 +2588,13 @@
         el('view').innerHTML =
           '<div class="rz-grid">' +
             '<div class="glass-panel rz-panel"><div class="section-heading">Por proyecto</div>' +
-              '<div class="table-container"><table class="tb-table"><thead><tr><th>Proyecto</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Finalizadas</th></tr></thead><tbody>' + proyRows + '</tbody></table></div></div>' +
+              '<div class="table-container"><table class="table table-compact"><thead><tr><th>Proyecto</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Finalizadas</th></tr></thead><tbody>' + proyRows + '</tbody></table></div></div>' +
             '<div class="glass-panel rz-panel"><div class="section-heading">Trabajó esta semana <span class="text-gray text-xs">(desde ' + esc(fmtDate(r.semana_desde)) + ')</span></div>' +
               '<div class="rz-attlist">' + (equipo || '<p class="text-gray text-xs">Sin registros.</p>') + '</div></div>' +
           '</div>' +
           '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
             '<div class="section-heading">Tareas por responsable</div>' +
-            '<div class="table-container"><table class="tb-table"><thead><tr><th>Responsable</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">En curso</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Fin. 7d</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
+            '<div class="table-container"><table class="table table-compact"><thead><tr><th>Responsable</th><th style="text-align:center;">Abiertas</th><th style="text-align:center;">En curso</th><th style="text-align:center;">Atrasadas</th><th style="text-align:center;">Fin. 7d</th></tr></thead><tbody>' + respRows + '</tbody></table></div>' +
           '</div>' +
           '<div class="glass-panel rz-panel" style="margin-top:16px;">' +
             '<div class="section-heading">Tareas atrasadas <span class="text-gray text-xs">(' + r.tareas_atrasadas.length + ')</span></div>' +
@@ -2601,12 +2634,12 @@
       var colHtml = cols.map(function (c) {
         var cards = (byCol[c.id] || []).map(function (p) {
           var e = estadoDe(p.estado);
-          return '<div class="kb-card' + ((p.act_pendientes || 0) === 0 || (p.act_atrasadas || 0) > 0 ? ' alert' : '') + '" draggable="true" data-id="' + p.id + '">' +
+          return '<div class="kb-card' + ((p.act_pendientes || 0) === 0 || (p.act_atrasadas || 0) > 0 ? ' vencido' : '') + '" draggable="true" data-id="' + p.id + '">' +
             '<div class="kb-card-top"><strong>' + esc(p.empresa) + '</strong>' +
               (p.task_id ? '<span class="kb-tag">tarea</span>' : '') + '</div>' +
             '<div class="text-gray text-xs">' + esc(p.sector_nombre || 'Sin sector') + (p.owner_nombre ? ' · ' + esc(p.owner_nombre) : '') + '</div>' +
             '<div class="kb-card-foot">' +
-              '<span class="kb-estado" style="background:' + e.color + '22;color:' + e.color + ';">' + esc(e.label) + '</span>' +
+              chipEstado(e.label, { color: e.color, clase: 'chip-sm' }) +
               prosActChip(p) +
             '</div>' +
           '</div>';
@@ -2715,8 +2748,8 @@
         '</div>' +
         '<div class="glass-panel" style="padding:22px;max-width:640px;margin-top:16px;">' +
           '<div class="section-heading" style="text-align:left;margin:0 0 12px;">Últimos días</div>' +
-          '<table class="tb-table"><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th style="text-align:right;">Horas</th></tr></thead>' +
-          '<tbody>' + filas + '</tbody></table>' +
+          '<div class="table-container"><table class="table table-compact"><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th style="text-align:right;">Horas</th></tr></thead>' +
+          '<tbody>' + filas + '</tbody></table></div>' +
           '<div class="tb-total">Total del rango: <strong>' + esc(res.total_horas) + '</strong> · ' + res.dias_con_marca + ' día(s)</div>' +
         '</div>';
 
@@ -3117,7 +3150,7 @@
       return loadDashboard(true).then(function (d) {
         var rows = (d.requests || []).map(function (r) {
           return '<tr><td>' + esc(r.project_description) + '</td><td>' + (r.requested_credits || 0).toLocaleString() +
-            '</td><td><span class="status-pill ' + r.status + '">' + (statusLabel[r.status] || r.status) + '</span></td><td>' +
+            '</td><td>' + chipEstado(statusLabel[r.status] || r.status, { variante: STATUS_VARIANTE[r.status] || 'gray' }) + '</td><td>' +
             fmtDate(r.created_at) + '</td><td>' + esc(r.admin_notes || '—') + '</td></tr>';
         }).join('') || '<tr><td colspan="5" class="text-gray text-center" style="padding:28px 0;">No se encontraron registros.</td></tr>';
         el('view').innerHTML = '<div class="glass-panel" style="padding:24px;"><div class="table-container"><table class="table">' +
@@ -3206,9 +3239,9 @@
 
     function userCard(u) {
       var inactive = u.active === false;
-      var badge = u.role === 'admin' ? '<span class="badge badge-accent" style="font-size:10px;margin-left:6px;">ADMIN</span>' : '';
-      var offBadge = inactive ? '<span class="badge badge-error" style="font-size:10px;margin-left:6px;">DESACTIVADO</span>' : '';
-      var pend = Number(u.pending_requests) > 0 ? '<span class="badge badge-info" style="font-size:10px;margin-left:6px;">' + u.pending_requests + ' pend.</span>' : '';
+      var badge = u.role === 'admin' ? chipEstado('ADMIN', { variante: 'accent', solido: true, style: 'font-size:10px;margin-left:6px;' }) : '';
+      var offBadge = inactive ? chipEstado('DESACTIVADO', { variante: 'error', solido: true, style: 'font-size:10px;margin-left:6px;' }) : '';
+      var pend = Number(u.pending_requests) > 0 ? chipEstado(u.pending_requests + ' pend.', { variante: 'info', solido: true, style: 'font-size:10px;margin-left:6px;' }) : '';
       var toggleCls = inactive ? 'btn-success' : 'btn-error';
       var toggleTxt = inactive ? 'Activar' : 'Desactivar';
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;' + (inactive ? 'opacity:0.6;' : '') + '">' +
@@ -3310,7 +3343,7 @@
           return '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
             '<h2 style="color:var(--color-white);font-size:18px;font-weight:700;"><i class="fa-solid ' + icon + '" style="color:var(--color-accent);margin-right:8px;"></i>' + title + '</h2>' +
-            '<span class="badge badge-secondary">' + arr.length + '</span></div>' +
+            chipEstado(String(arr.length), { variante: 'secondary', solido: true }) + '</div>' +
             '<div style="display:flex;flex-direction:column;gap:10px;">' +
             (arr.map(userCard).join('') || '<p class="text-gray text-center" style="padding:24px 0;">Sin usuarios.</p>') + '</div></div>';
         };

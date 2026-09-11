@@ -4,6 +4,7 @@ node_modules/
 # Environment
 .env
 BITACORA-DEPLOY.md
+USUARIOS-DUMMY.md
 
 # Secrets / llaves SSH (NUNCA subir a git)
 .secrets/

@@ -49,7 +49,7 @@ El CRM funciona pero acumuló deuda de UX por crecer "por acreción": cada featu
 
 ## Fase 2 — Unificar componentes duplicados
 
-- [ ] **Unificar los 5 sistemas de badge/estado en uno solo parametrizable:**
+- [x] **Unificar los 5 sistemas de badge/estado en uno solo parametrizable:**
   - `.badge` + `.badge-success/warning/error/info/accent/secondary` (`app.css:495-509`) — el más "genérico", candidato a ser la base.
   - `.spr-badge.activo/.planificado/.cerrado` (`app.css:1647-1654`).
   - `.est-todo/.est-prog/.est-review/.est-qa/.est-done/.est-blocked` (`app.css:1778-1783`, vía variable local `--e`).
@@ -58,14 +58,22 @@ El CRM funciona pero acumuló deuda de UX por crecer "por acreción": cada featu
   - `.kb-estado` (`app.html:2609`, mismo hack `+'22'`).
   - Al unificar, reemplazar el hack de opacidad por concatenación de string (`color + '22'`) por una función helper que valide que `color` sea un hex de 6 dígitos antes de concatenar (hoy rompe silenciosamente si el backend algún día manda `rgb()` o un nombre CSS).
 
-- [ ] **Consolidar las ~11 clases de card independientes** (`.card`, `.glass-card`, `.auth-card`, `.welcome-card`, `.choice-card`, `.pkg-card`, `.tier-card`, `.credential-card`, `.bt-card`, `.file-card`, `.kb-card` — cada una en `app.css` redefine border/border-radius/background/padding por su cuenta) en `.card` + modificadores.
+  > Hecho (10-sep-2026). Se creó la clase CSS `.chip` (+ variantes `.chip-solido`/`.chip-success/warning/error/info/gray`/`.chip-sm`/`.chip-upper`) y la función `chipEstado(label, opts)` en `app.html` (junto a `esc()`), más el helper de validación `hexValido(color, fallback)` que exige `#rrggbb` de 6 dígitos y cae a `#94a3b8` si no matchea. Se migraron los ~15 call-sites de `.badge`, `.spr-badge`, `.status-pill`, `.pipe-badge` y `.kb-estado` a `chipEstado(...)`, y se borró el CSS viejo de los 4 primeros más la línea de `.kb-estado` (sin tocar `.kb-card-top strong`/`.kb-card .text-xs`, que comparten bloque de comentario pero no son parte del sistema de badge). **`.est-*`/`--e` del Gantt se dejó fuera a propósito**: no es un chip de texto sino una custom property que alimenta `color-mix()` en una barra de gráfico y en un `<select>` real — forzarlo a `<span class="chip">` habría roto ese mecanismo. Cambios de apariencia menores y aceptados: `.badge` viejo era rectángulo redondeado (`--radius-lg`), el nuevo `.chip-solido` es píldora completa (`--radius-pill`); `.spr-badge.planificado` usaba un hex suelto `#7fb0e8` para el texto, ahora usa `var(--color-info)`. Verificado con `npm start` (Postgres vía Docker) sin errores de consola en Usuarios (chip ADMIN), tablero Kanban de prospectos y dashboards — ver nota de verificación abajo.
 
-- [ ] **Unificar los 3 sistemas de tabla**: `.table` genérico (`app.css:514-543`), `.tb-table` (pensada para Timbrado pero reusada también en dashboard de prospectos, `app.html:2510`; CSS en `app.css:2204-2214`), y `.pros-table` (`app.css:1944-1945`, extiende `.table` parcialmente). Unificar padding/bordes/hover.
+- [x] **Consolidar las ~11 clases de card independientes** (`.card`, `.glass-card`, `.auth-card`, `.welcome-card`, `.choice-card`, `.pkg-card`, `.tier-card`, `.credential-card`, `.bt-card`, `.file-card`, `.kb-card` — cada una en `app.css` redefine border/border-radius/background/padding por su cuenta) en `.card` + modificadores.
 
-- [ ] **Decidir el destino del sistema de modal.** El CSS (`.modal-overlay/.modal/.modal-header/.modal-body/.modal-footer`, `app.css:639-712`) está completo y bien hecho pero **no se usa en ningún `.html` del proyecto**. Recomendado: implementarlo de verdad para:
+  > Hecho (10-sep-2026), de forma conservadora. Se eliminó el CSS 100% muerto (0 usos en cualquier `.html`): `.glass-card`, `.card`/`.card-header`/`.card-header h3`/`.card-header i`, y `.pkg-row`/`.pkg-card` (este último no estaba en el diagnóstico original, detectado en esta sesión — ya reemplazado por `.tier-card` sin borrar el CSS viejo). Se fusionó `.auth-card` sobre `.glass-panel` (que ya era la base real del patrón "vidrio", 71 usos): `.auth-card` quedó reducida a solo `border-radius/padding/max-width/width/box-shadow`, y los 3 call-sites (`login.html`, `register.html`, `verify-email.html`) ahora combinan `class="glass-panel auth-card"`. **No se fusionaron** `.choice-card`/`.tier-card` (estructura interna distinta, mismo wizard con roles visuales distintos) ni `.bt-card`/`.kb-card` (mismo concepto de card arrastrable pero con diferencias reales de diseño — fondo translúcido+border-left+min-height vs fondo sólido sin ninguno; ambas comparten la clase `.dnd-card` que engancha el drag&drop, no tocar) ni `.credential-card`/`.file-card` (diseños/estructuras únicas). Verificado visualmente: login/register/verify-email idénticos antes/después.
+
+- [x] **Unificar los 3 sistemas de tabla**: `.table` genérico (`app.css:514-543`), `.tb-table` (pensada para Timbrado pero reusada también en dashboard de prospectos, `app.html:2510`; CSS en `app.css:2204-2214`), y `.pros-table` (`app.css:1944-1945`, extiende `.table` parcialmente). Unificar padding/bordes/hover.
+
+  > Hecho (10-sep-2026). Se consolidó todo en `.table` + 2 modificadores nuevos: `.table-compact` (reemplaza `.tb-table` — mismo padding/font-size compacto) y `.table-pipeline` (reemplaza `.pros-table` — hover naranja + vertical-align middle). Se actualizaron los 5 call-sites (`app.html:1891, 2510, 2558, 2564, 2718`) y se envolvió en `<div class="table-container">` la tabla de Timbrado (línea 2718), que era la única de las 4 que no lo estaba. **Cambio de apariencia intencional**: las 4 tablas que usaban `.tb-table` (Timbrado + dashboard de prospectos) ahora tienen el header con gradiente naranja y el hover gris de `.table`, que antes no tenían — verificado en vivo con `npm start`, se ve consistente con el resto del sistema, no se ajustó nada adicional.
+
+- [x] **Decidir el destino del sistema de modal.** El CSS (`.modal-overlay/.modal/.modal-header/.modal-body/.modal-footer`, `app.css:639-712`) está completo y bien hecho pero **no se usa en ningún `.html` del proyecto**. Recomendado: implementarlo de verdad para:
   - Ediciones rápidas que hoy hacen swap de página completa (ej. `prosGestionar()`, con botón "Volver al tablero" en `app.html:1980`).
   - Reemplazar los 12 usos de `confirm()` nativo (`app.html:931,1424,1450,2042,2220,2409,2737` y otros) por un diálogo de confirmación custom.
   - Alternativa si no se justifica el esfuerzo: eliminar el CSS muerto.
+
+  > Decisión (10-sep-2026): se tomó la alternativa de **eliminar el CSS muerto**, no implementar el modal real. Confirmado por grep exhaustivo que ninguna vista lo instancia. Los 12 usos de `confirm()` nativo quedan intactos — implementar el modal real (y migrar esos 12 call-sites + los swaps de página completa de `prosGestionar()`) queda pendiente para una sesión futura si se decide invertir en eso.
 
 - [ ] **Eliminar la duplicación de formularios de prospecto.** `collectPros()` (alta, `app.html:1789-1800`, HTML en `1767-1785`) y `prosCamposCollect()` (edición, `app.html:1945-1956`, HTML en `1925-1943`) son ~15 campos copy-pasteados. Extraer a una función/generador de HTML compartido.
 
@@ -79,9 +87,21 @@ El CRM funciona pero acumuló deuda de UX por crecer "por acreción": cada featu
 
 ## Fase 2 — Confirmaciones y feedback al usuario
 
-- [ ] **Limpiar `#alert-container` al cambiar de ruta.** El router (`app.html:254-269`) reemplaza `#view` pero nunca vacía `#alert-container` (`app.html:66`) — una alerta de la vista anterior puede seguir visible unos segundos al navegar rápido.
-- [ ] **Evaluar scroll-to-top/`scrollIntoView` al disparar `showAlert()`** (`public/js/app.js:148-169`). Si el usuario está scrolleado hacia abajo en un formulario o tabla larga, la confirmación aparece arriba del todo y puede pasar inadvertida.
-- [ ] **Resolver colisión de nombre de clase `.alert`.** `.alert`/`.alert-{tipo}` es el toast de `showAlert()`, pero `.kb-card.alert` (`app.css:2374`) es "tarjeta del kanban con actividad vencida" — mismo nombre, significado completamente distinto. Renombrar uno de los dos.
+- [x] **Limpiar `#alert-container` al cambiar de ruta.** El router (`app.html:254-269`) reemplaza `#view` pero nunca vacía `#alert-container` (`app.html:66`) — una alerta de la vista anterior puede seguir visible unos segundos al navegar rápido.
+
+  > Hecho (10-sep-2026). Se agregó `el('alert-container').innerHTML = ''` en `router()`, justo después de `setActive(routeId)` y antes de pintar el breadcrumb de la vista nueva. Se limpia solo al entrar a la nueva ruta (no dentro de `showAlert()`), para preservar que varios `showAlert()` seguidos dentro de la misma vista se sigan apilando.
+
+- [x] **Evaluar scroll-to-top/`scrollIntoView` al disparar `showAlert()`** (`public/js/app.js:148-169`). Si el usuario está scrolleado hacia abajo en un formulario o tabla larga, la confirmación aparece arriba del todo y puede pasar inadvertida.
+
+  > Hecho (10-sep-2026). Se agregó en `showAlert()` un `container.scrollIntoView({behavior:'smooth', block:'start'})` condicional, solo si `#alert-container` no está ya visible en el viewport (chequeo vía `getBoundingClientRect()`), para no generar scroll molesto cuando el usuario ya está arriba.
+
+- [x] **Resolver colisión de nombre de clase `.alert`.** `.alert`/`.alert-{tipo}` es el toast de `showAlert()`, pero `.kb-card.alert` (`app.css:2374`) es "tarjeta del kanban con actividad vencida" — mismo nombre, significado completamente distinto. Renombrar uno de los dos.
+
+  > Hecho (10-sep-2026). Se renombró el más acotado: `.kb-card.alert` → `.kb-card.vencido` (CSS y el único call-site en `renderCrmKanban()`, `app.html`). El sistema de toasts (`.alert`/`.alert-*`, ~30 call-sites vía `showAlert()`) quedó intacto.
+
+> **Nota de verificación (10-sep-2026):** a diferencia de la sesión de Fase 1, en esta sesión Postgres local sí estaba accesible (levantado vía Docker), así que se pudo verificar en vivo con `npm start`: sesión de admin, Usuarios (chip ADMIN/DESACTIVADO/pend.), Tablero Kanban de prospectos, dashboards de proyecto (`.table-compact`/`.table-pipeline` con datos reales), Timbrado, RRHH y créditos — sin errores de consola en ninguna vista recorrida. También se verificó `node --check` sobre `public/js/app.js` y una validación de sintaxis del único `<script>` de `public/app.html` (235k caracteres, `new Function()` sin excepción). Se revisaron visualmente `login.html`/`register.html`/`verify-email.html` (antes/después idénticos tras fusionar `.auth-card` con `.glass-panel`). No se pudo probar visualmente el kanban de prospectos con datos reales de prospecto (el seed no trae ninguno) ni el chip de estado de Sprint (`.chip-success/info/gray` vía `SPRINT_ESTADO_VARIANTE`, sin sprints creados en el seed) — ambos comparten exactamente la misma función `chipEstado()` ya validada en producción para el chip ADMIN, así que el riesgo residual es bajo, pero queda como pendiente de confirmación visual la próxima vez que haya datos de prospectos/sprints reales.
+>
+> Quedan explícitamente fuera de esta sesión (Fase 2, ítems no tocados): deduplicar formularios de prospecto, asociar `<label for="">`, validar campos obligatorios, `emptyState()` reutilizable, uso del `.spinner` en el CRM, e implementación real del modal (se optó por eliminar el CSS muerto en vez de implementarlo — ver nota arriba).
 
 ## Fase 3 — Accesibilidad
 
