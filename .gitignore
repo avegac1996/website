@@ -4,6 +4,7 @@ node_modules/
 # Environment
 .env
 BITACORA-DEPLOY.md
+USUARIOS-DUMMY.md
 
 # Secrets / llaves SSH (NUNCA subir a git)
 .secrets/
@@ -27,3 +28,12 @@ npm-debug.log*
 tmp/
 temp/
 backups/
+
+# Dumps de base de datos
+scripts/db-backup.sql
+
+# Archivos temporales/scratch
+public/temp_form.txt
+
+# Assets obsoletos
+public/Obsoletos/

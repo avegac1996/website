@@ -161,6 +161,15 @@ function showAlert(message, type = 'info', containerId = 'alert-container') {
   alert.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span>${message}</span>`;
   container.appendChild(alert);
 
+  // si el contenedor de alertas no está visible (el usuario scrolleó hacia
+  // abajo en una vista larga), lo llevamos a la vista para que no se pierda
+  // el mensaje de éxito/error.
+  const rect = container.getBoundingClientRect();
+  const visible = rect.top >= 0 && rect.top <= window.innerHeight * 0.5;
+  if (!visible) {
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   setTimeout(() => {
     alert.style.opacity = '0';
     alert.style.transition = 'opacity 0.3s ease';
