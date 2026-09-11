@@ -27,3 +27,12 @@ npm-debug.log*
 tmp/
 temp/
 backups/
+
+# Dumps de base de datos
+scripts/db-backup.sql
+
+# Archivos temporales/scratch
+public/temp_form.txt
+
+# Assets obsoletos
+public/Obsoletos/

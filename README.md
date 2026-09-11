@@ -1,48 +1,73 @@
-# TURINGTECH Ecuador - Website + Sistema de Créditos
+# TURINGTECH Ecuador - Website + Sistema de Créditos + CRM interno
 
-Landing page empresarial + sistema de login con roles (admin/user), créditos TURINGTECH, verificación por email y panel de administración.
+Landing page empresarial + sistema de login con roles (admin/user), créditos TURINGTECH, verificación por email, panel de administración y CRM interno (prospectos, tablero Kanban, RRHH, timbrado de jornada, humanizador de texto/docx).
 
 ## Stack
 
-- **Backend**: Node.js + Express
-- **Base de datos**: PostgreSQL
-- **Auth**: JWT + bcrypt
-- **Email**: Nodemailer (SMTP)
-- **Frontend**: HTML + Tailwind CSS + Style Guide TURINGTECH
+- **Backend**: Node.js + Express 4, sin TypeScript
+- **Base de datos**: PostgreSQL (`pg`, sin ORM — SQL directo con parámetros posicionales `$1, $2...`)
+- **Auth**: JWT + bcryptjs
+- **Email**: Nodemailer (SMTP), con fallback a Microsoft Graph (DigitalOcean bloquea puertos SMTP salientes)
+- **Frontend**: HTML + Tailwind CSS (vía CDN) + JavaScript vanilla, sin bundler ni build step
 
 ## Estructura del proyecto
 
 ```
 website/
-├── public/                 # Sitio público (servido por Express)
-│   ├── index.html          # Landing page (con botón Login + sección registro créditos)
-│   ├── catalogo.html       # Catálogo de servicios
-│   ├── login.html          # Página de login
-│   ├── register.html       # Página de registro
-│   ├── verify-email.html   # Verificación de email
-│   ├── dashboard.html      # Dashboard del usuario
-│   ├── admin.html          # Panel de administración
-│   ├── css/app.css         # Estilos dark theme (basados en style guide)
-│   ├── js/app.js           # API client + utilidades
-│   └── assets/             # Logos, imágenes
+├── public/                     # Sitio público (servido por Express)
+│   ├── index.html              # Landing page
+│   ├── app.html                # SPA del CRM interno (prospectos, Kanban, RRHH, timbrado)
+│   ├── login.html              # Página de login
+│   ├── register.html           # Página de registro
+│   ├── verify-email.html       # Verificación de email
+│   ├── dashboard.html          # Dashboard del usuario (créditos)
+│   ├── admin.html              # Panel de administración
+│   ├── css/app.css             # Estilos
+│   ├── js/                     # API client + utilidades del frontend
+│   └── assets/                 # Logos, imágenes
 ├── src/
-│   ├── server.js           # Entry point Express
-│   ├── config/database.js  # Conexión PostgreSQL
-│   ├── middleware/auth.js  # JWT + roles middleware
+│   ├── server.js               # Entry point Express
+│   ├── config/database.js      # Conexión PostgreSQL
+│   ├── middleware/auth.js      # authMiddleware (JWT) + adminMiddleware (rol admin)
 │   ├── routes/
-│   │   ├── auth.routes.js      # Registro, login, verificación
-│   │   ├── credit.routes.js    # Dashboard, solicitudes, notificaciones
-│   │   └── admin.routes.js     # Gestión usuarios, créditos, config
-│   ├── services/
-│   │   └── email.service.js    # 6 templates de email
-│   └── utils/jwt.js        # Generación/verificación JWT
+│   │   ├── auth.routes.js          # Registro, login, verificación
+│   │   ├── credit.routes.js        # Dashboard, solicitudes, notificaciones
+│   │   ├── admin.routes.js         # Gestión de usuarios, créditos, config
+│   │   ├── board.routes.js         # Tablero Kanban del CRM (proyectos, sprints, tareas)
+│   │   ├── prospectos.routes.js    # CRM de prospectos (interacciones, actividades, catálogos)
+│   │   ├── hr.routes.js            # RRHH (perfil, solicitudes)
+│   │   ├── timbrado.routes.js      # Timbrado de jornada (marcar entrada/salida, resumen)
+│   │   └── humanizer.routes.js     # Humanizador de texto/docx
+│   ├── humanizer/
+│   │   ├── index.js            # Lógica del humanizador
+│   │   ├── docx.js             # Procesamiento de archivos .docx
+│   │   └── dictionary.js       # Diccionario de sinónimos (datos, no lógica)
+│   ├── services/                   # Email (SMTP + Microsoft Graph)
+│   └── utils/jwt.js            # Generación/verificación JWT
 ├── scripts/
-│   ├── init-db.js          # Crear tablas
-│   └── seed.js             # Crear admin inicial + config
+│   ├── init-db.js              # Crear el esquema de tablas
+│   ├── seed.js                 # Datos de prueba / admin inicial
+│   ├── setup.js                 # Setup inicial (usa .env.example)
+│   ├── restore-db.js           # Restaurar la base de datos
+│   └── db-backup.sql           # Dump de BD (no trackeado en git, no es el esquema vigente)
+├── docs/                       # Notas internas y documentación no operativa
+├── dev/                        # Previews/checks de desarrollo (no servidos por HTTP)
 ├── package.json
-├── .env.template           # Copiar a .env y configurar
+├── .env.example                # Copiar a .env y configurar
 └── .gitignore
 ```
+
+## CRM interno
+
+Además de la landing y el sistema de créditos, el repo incluye un CRM interno (SPA en `public/app.html`), con las siguientes áreas bajo `/api`:
+
+- **`/api/board`** — Tablero Kanban del CRM: proyectos, sprints, tareas (con estados, movimiento entre columnas y archivos adjuntos).
+- **`/api/prospectos`** — CRM de prospectos: interacciones, actividades con deadline, próxima gestión, catálogos de estados/tipos y exportación.
+- **`/api/hr`** — RRHH: perfil y solicitudes del empleado.
+- **`/api/timbrado`** — Timbrado de jornada: marcar entrada/salida, resumen individual y de equipo.
+- **`/api/humanizer`** — Humanizador de texto y documentos `.docx`.
+
+Todas estas rutas requieren autenticación (`authMiddleware`); las de administración además requieren `adminMiddleware` (rol `admin`).
 
 ## Instalación
 
@@ -89,6 +114,11 @@ npm run init-db
 npm run seed
 npm start
 ```
+
+### Otros scripts
+
+- `npm run db:restore` — restaura la base `turingtech` desde `scripts/db-backup.sql` (snapshot completo con datos reales; requiere `psql` en el PATH).
+- `npm run init:iniciar` — configuración automática de la base en el servidor: crea la BD si no existe y carga el snapshot completo (o cae a `init-db` + `seed` si no hay snapshot); no necesita `psql`, usa el cliente `pg`. Soporta `--fresh` para recrear la base desde cero.
 
 ## Flujos del sistema
 
