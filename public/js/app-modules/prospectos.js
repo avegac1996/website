@@ -6,10 +6,10 @@
 // seguras porque solo se usan dentro de funciones invocadas en runtime, nunca
 // en el cuerpo top-level del módulo.
 import { API } from '../api-bridge.js';
-import { el, esc, chipEstado, emptyState, loadingHtml, parseDateLocal, fmtDate, pasteState } from './core.js';
+import { el, esc, chipEstado, emptyState, loadingHtml, parseDateLocal, fmtDate, pasteState, initials } from './core.js';
 import { boardState } from './board.js';
 import { ACT_ICONO, ACT_LABEL } from './crmdash.js';
-import { viewCrmTablero } from './crmkanban.js';
+import { viewCrmTablero, prosActChip } from './crmkanban.js';
 
 export var SECTORES = window.SECTORES || [];
 export var PILARES = window.PILARES || ['RPA', 'IA', 'BI', 'Software a la Medida', 'App Móvil Offline'];
@@ -17,7 +17,7 @@ export var FUENTES = window.FUENTES || ['LinkedIn', 'PBX', 'Referido'];
 export var FASES_SOP = window.FASES_SOP || [];
 export var PATRONES_EMAIL = window.PATRONES_EMAIL || [];
 export var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
-export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '' }, sel: null, view: null, from: null, kbq: '' };
+export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '', orden: '' }, sel: null, view: null, from: null, kbq: '', gestionTab: 'actividad', _gestionId: null };
 export var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
 
 // estados y tipos vienen del backend (catálogo editable por admin). Fallback por si aún no cargó meta.
@@ -70,11 +70,16 @@ export function viewProspectos() {
 }
 
 export function prosRender() {
-  var tabs = [['sop', 'Cómo investigar'], ['guia', 'Guía por sector'], ['gestion', 'Gestión (' + PROS.list.length + ')']];
+  // "Gestión" es la acción principal (donde se trabaja); "Cómo investigar" y
+  // "Guía por sector" son contenido de referencia y quedan en 2do plano: van
+  // aparte, empujadas a la derecha y con estilo .tab-sec (más chicas/apagadas).
+  var tabPrimary = '<button class="tab ' + (PROS.tab === 'gestion' ? 'active' : '') + '" data-pt="gestion">Gestión' +
+    '<span class="pros-tab-count">' + PROS.list.length + '</span></button>';
+  var tabsSec = [['sop', 'Cómo investigar'], ['guia', 'Guía por sector']]
+    .map(function (t) { return '<button class="tab tab-sec ' + (PROS.tab === t[0] ? 'active' : '') + '" data-pt="' + t[0] + '">' + esc(t[1]) + '</button>'; })
+    .join('');
   el('view').innerHTML =
-    '<div class="tabs" style="margin-bottom:16px;flex-wrap:wrap;">' +
-      tabs.map(function (t) { return '<button class="tab ' + (PROS.tab === t[0] ? 'active' : '') + '" data-pt="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') +
-    '</div><div id="prosBody"></div>';
+    '<div class="tabs" style="margin-bottom:16px;flex-wrap:wrap;">' + tabPrimary + tabsSec + '</div><div id="prosBody"></div>';
   document.querySelectorAll('.tab[data-pt]').forEach(function (b) {
     b.addEventListener('click', function () { PROS.tab = this.getAttribute('data-pt'); PROS.sel = null; prosRender(); });
   });
@@ -96,34 +101,50 @@ export function sectorSelectHtml(id, sel) {
 // type: 'sector' (usa sectorSelectHtml), 'cargo' (input + <datalist> de
 // cargos sugeridos del sector), 'select' (opts fijas en f.opciones),
 // 'fase' (opciones de FASES_SOP), 'date', 'email', o texto plano por defecto.
-// "Notas" queda fuera de este array: ocupa el ancho completo del form y se
-// arma aparte en prosFormFieldsHTML.
+// group: agrupa visualmente los campos en prosFormFieldsHTML (ver PROS_GRUPOS
+// para el heading de cada uno) — deben venir contiguos por grupo, que es como
+// están listados abajo. icon: clase Font Awesome mostrada como prefijo del
+// campo. "Notas" queda fuera de este array: ocupa el ancho completo del form
+// y se arma aparte en prosFormFieldsHTML.
+export var PROS_GRUPOS = {
+  empresa: '🏢 Empresa',
+  contacto: '👤 Contacto',
+  seguimiento: '🎯 Seguimiento comercial',
+  avanzado: '⚙️ Datos opcionales'
+};
 export var PROS_CAMPOS = [
-  { suf: 'sector', key: 'sector_id', label: 'Sector', type: 'sector' },
-  { suf: 'empresa', key: 'empresa', label: 'Empresa', required: true },
-  { suf: 'ruc', key: 'ruc', label: 'RUC' },
-  { suf: 'web', key: 'web', label: 'Página web', placeholder: 'https://...' },
-  { suf: 'cn', key: 'contacto_nombre', label: 'Contacto — nombre' },
-  { suf: 'ca', key: 'contacto_apellido', label: 'Contacto — apellido' },
-  { suf: 'cargo', key: 'cargo', label: 'Cargo', type: 'cargo' },
-  { suf: 'email', key: 'email', label: 'Email corporativo', type: 'email' },
-  { suf: 'tel', key: 'telefono', label: 'Teléfono / extensión' },
-  { suf: 'li', key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...' },
-  { suf: 'fuente', key: 'fuente', label: 'Fuente', type: 'select', opciones: FUENTES },
-  { suf: 'pilar', key: 'pilar', label: 'Pilar', type: 'select', opciones: PILARES },
-  { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase' },
-  { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date' },
-  { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX' },
-  { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido' }
+  { suf: 'sector', key: 'sector_id', label: 'Sector', type: 'sector', group: 'empresa', icon: 'fa-solid fa-industry' },
+  { suf: 'empresa', key: 'empresa', label: 'Empresa', required: true, group: 'empresa', icon: 'fa-solid fa-building' },
+  { suf: 'web', key: 'web', label: 'Página web', placeholder: 'https://...', group: 'empresa', icon: 'fa-solid fa-globe' },
+  { suf: 'cn', key: 'contacto_nombre', label: 'Contacto — nombre', group: 'contacto', icon: 'fa-solid fa-user' },
+  { suf: 'ca', key: 'contacto_apellido', label: 'Contacto — apellido', group: 'contacto', icon: 'fa-solid fa-user' },
+  { suf: 'cargo', key: 'cargo', label: 'Cargo', type: 'cargo', group: 'contacto', icon: 'fa-solid fa-briefcase' },
+  { suf: 'email', key: 'email', label: 'Email corporativo', type: 'email', group: 'contacto', icon: 'fa-solid fa-envelope' },
+  { suf: 'tel', key: 'telefono', label: 'Teléfono / extensión', placeholder: 'Ej: 099 123 4567', group: 'contacto', icon: 'fa-solid fa-phone' },
+  { suf: 'li', key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...', group: 'contacto', icon: 'fa-brands fa-linkedin' },
+  { suf: 'fuente', key: 'fuente', label: 'Fuente', type: 'select', opciones: FUENTES, group: 'seguimiento', icon: 'fa-solid fa-signal' },
+  { suf: 'pilar', key: 'pilar', label: 'Pilar', type: 'select', opciones: PILARES, group: 'seguimiento', icon: 'fa-solid fa-chess-rook' },
+  // Campos de bajo uso posterior (no alimentan ningún dashboard, filtro ni
+  // columna de lista hoy — ver análisis en git log) — se agrupan aparte y se
+  // muestran colapsados por defecto para no competir con los campos de arriba.
+  { suf: 'ruc', key: 'ruc', label: 'RUC', placeholder: '13 dígitos', group: 'avanzado', icon: 'fa-solid fa-id-card' },
+  { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase', group: 'avanzado', icon: 'fa-solid fa-route' },
+  { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date', group: 'avanzado', icon: 'fa-solid fa-calendar-days' },
+  { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX', group: 'avanzado', icon: 'fa-solid fa-phone-volume' },
+  { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido', placeholder: 'Ej: Mañanas 9-12h', group: 'avanzado', icon: 'fa-solid fa-clock' }
 ];
-// Arma la grilla de campos + el textarea de Notas. prefix es "px_" (alta) o
-// "pg_f_" (edición); d es el objeto de datos del prospecto (o {} en alta sin
-// prellenar). Sector no lleva asterisco de obligatorio: ni el backend
-// (columna nullable) ni este formulario lo validan como tal.
+// Arma las secciones de campos (agrupadas por PROS_GRUPOS) + el textarea de
+// Notas. prefix es "px_" (alta) o "pg_f_" (edición); d es el objeto de datos
+// del prospecto (o {} en alta sin prellenar). Sector no lleva asterisco de
+// obligatorio: ni el backend (columna nullable) ni este formulario lo validan
+// como tal.
 export function prosFormFieldsHTML(prefix, d) {
   d = d || {};
   var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
-  var campos = PROS_CAMPOS.map(function (f) {
+  var html = '';
+  var grupoActual = null;
+  var cierreActual = '';
+  PROS_CAMPOS.forEach(function (f) {
     var id = prefix + f.suf;
     var control;
     if (f.type === 'sector') {
@@ -143,16 +164,68 @@ export function prosFormFieldsHTML(prefix, d) {
       control = '<input type="date" id="' + id + '" class="form-input" value="' + esc(v.slice ? v.slice(0, 10) : '') + '">';
     } else {
       var typeAttr = f.type === 'email' ? ' type="email"' : '';
-      var reqAttr = f.required ? ' required' : '';
+      // Sin atributo HTML "required": la validación la hace el submit handler
+      // (showAlert + prosMarcarErrorEmpresa) para mostrar un error inline
+      // consistente con el resto de la app en vez del tooltip nativo del navegador.
       var ph = f.placeholder ? ' placeholder="' + f.placeholder + '"' : '';
-      control = '<input id="' + id + '"' + typeAttr + ' class="form-input"' + ph + reqAttr + ' value="' + esc(d[f.key] || '') + '">';
+      control = '<input id="' + id + '"' + typeAttr + ' class="form-input"' + ph + ' value="' + esc(d[f.key] || '') + '">';
     }
+    if (f.icon) control = '<div class="field-icon"><i class="' + f.icon + '"></i>' + control + '</div>';
     var reqMark = f.required ? ' <span class="form-required-marker">*</span>' : '';
-    return '<div class="form-group"><label for="' + id + '">' + f.label + reqMark + '</label>' + control + '</div>';
-  }).join('');
+    var campoHtml = '<div class="form-group"><label for="' + id + '">' + f.label + reqMark + '</label>' + control + '</div>';
+    if (f.group !== grupoActual) {
+      if (grupoActual !== null) html += cierreActual;
+      // El grupo "avanzado" (campos de bajo uso posterior) se renderiza
+      // colapsado por defecto con <details>/<summary> en vez del <div> normal.
+      if (f.group === 'avanzado') {
+        html += '<details class="pros-form-section pros-form-section-collapsible"><summary class="pros-form-section-head">' + PROS_GRUPOS[f.group] + '</summary><div class="pros-form-section-grid">';
+        cierreActual = '</div></details>';
+      } else {
+        html += '<div class="pros-form-section"><div class="pros-form-section-head">' + PROS_GRUPOS[f.group] + '</div><div class="pros-form-section-grid">';
+        cierreActual = '</div></div>';
+      }
+      grupoActual = f.group;
+    }
+    html += campoHtml;
+  });
+  if (grupoActual !== null) html += cierreActual;
   var notasId = prefix + 'notas';
-  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">' + campos + '</div>' +
-    '<div class="form-group" style="margin-top:12px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
+  return html +
+    '<div class="form-group" style="margin-top:4px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
+}
+// Vista de solo lectura de "Datos del prospecto": mismo agrupamiento de
+// PROS_CAMPOS que prosFormFieldsHTML, pero como texto (label + valor) en vez
+// de inputs deshabilitados. Los campos sin valor se omiten — mostrarlos vacíos
+// es lo que hacía ver esta sección "regada" cuando no se está editando. Un
+// grupo entero (ej. "⚙️ Datos opcionales") se omite si ninguno de sus campos
+// tiene valor.
+export function prosDatosResumenHTML(p) {
+  var fase = FASES_SOP.filter(function (fx) { return String(fx.id) === String(p.fase_sop); })[0];
+  var valorDe = function (f) {
+    if (f.suf === 'sector') { var sec = sectorById(p.sector_id); return sec ? esc(sec.icono + ' ' + sec.nombre) : esc(p.sector_nombre || ''); }
+    if (f.suf === 'fase') return fase ? esc(fase.nombre) : '';
+    if (f.suf === 'fecha') return p.fecha_fase ? esc(fmtDate(p.fecha_fase)) : '';
+    if (f.suf === 'email' && p.email) return '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>';
+    if (f.suf === 'web' && p.web) return '<a href="' + esc(p.web) + '" target="_blank" rel="noopener">' + esc(p.web) + '</a>';
+    if (f.suf === 'li' && p.linkedin) return '<a href="' + esc(p.linkedin) + '" target="_blank" rel="noopener">' + esc(p.linkedin) + '</a>';
+    return esc(p[f.key] || '');
+  };
+  var html = '', grupoActual = null, itemsGrupo = '';
+  var cerrarGrupo = function () {
+    if (itemsGrupo) html += '<div class="pros-form-section"><div class="pros-form-section-head">' + PROS_GRUPOS[grupoActual] + '</div>' +
+      '<div class="pros-resumen-grid">' + itemsGrupo + '</div></div>';
+    itemsGrupo = '';
+  };
+  PROS_CAMPOS.forEach(function (f) {
+    if (f.group !== grupoActual) { cerrarGrupo(); grupoActual = f.group; }
+    var val = valorDe(f);
+    if (!val) return;
+    itemsGrupo += '<div class="pros-resumen-item"><span class="pr-label">' + (f.icon ? '<i class="' + f.icon + '"></i>' : '') + esc(f.label) + '</span><span class="pr-val">' + val + '</span></div>';
+  });
+  cerrarGrupo();
+  if (!html) html = '<p class="pros-resumen-empty">Todavía no se cargó información adicional de este prospecto.</p>';
+  if (p.notas) html += '<div class="pros-form-section"><div class="pros-form-section-head">Notas</div><p class="pros-resumen-notas">' + esc(p.notas) + '</p></div>';
+  return html;
 }
 // Lee del DOM los valores cargados por prosFormFieldsHTML(prefix, ...) y arma
 // el objeto a enviar al backend. Mismo prefix usado al generar el HTML.
@@ -168,6 +241,28 @@ export function prosFormCollect(prefix) {
     fecha_fase: g('fecha') || null, extension_pbx: g('ext').trim(), horario_preferido: g('hora').trim(),
     notas: g('notas').trim()
   };
+}
+// Marca el campo "empresa" con error inline (borde rojo + mensaje bajo el
+// label) y hace foco+scroll hacia él. Se usa junto al showAlert() existente
+// en el alta (prosRegistrar) y en "Guardar datos" (prosGestionar) cuando
+// falta ese campo obligatorio. prefix: "px_" o "pg_f_".
+function prosMarcarErrorEmpresa(prefix) {
+  var input = el(prefix + 'empresa');
+  input.classList.add('error');
+  var grp = input.closest('.form-group');
+  if (!grp.querySelector('.error-message')) {
+    var msg = document.createElement('span');
+    msg.className = 'error-message';
+    msg.textContent = 'El nombre de la empresa es obligatorio.';
+    grp.appendChild(msg);
+  }
+  input.focus();
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  input.addEventListener('input', function limpiar() {
+    input.classList.remove('error');
+    var m = grp.querySelector('.error-message'); if (m) m.remove();
+    input.removeEventListener('input', limpiar);
+  });
 }
 
 export function prosGuia() {
@@ -226,26 +321,30 @@ export function prosRegistrar(pre) {
   var d = pre || { sector_id: PROS.sectorId || '' };
   var s = sectorById(d.sector_id);
 
-  var intel = s
-    ? '<div class="glass-panel pros-intel">' +
-        '<div class="section-heading" style="text-align:left;font-size:12px;margin-bottom:10px;">' + esc(s.icono + ' ' + s.nombre) + '</div>' +
-        '<p class="text-xs"><strong>Decisor:</strong> ' + esc(s.decisor) + '</p>' +
-        '<p class="text-xs" style="margin-top:6px;"><strong>Pilar a vender:</strong> <span class="text-accent">' + esc(s.pilar) + '</span></p>' +
-        '<p class="text-xs" style="margin-top:8px;"><strong>Cargos (clic para usar):</strong></p>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">' +
-          s.cargosLinkedIn.map(function (c) { return '<button type="button" class="mini-chip" data-cargo="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
-        '<p class="text-xs" style="margin-top:10px;"><strong>Script:</strong></p>' +
-        '<blockquote class="pros-script" style="font-size:11.5px;margin-top:4px;">' + esc(s.script) + '</blockquote>' +
-        '<button type="button" class="btn btn-secondary btn-small" id="px_copyscript" style="margin-top:6px;">📋 Copiar script</button>' +
-      '</div>'
-    : '';
+  var intel = '<div class="glass-panel pros-intel">' + (s
+    ? '<div class="section-heading" style="text-align:left;font-size:12px;margin-bottom:10px;">' + esc(s.icono + ' ' + s.nombre) + '</div>' +
+      '<p class="text-xs"><strong>Decisor:</strong> ' + esc(s.decisor) + '</p>' +
+      '<p class="text-xs" style="margin-top:6px;"><strong>Pilar a vender:</strong> <span class="text-accent">' + esc(s.pilar) + '</span></p>' +
+      '<p class="text-xs" style="margin-top:8px;"><strong>Cargos (clic para usar):</strong></p>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">' +
+        s.cargosLinkedIn.map(function (c) { return '<button type="button" class="mini-chip" data-cargo="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+      '<p class="text-xs" style="margin-top:10px;"><strong>Script:</strong></p>' +
+      '<blockquote class="pros-script" style="font-size:11.5px;margin-top:4px;">' + esc(s.script) + '</blockquote>' +
+      '<button type="button" class="btn btn-secondary btn-small" id="px_copyscript" style="margin-top:6px;">📋 Copiar script</button>'
+    : '<div class="pros-intel-empty"><i class="fa-solid fa-lightbulb"></i>Elegí un sector para ver información de inteligencia comercial: decisor, pilar recomendado, cargos objetivo y script de abordaje.</div>'
+  ) + '</div>';
 
   el('prosBody').innerHTML =
     '<button class="btn btn-secondary btn-small" id="px_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</button>' +
     '<div class="pros-form-wrap">' +
-    '<div class="glass-panel" style="padding:26px;"><div class="section-heading" style="text-align:left;margin-bottom:16px;">Nuevo prospecto</div><form id="prosForm">' +
+    '<div class="glass-panel" style="padding:26px;">' +
+      '<div class="section-heading" style="text-align:left;margin-bottom:4px;">Nuevo prospecto</div>' +
+      '<p class="text-gray text-xs" style="margin-bottom:18px;">Completá los datos que tengas — podés dejar campos vacíos y completarlos después desde la ficha del prospecto.</p>' +
+      '<form id="prosForm">' +
       prosFormFieldsHTML('px_', d) +
-      '<button type="submit" class="btn btn-primary" id="px_save">💾 Guardar prospecto</button>' +
+      '<div style="margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.07);">' +
+        '<button type="submit" class="btn btn-primary" id="px_save"><i class="fa-solid fa-floppy-disk"></i> Guardar prospecto</button>' +
+      '</div>' +
     '</form></div>' + intel + '</div>';
 
   el('px_back').addEventListener('click', function () { PROS.tab = 'gestion'; prosRender(); });
@@ -261,13 +360,13 @@ export function prosRegistrar(pre) {
   el('prosForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var b = prosFormCollect('px_');
-    if (!b.empresa) { showAlert('El nombre de la empresa es obligatorio.', 'warning'); return; }
+    if (!b.empresa) { showAlert('El nombre de la empresa es obligatorio.', 'warning'); prosMarcarErrorEmpresa('px_'); return; }
     var btn = el('px_save'); btn.disabled = true; btn.textContent = 'Guardando...';
     API.request('/api/prospectos', { method: 'POST', body: JSON.stringify(b) })
       .then(function (r) {
         showAlert('Prospecto guardado.', 'success');
         PROS.tab = 'gestion'; PROS.sel = (r.prospecto || {}).id || null; viewProspectos();
-      }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = '💾 Guardar prospecto'; });
+      }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar prospecto'; });
   });
 }
 
@@ -310,6 +409,23 @@ export function prosGestion() {
     return true;
   });
 
+  // Orden por urgencia: atrasados primero, luego pendientes por fecha más
+  // próxima, y sin actividad al final — mismo criterio de act_atrasadas/
+  // act_pendientes/act_proxima que ya usa el badge del kanban (prosActChip).
+  if (f.orden === 'urgencia') {
+    var rango = function (p) {
+      if ((p.act_atrasadas || 0) > 0) return 0;
+      if ((p.act_pendientes || 0) > 0) return 1;
+      return 2;
+    };
+    list = list.slice().sort(function (a, b) {
+      var ra = rango(a), rb = rango(b);
+      if (ra !== rb) return ra - rb;
+      if (ra === 1) return (a.act_proxima || '').localeCompare(b.act_proxima || '');
+      return 0;
+    });
+  }
+
   var rows = list.map(function (p) {
     var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
     return '<tr data-id="' + p.id + '" style="cursor:pointer;">' +
@@ -318,9 +434,10 @@ export function prosGestion() {
       '<td>' + prosEstadoChip(p.estado) + '</td>' +
       '<td>' + (p.owner_nombre ? esc(p.owner_nombre) : '<span class="text-gray">Sin asignar</span>') + '</td>' +
       '<td class="text-gray text-xs">' + fmtRel(p.ultima_gestion) + (p.interacciones ? ' · ' + p.interacciones + ' gest.' : '') + '</td>' +
+      '<td>' + prosActChip(p) + '</td>' +
       '<td style="text-align:right;color:var(--color-gray);"><i class="fa-solid fa-chevron-right"></i></td>' +
     '</tr>';
-  }).join('') || emptyState('Sin prospectos con estos filtros.', { colspan: 6 });
+  }).join('') || emptyState('Sin prospectos con estos filtros.', { colspan: 7 });
 
   var estadoOpts = '<option value="">Todos los estados</option>' + prosEstados().map(function (e) { return '<option value="' + e.slug + '"' + (f.estado === e.slug ? ' selected' : '') + '>' + esc(e.label) + '</option>'; }).join('');
   var ownerOpts = '<option value="">Todos los responsables</option><option value="__none"' + (f.owner === '__none' ? ' selected' : '') + '>Sin asignar</option>' +
@@ -333,12 +450,16 @@ export function prosGestion() {
       '<select id="pr_owner" class="form-input" style="width:auto;min-width:150px;padding:8px 10px;font-size:13px;">' + ownerOpts + '</select>' +
       '<select id="pr_sec" class="form-input" style="width:auto;min-width:140px;padding:8px 10px;font-size:13px;"><option value="">Todos los sectores</option>' +
         secs.map(function (o) { return '<option' + (o === f.sector ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>' +
+      '<select id="pr_orden" class="form-input" style="width:auto;min-width:150px;padding:8px 10px;font-size:13px;">' +
+        '<option value=""' + (f.orden === '' ? ' selected' : '') + '>Más recientes</option>' +
+        '<option value="urgencia"' + (f.orden === 'urgencia' ? ' selected' : '') + '>Urgencia</option>' +
+      '</select>' +
       '<div style="flex:1;"></div>' +
       '<button class="btn btn-secondary btn-small" id="pr_export"><i class="fa-solid fa-download"></i> .txt</button>' +
       '<button class="btn btn-primary btn-small" id="pr_new"><i class="fa-solid fa-plus"></i> Nuevo prospecto</button>' +
     '</div>' +
     '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table table-pipeline">' +
-      '<thead><tr><th>Empresa</th><th>Contacto</th><th>Estado</th><th>Responsable</th><th>Última gestión</th><th></th></tr></thead>' +
+      '<thead><tr><th>Empresa</th><th>Contacto</th><th>Estado</th><th>Responsable</th><th>Última gestión</th><th>Próximo seguimiento</th><th></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div></div>' +
     '<div class="text-gray text-xs" style="margin-top:8px;">' + list.length + ' de ' + PROS.list.length + ' prospectos · clic en una fila para gestionar</div>';
 
@@ -346,6 +467,7 @@ export function prosGestion() {
   el('pr_estado').addEventListener('change', function () { f.estado = this.value; prosGestion(); });
   el('pr_owner').addEventListener('change', function () { f.owner = this.value; prosGestion(); });
   el('pr_sec').addEventListener('change', function () { f.sector = this.value; prosGestion(); });
+  el('pr_orden').addEventListener('change', function () { f.orden = this.value; prosGestion(); });
   el('pr_new').addEventListener('click', function () { prosRegistrar(null); });
   el('pr_export').addEventListener('click', function () {
     var btn = this; btn.disabled = true;
@@ -366,6 +488,10 @@ export function prosGestion() {
 
 /* ---- Panel Gestionar: pipeline + historial + tarea ---- */
 export function prosGestionar(p, editarDatos) {
+  // Pestaña activa (Actividades/Datos/Historial): se resetea a "Actividades"
+  // solo al abrir un prospecto distinto — un re-render del mismo prospecto
+  // (Modificar/Guardar/Cancelar datos) conserva dónde estaba el usuario.
+  if (PROS._gestionId !== p.id) { PROS.gestionTab = 'actividad'; PROS._gestionId = p.id; }
   var s = sectorById(p.sector_id);
   var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
   var owners = (PROS.meta.colaboradores || []);
@@ -386,48 +512,61 @@ export function prosGestionar(p, editarDatos) {
     ? '<button class="btn btn-secondary btn-small" id="pg_vertarea"><i class="fa-solid fa-up-right-from-square"></i> Ver en el tablero</button>'
     : '<button class="btn btn-primary btn-small" id="pg_convertir"><i class="fa-solid fa-list-check"></i> Convertir en tarea</button>';
 
+  var meta = [
+    s ? '<span><i class="fa-solid fa-industry"></i>' + esc(s.icono + ' ' + s.nombre) + '</span>' : (p.sector_nombre ? '<span><i class="fa-solid fa-industry"></i>' + esc(p.sector_nombre) + '</span>' : ''),
+    contacto ? '<span><i class="fa-solid fa-user"></i>' + esc(contacto) + (p.cargo ? ' · ' + esc(p.cargo) : '') + '</span>' : ''
+  ].filter(Boolean).join('');
+
   el('prosBody').innerHTML =
     '<button class="btn btn-secondary btn-small" id="pg_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> ' + (PROS.from === 'kanban' ? 'Volver al tablero' : 'Volver a la lista') + '</button>' +
-    '<div class="glass-panel" style="padding:24px;margin-bottom:16px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">' +
-        '<div>' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<span class="mini-chip">PROSPECTO</span>' +
-            (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
+    '<div class="glass-panel pros-detail-header">' +
+      '<div class="pros-detail-top">' +
+        '<div class="pros-detail-identity">' +
+          '<div class="pros-detail-avatar">' + esc(initials(p.empresa)) + '</div>' +
+          '<div>' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+              '<span class="mini-chip">PROSPECTO</span>' +
+              (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
+            '</div>' +
+            '<h2 class="pros-detail-name">' + esc(p.empresa) + '</h2>' +
+            (meta ? '<div class="pros-detail-meta">' + meta + '</div>' : '') +
+            (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
           '</div>' +
-          '<h2 style="color:var(--color-white);font-size:20px;font-weight:800;margin:6px 0 0;">' + esc(p.empresa) + '</h2>' +
-          '<div class="text-gray text-sm" style="margin-top:4px;">' + esc(s ? s.icono + ' ' + s.nombre : (p.sector_nombre || 'Sin sector')) +
-            (contacto ? ' · ' + esc(contacto) : '') + (p.cargo ? ' (' + esc(p.cargo) + ')' : '') + '</div>' +
-          (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
         '</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + tareaBtn +
+        '<div class="pros-detail-actions">' + tareaBtn +
           '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
         '</div>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;max-width:520px;">' +
-        '<div><label for="pg_estado" class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado</label>' +
+      '<div class="pros-status-row">' +
+        '<div class="pros-status-field"><label for="pg_estado">Estado</label>' +
           '<select id="pg_estado" class="form-input">' + estadoSel + '</select></div>' +
-        '<div><label for="pg_owner" class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
+        '<div class="pros-status-field"><label for="pg_owner">Responsable comercial</label>' +
           '<select id="pg_owner" class="form-input">' + ownerSel + '</select></div>' +
       '</div>' +
     '</div>' +
 
-    '<div class="glass-panel" id="pg_act_panel" style="padding:20px;margin-bottom:16px;"></div>' +
+    '<div class="tabs pros-detail-tabs">' +
+      '<button class="tab' + (PROS.gestionTab === 'actividad' ? ' active' : '') + '" data-gt="actividad">Actividad' +
+        '<span class="pros-tab-count" id="pg_act_badge"' + (p.act_pendientes ? '' : ' hidden') + '>' + (p.act_pendientes || '') + '</span></button>' +
+      '<button class="tab' + (PROS.gestionTab === 'datos' ? ' active' : '') + '" data-gt="datos">Datos del prospecto</button>' +
+    '</div>' +
 
-    '<div class="glass-panel" style="padding:20px;margin-bottom:16px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">' +
-        '<div class="section-heading" style="text-align:left;font-size:13px;margin:0;">Datos del prospecto</div>' +
+    '<div class="glass-panel pros-section-panel" id="pg_act_panel"' + (PROS.gestionTab === 'actividad' ? '' : ' hidden') + '></div>' +
+
+    '<div class="glass-panel pros-section-panel" id="pg_panel_datos"' + (PROS.gestionTab === 'datos' ? '' : ' hidden') + '>' +
+      '<div class="pros-section-headrow">' +
+        '<div class="section-heading">Datos del prospecto</div>' +
         (editarDatos
           ? '<div style="display:flex;gap:8px;"><button class="btn btn-secondary btn-small" id="pg_canceldatos">Cancelar</button>' +
             '<button class="btn btn-primary btn-small" id="pg_savedatos"><i class="fa-solid fa-floppy-disk"></i> Guardar datos</button></div>'
           : '<button class="btn btn-secondary btn-small" id="pg_editdatos"><i class="fa-solid fa-pen"></i> Modificar</button>') +
       '</div>' +
-      '<div id="pg_datos">' + prosFormFieldsHTML('pg_f_', p) + '</div>' +
+      '<div id="pg_datos">' + (editarDatos ? prosFormFieldsHTML('pg_f_', p) : prosDatosResumenHTML(p)) + '</div>' +
     '</div>' +
 
-    '<div class="pros-gest-grid">' +
-      '<div class="glass-panel" style="padding:20px;">' +
-        '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Registrar interacción</div>' +
+    '<div class="pros-gest-grid"' + (PROS.gestionTab === 'actividad' ? '' : ' hidden') + '>' +
+      '<div class="glass-panel pros-section-panel">' +
+        '<div class="section-heading">Registrar interacción</div>' +
         '<select id="pg_tipo" class="form-input">' + prosTipos().map(function (t) { return '<option value="' + t.slug + '">' + esc(t.label) + '</option>'; }).join('') + '</select>' +
         '<select id="pg_res" class="form-input" style="margin-top:10px;"><option value="">Resultado (opcional)…</option>' +
           INTER_RESULTADOS.map(function (r) { return '<option value="' + r.id + '">' + esc(r.label) + '</option>'; }).join('') + '</select>' +
@@ -438,11 +577,23 @@ export function prosGestionar(p, editarDatos) {
         '<div id="pg_pend" class="files-grid" style="margin-top:8px;"></div>' +
         '<button class="btn btn-primary btn-small" id="pg_addint" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Agregar al historial</button>' +
       '</div>' +
-      '<div class="glass-panel" style="padding:20px;">' +
-        '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Historial</div>' +
+      '<div class="glass-panel pros-section-panel">' +
+        '<div class="section-heading">Historial</div>' +
         '<div id="pg_timeline">' + loadingHtml() + '</div>' +
       '</div>' +
     '</div>';
+
+  document.querySelectorAll('#prosBody [data-gt]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = this.getAttribute('data-gt');
+      if (t === PROS.gestionTab) return;
+      PROS.gestionTab = t;
+      document.querySelectorAll('#prosBody [data-gt]').forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-gt') === t); });
+      el('pg_act_panel').hidden = t !== 'actividad';
+      el('pg_panel_datos').hidden = t !== 'datos';
+      document.querySelector('#prosBody .pros-gest-grid').hidden = t !== 'actividad';
+    });
+  });
 
   el('pg_back').addEventListener('click', function () {
     if (PROS.from === 'kanban') { PROS.from = null; PROS.sel = null; return viewCrmTablero(); }
@@ -472,19 +623,14 @@ export function prosGestionar(p, editarDatos) {
       .catch(function (err) { showAlert(err.message, 'error'); p.owner_id = prev; el('pg_owner').value = prev || ''; });
   });
 
-  // ---- datos del prospecto: bloqueados salvo que se pulse "Modificar" ----
-  function bloquearCampos(b) {
-    el('pg_datos').querySelectorAll('input, select, textarea').forEach(function (f) { f.disabled = b; });
-  }
+  // ---- datos del prospecto: resumen de solo lectura salvo que se pulse "Modificar" ----
   if (!editarDatos) {
-    bloquearCampos(true);
     el('pg_editdatos').addEventListener('click', function () { prosGestionar(p, true); });
   } else {
     var onSectorChange = function () {
       // re-dibuja la grilla con el sector nuevo (datalist de cargos) preservando lo tipeado
       var vals = prosFormCollect('pg_f_');
       el('pg_datos').innerHTML = prosFormFieldsHTML('pg_f_', Object.assign({}, p, vals, { sector_id: el('pg_f_sector').value }));
-      bloquearCampos(false);
       el('pg_f_sector').addEventListener('change', onSectorChange);
     };
     el('pg_f_sector').addEventListener('change', onSectorChange);
@@ -492,7 +638,7 @@ export function prosGestionar(p, editarDatos) {
     el('pg_savedatos').addEventListener('click', function () {
       var sd = this;
       var b = prosFormCollect('pg_f_');
-      if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); return; }
+      if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); prosMarcarErrorEmpresa('pg_f_'); return; }
       sd.disabled = true; sd.textContent = 'Guardando...';
       API.request('/api/prospectos/' + p.id, { method: 'PUT', body: JSON.stringify(b) })
         .then(function (r) {
@@ -652,8 +798,12 @@ export function renderActividades(p) {
   function pintar(acts) {
     var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     var pend = acts.filter(function (a) { return !a.hecha; });
-    var banner = pend.length === 0
-      ? '<div class="act-banner"><i class="fa-solid fa-circle-exclamation"></i> Este prospecto no tiene ninguna actividad programada.</div>' : '';
+    // Banner: solo uno de los dos casos, nunca junto con la lista repitiendo el
+    // mismo mensaje — "sin ninguna actividad" cuando no hay nada cargado, o un
+    // aviso neutro de "todo al día" cuando hay historial pero nada pendiente.
+    var banner = acts.length === 0
+      ? '<div class="act-banner"><i class="fa-solid fa-circle-exclamation"></i> Este prospecto no tiene ninguna actividad programada.</div>'
+      : (pend.length === 0 ? '<div class="act-banner act-banner-ok"><i class="fa-solid fa-circle-check"></i> Todas las actividades están completadas.</div>' : '');
     var lista = acts.map(function (a) {
       var d = parseDateLocal(a.deadline);
       var venc = !a.hecha && d && d < hoy;
@@ -664,19 +814,23 @@ export function renderActividades(p) {
           '<span class="act-date">' + (a.deadline ? fmtDate(a.deadline) : 'sin fecha') + (venc ? ' · vencida' : '') + '</span></span>' +
         '<button class="act-del" data-del="' + a.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>' +
       '</div>';
-    }).join('') || '<p class="text-gray text-xs" style="margin:4px 0 8px;">Sin actividades.</p>';
+    }).join('');
 
     box.innerHTML =
-      '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">Actividades ' +
-        (pend.length ? '<span class="text-gray text-xs">(' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + ')</span>' : '') + '</div>' +
+      '<div class="pros-section-headrow"><div class="section-heading">Actividades pendientes</div></div>' +
       banner +
-      '<div class="act-list">' + lista + '</div>' +
+      (lista ? '<div class="act-list">' + lista + '</div>' : '') +
       '<form id="act_form" class="act-form">' +
         '<select id="act_tipo" class="form-input">' + tipos.map(function (t) { return '<option value="' + t + '">' + esc(ACT_LABEL[t] || t) + '</option>'; }).join('') + '</select>' +
         '<input id="act_titulo" class="form-input" placeholder="Detalle (opcional)">' +
         '<input type="date" id="act_deadline" class="form-input" required title="Fecha límite">' +
         '<button class="btn btn-primary btn-small" type="submit"><i class="fa-solid fa-plus"></i></button>' +
       '</form>';
+
+    // Mantiene al día el badge de la pestaña "Actividades" (puede estar
+    // desactualizado si vino del listado) sin esperar a un re-render completo.
+    var badge = el('pg_act_badge');
+    if (badge) { badge.hidden = !pend.length; badge.textContent = pend.length; }
 
     box.querySelectorAll('[data-done]').forEach(function (b) {
       b.addEventListener('click', function () {

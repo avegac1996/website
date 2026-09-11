@@ -27,8 +27,56 @@
 .pipe-chip.on { background: var(--pc); border-color: var(--pc); color: var(--color-white); }
 
 .pros-form-wrap { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
-.pros-intel { padding: 18px; }
+.pros-intel { padding: 18px; position: sticky; top: 96px; }
 .pros-intel p { line-height: 1.5; }
+.pros-intel-empty { padding: 30px 16px; text-align: center; color: var(--color-gray); font-size: 12.5px; line-height: 1.5; }
+.pros-intel-empty i { font-size: 22px; margin-bottom: 10px; display: block; opacity: .6; }
+
+/* Formulario de prospecto (alta y edición): secciones agrupadas + iconos de
+   campo — compartido por prosRegistrar y prosGestionar vía prosFormFieldsHTML. */
+.pros-form-section { margin-bottom: 22px; }
+.pros-form-section:last-of-type { margin-bottom: 0; }
+.pros-form-section-head {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--color-gray); margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.pros-form-section-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; }
+
+/* Sección "Datos opcionales" (campos de bajo uso posterior): mismo layout de
+   arriba pero colapsable, para no competir con los campos de valor inmediato. */
+.pros-form-section-collapsible > summary { cursor: pointer; list-style: none; }
+.pros-form-section-collapsible > summary::-webkit-details-marker { display: none; }
+.pros-form-section-collapsible > summary::after { content: '▸'; float: right; }
+.pros-form-section-collapsible[open] > summary::after { content: '▾'; }
+
+.field-icon { position: relative; }
+.field-icon > i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-gray); font-size: 13px; pointer-events: none; }
+.field-icon .form-input { padding-left: 38px; }
+.field-icon:focus-within > i { color: var(--color-accent); }
+
+.pros-form-section .form-input:disabled {
+  opacity: .55; cursor: not-allowed;
+  background-color: rgba(5,12,31,0.35);
+  border-color: rgba(100,116,139,0.12);
+}
+
+/* Resumen de solo lectura de "Datos del prospecto" (prosDatosResumenHTML):
+   mismas cabeceras de grupo que el formulario (.pros-form-section-head) pero
+   como pares label/valor en vez de inputs deshabilitados. */
+.pros-resumen-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 14px 12px; }
+.pros-resumen-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pros-resumen-item .pr-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700;
+  color: var(--color-gray); display: flex; align-items: center; gap: 6px;
+}
+.pros-resumen-item .pr-label i { width: 12px; text-align: center; font-size: 11px; }
+.pros-resumen-item .pr-val { font-size: 13.5px; color: var(--color-light); word-break: break-word; }
+.pros-resumen-item .pr-val a { color: var(--color-light); }
+.pros-resumen-item .pr-val a:hover { color: var(--color-accent); }
+.pros-resumen-empty { color: var(--color-gray); font-size: 12.5px; padding: 4px 0 2px; }
+.pros-resumen-notas { white-space: pre-wrap; line-height: 1.5; font-size: 13.5px; color: var(--color-light); }
+
 .mini-chip {
   border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
   color: var(--color-gray); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer;
@@ -43,7 +91,65 @@
 }
 .pill-link:hover { border-color: var(--color-accent); color: var(--color-white); }
 
+/* Jerarquía de navegación de Prospectos: "Gestión" es la acción principal, las
+   guías (SOP / sector) quedan como referencia secundaria — mismo patrón
+   .tabs/.tab de base.css, con una variante más chica y apagada para éstas. */
+.pros-tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 7px; padding: 0 7px; min-width: 18px; height: 18px;
+  background: rgba(255, 107, 0, 0.16); color: var(--color-accent);
+  font-size: 11px; font-weight: 700; border-radius: var(--radius-pill);
+}
+/* Su propio "display" pisaría el [hidden] nativo (misma especificidad,
+   gana el origen "author") si no se lo gana explícitamente acá. */
+.pros-tab-count[hidden] { display: none; }
+.tab.tab-sec {
+  font-size: 12px; font-weight: 500; color: var(--color-gray); opacity: 0.75;
+  padding: 10px 14px;
+}
+.tab.tab-sec:hover { opacity: 1; }
+.tab.tab-sec.active {
+  color: var(--color-light); opacity: 1;
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+.tab.tab-sec:first-of-type { margin-left: auto; }
+
+/* Header del detalle de un prospecto (prosGestionar): identidad + acciones +
+   Estado/Responsable, antes armado con estilos inline repetidos por bloque. */
+.pros-detail-header { padding: 24px; margin-bottom: 16px; }
+.pros-detail-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.pros-detail-identity { display: flex; gap: 14px; align-items: flex-start; }
+.pros-detail-avatar {
+  width: 52px; height: 52px; flex-shrink: 0; border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
+  color: var(--color-white); font-size: 16px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.pros-detail-name { color: var(--color-white); font-size: 20px; font-weight: 800; margin: 6px 0 0; }
+.pros-detail-meta { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 6px; }
+.pros-detail-meta span { font-size: 12.5px; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
+.pros-detail-meta i { color: var(--color-gray); width: 13px; text-align: center; font-size: 11px; }
+.pros-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.pros-status-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
+.pros-status-field { display: flex; flex-direction: column; gap: 6px; width: 240px; max-width: 100%; }
+.pros-status-field label { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--color-gray); font-weight: 700; }
+
+/* Pestañas Actividades/Datos/Historial dentro de la tarjeta de gestión —
+   mismo .tabs/.tab de base.css que usa la barra de arriba de la página. */
+.pros-detail-tabs { margin: 0 0 16px; }
+
+/* Panel de sección genérico usado por Actividades / Datos del prospecto /
+   Registrar interacción / Historial (reemplaza el style="padding:20px;
+   margin-bottom:16px;" repetido en cada .glass-panel de prosGestionar). */
+.pros-section-panel { padding: 20px; margin-bottom: 16px; }
+.pros-section-panel:last-child { margin-bottom: 0; }
+.pros-section-panel > .section-heading { text-align: left; font-size: 13px; margin: 0 0 12px; }
+.pros-section-headrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.pros-section-headrow .section-heading { text-align: left; font-size: 13px; margin: 0; }
+
 .pros-gest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.pros-gest-grid[hidden] { display: none; }
 
 .int-tipos { display: flex; flex-wrap: wrap; gap: 6px; }
 .int-tipo {
@@ -66,6 +172,7 @@
 
 @media (max-width: 900px) {
   .pros-form-wrap, .pros-gest-grid { grid-template-columns: 1fr; }
+  .pros-intel { position: static; }
 }
 
 
@@ -111,6 +218,7 @@
   border-radius: var(--radius-md);
   margin-bottom: 12px;
 }
+.act-banner-ok { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7; }
 .act-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .act-row { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.03); font-size: 13px; }
 .act-row.late { background: rgba(239, 68, 68, 0.1); }

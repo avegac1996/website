@@ -221,8 +221,10 @@ async function initDatabase() {
       ['estado', "VARCHAR(24) NOT NULL DEFAULT 'nuevo'"],  // nuevo|contactado|en_seguimiento|reunion|propuesta|ganado|perdido|no_responde
       ['owner_id', 'INTEGER REFERENCES users(id)'],
       ['task_id', 'INTEGER REFERENCES board_tasks(id) ON DELETE SET NULL'],
-      ['proxima_gestion', 'DATE'],                 // próxima actividad programada (seguimiento)
-      ['proxima_gestion_nota', 'VARCHAR(200)'],
+      // proxima_gestion/proxima_gestion_nota existieron acá pero quedaron
+      // huérfanas (ningún frontend las usaba) — el seguimiento real se maneja
+      // con prospecto_actividades. Se retiraron de instalaciones nuevas; para
+      // borrarlas de una base ya existente ver scripts/migrations/.
     ]) {
       await db.query(`ALTER TABLE prospectos ADD COLUMN IF NOT EXISTS ${col} ${ddl}`);
     }
@@ -386,7 +388,6 @@ async function initDatabase() {
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_time_entries_user_dia ON time_entries(user_id, dia)',
       'CREATE INDEX IF NOT EXISTS idx_prosp_inter_files ON prospecto_interaccion_files(interaccion_id)',
-      'CREATE INDEX IF NOT EXISTS idx_prospectos_proxima ON prospectos(proxima_gestion)',
       'CREATE INDEX IF NOT EXISTS idx_prospectos_owner ON prospectos(owner_id)',
       'CREATE INDEX IF NOT EXISTS idx_prosp_act_prospecto ON prospecto_actividades(prospecto_id)',
       'CREATE INDEX IF NOT EXISTS idx_prosp_act_pend ON prospecto_actividades(hecha, deadline)',
