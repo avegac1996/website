@@ -6,7 +6,7 @@
 // seguras porque solo se usan dentro de funciones invocadas en runtime, nunca
 // en el cuerpo top-level del módulo.
 import { API } from '../api-bridge.js';
-import { el, esc, chipEstado, emptyState, loadingHtml, parseDateLocal, fmtDate, pasteState } from './core.js';
+import { el, esc, chipEstado, emptyState, loadingHtml, parseDateLocal, fmtDate, pasteState, initials } from './core.js';
 import { boardState } from './board.js';
 import { ACT_ICONO, ACT_LABEL } from './crmdash.js';
 import { viewCrmTablero, prosActChip } from './crmkanban.js';
@@ -17,7 +17,7 @@ export var FUENTES = window.FUENTES || ['LinkedIn', 'PBX', 'Referido'];
 export var FASES_SOP = window.FASES_SOP || [];
 export var PATRONES_EMAIL = window.PATRONES_EMAIL || [];
 export var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
-export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '', orden: '' }, sel: null, view: null, from: null, kbq: '' };
+export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '', orden: '' }, sel: null, view: null, from: null, kbq: '', gestionTab: 'actividad', _gestionId: null };
 export var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
 
 // estados y tipos vienen del backend (catálogo editable por admin). Fallback por si aún no cargó meta.
@@ -192,6 +192,40 @@ export function prosFormFieldsHTML(prefix, d) {
   var notasId = prefix + 'notas';
   return html +
     '<div class="form-group" style="margin-top:4px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
+}
+// Vista de solo lectura de "Datos del prospecto": mismo agrupamiento de
+// PROS_CAMPOS que prosFormFieldsHTML, pero como texto (label + valor) en vez
+// de inputs deshabilitados. Los campos sin valor se omiten — mostrarlos vacíos
+// es lo que hacía ver esta sección "regada" cuando no se está editando. Un
+// grupo entero (ej. "⚙️ Datos opcionales") se omite si ninguno de sus campos
+// tiene valor.
+export function prosDatosResumenHTML(p) {
+  var fase = FASES_SOP.filter(function (fx) { return String(fx.id) === String(p.fase_sop); })[0];
+  var valorDe = function (f) {
+    if (f.suf === 'sector') { var sec = sectorById(p.sector_id); return sec ? esc(sec.icono + ' ' + sec.nombre) : esc(p.sector_nombre || ''); }
+    if (f.suf === 'fase') return fase ? esc(fase.nombre) : '';
+    if (f.suf === 'fecha') return p.fecha_fase ? esc(fmtDate(p.fecha_fase)) : '';
+    if (f.suf === 'email' && p.email) return '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>';
+    if (f.suf === 'web' && p.web) return '<a href="' + esc(p.web) + '" target="_blank" rel="noopener">' + esc(p.web) + '</a>';
+    if (f.suf === 'li' && p.linkedin) return '<a href="' + esc(p.linkedin) + '" target="_blank" rel="noopener">' + esc(p.linkedin) + '</a>';
+    return esc(p[f.key] || '');
+  };
+  var html = '', grupoActual = null, itemsGrupo = '';
+  var cerrarGrupo = function () {
+    if (itemsGrupo) html += '<div class="pros-form-section"><div class="pros-form-section-head">' + PROS_GRUPOS[grupoActual] + '</div>' +
+      '<div class="pros-resumen-grid">' + itemsGrupo + '</div></div>';
+    itemsGrupo = '';
+  };
+  PROS_CAMPOS.forEach(function (f) {
+    if (f.group !== grupoActual) { cerrarGrupo(); grupoActual = f.group; }
+    var val = valorDe(f);
+    if (!val) return;
+    itemsGrupo += '<div class="pros-resumen-item"><span class="pr-label">' + (f.icon ? '<i class="' + f.icon + '"></i>' : '') + esc(f.label) + '</span><span class="pr-val">' + val + '</span></div>';
+  });
+  cerrarGrupo();
+  if (!html) html = '<p class="pros-resumen-empty">Todavía no se cargó información adicional de este prospecto.</p>';
+  if (p.notas) html += '<div class="pros-form-section"><div class="pros-form-section-head">Notas</div><p class="pros-resumen-notas">' + esc(p.notas) + '</p></div>';
+  return html;
 }
 // Lee del DOM los valores cargados por prosFormFieldsHTML(prefix, ...) y arma
 // el objeto a enviar al backend. Mismo prefix usado al generar el HTML.
@@ -454,6 +488,10 @@ export function prosGestion() {
 
 /* ---- Panel Gestionar: pipeline + historial + tarea ---- */
 export function prosGestionar(p, editarDatos) {
+  // Pestaña activa (Actividades/Datos/Historial): se resetea a "Actividades"
+  // solo al abrir un prospecto distinto — un re-render del mismo prospecto
+  // (Modificar/Guardar/Cancelar datos) conserva dónde estaba el usuario.
+  if (PROS._gestionId !== p.id) { PROS.gestionTab = 'actividad'; PROS._gestionId = p.id; }
   var s = sectorById(p.sector_id);
   var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
   var owners = (PROS.meta.colaboradores || []);
@@ -474,48 +512,61 @@ export function prosGestionar(p, editarDatos) {
     ? '<button class="btn btn-secondary btn-small" id="pg_vertarea"><i class="fa-solid fa-up-right-from-square"></i> Ver en el tablero</button>'
     : '<button class="btn btn-primary btn-small" id="pg_convertir"><i class="fa-solid fa-list-check"></i> Convertir en tarea</button>';
 
+  var meta = [
+    s ? '<span><i class="fa-solid fa-industry"></i>' + esc(s.icono + ' ' + s.nombre) + '</span>' : (p.sector_nombre ? '<span><i class="fa-solid fa-industry"></i>' + esc(p.sector_nombre) + '</span>' : ''),
+    contacto ? '<span><i class="fa-solid fa-user"></i>' + esc(contacto) + (p.cargo ? ' · ' + esc(p.cargo) : '') + '</span>' : ''
+  ].filter(Boolean).join('');
+
   el('prosBody').innerHTML =
     '<button class="btn btn-secondary btn-small" id="pg_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> ' + (PROS.from === 'kanban' ? 'Volver al tablero' : 'Volver a la lista') + '</button>' +
-    '<div class="glass-panel" style="padding:24px;margin-bottom:16px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;">' +
-        '<div>' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<span class="mini-chip">PROSPECTO</span>' +
-            (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
+    '<div class="glass-panel pros-detail-header">' +
+      '<div class="pros-detail-top">' +
+        '<div class="pros-detail-identity">' +
+          '<div class="pros-detail-avatar">' + esc(initials(p.empresa)) + '</div>' +
+          '<div>' +
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+              '<span class="mini-chip">PROSPECTO</span>' +
+              (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
+            '</div>' +
+            '<h2 class="pros-detail-name">' + esc(p.empresa) + '</h2>' +
+            (meta ? '<div class="pros-detail-meta">' + meta + '</div>' : '') +
+            (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
           '</div>' +
-          '<h2 style="color:var(--color-white);font-size:20px;font-weight:800;margin:6px 0 0;">' + esc(p.empresa) + '</h2>' +
-          '<div class="text-gray text-sm" style="margin-top:4px;">' + esc(s ? s.icono + ' ' + s.nombre : (p.sector_nombre || 'Sin sector')) +
-            (contacto ? ' · ' + esc(contacto) : '') + (p.cargo ? ' (' + esc(p.cargo) + ')' : '') + '</div>' +
-          (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
         '</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + tareaBtn +
+        '<div class="pros-detail-actions">' + tareaBtn +
           '<button class="btn btn-error btn-small" id="pg_del"><i class="fa-solid fa-trash"></i></button>' +
         '</div>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;max-width:520px;">' +
-        '<div><label for="pg_estado" class="text-gray text-xs" style="display:block;margin-bottom:6px;">Estado</label>' +
+      '<div class="pros-status-row">' +
+        '<div class="pros-status-field"><label for="pg_estado">Estado</label>' +
           '<select id="pg_estado" class="form-input">' + estadoSel + '</select></div>' +
-        '<div><label for="pg_owner" class="text-gray text-xs" style="display:block;margin-bottom:6px;">Responsable comercial</label>' +
+        '<div class="pros-status-field"><label for="pg_owner">Responsable comercial</label>' +
           '<select id="pg_owner" class="form-input">' + ownerSel + '</select></div>' +
       '</div>' +
     '</div>' +
 
-    '<div class="glass-panel" id="pg_act_panel" style="padding:20px;margin-bottom:16px;"></div>' +
+    '<div class="tabs pros-detail-tabs">' +
+      '<button class="tab' + (PROS.gestionTab === 'actividad' ? ' active' : '') + '" data-gt="actividad">Actividad' +
+        '<span class="pros-tab-count" id="pg_act_badge"' + (p.act_pendientes ? '' : ' hidden') + '>' + (p.act_pendientes || '') + '</span></button>' +
+      '<button class="tab' + (PROS.gestionTab === 'datos' ? ' active' : '') + '" data-gt="datos">Datos del prospecto</button>' +
+    '</div>' +
 
-    '<div class="glass-panel" style="padding:20px;margin-bottom:16px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">' +
-        '<div class="section-heading" style="text-align:left;font-size:13px;margin:0;">Datos del prospecto</div>' +
+    '<div class="glass-panel pros-section-panel" id="pg_act_panel"' + (PROS.gestionTab === 'actividad' ? '' : ' hidden') + '></div>' +
+
+    '<div class="glass-panel pros-section-panel" id="pg_panel_datos"' + (PROS.gestionTab === 'datos' ? '' : ' hidden') + '>' +
+      '<div class="pros-section-headrow">' +
+        '<div class="section-heading">Datos del prospecto</div>' +
         (editarDatos
           ? '<div style="display:flex;gap:8px;"><button class="btn btn-secondary btn-small" id="pg_canceldatos">Cancelar</button>' +
             '<button class="btn btn-primary btn-small" id="pg_savedatos"><i class="fa-solid fa-floppy-disk"></i> Guardar datos</button></div>'
           : '<button class="btn btn-secondary btn-small" id="pg_editdatos"><i class="fa-solid fa-pen"></i> Modificar</button>') +
       '</div>' +
-      '<div id="pg_datos">' + prosFormFieldsHTML('pg_f_', p) + '</div>' +
+      '<div id="pg_datos">' + (editarDatos ? prosFormFieldsHTML('pg_f_', p) : prosDatosResumenHTML(p)) + '</div>' +
     '</div>' +
 
-    '<div class="pros-gest-grid">' +
-      '<div class="glass-panel" style="padding:20px;">' +
-        '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Registrar interacción</div>' +
+    '<div class="pros-gest-grid"' + (PROS.gestionTab === 'actividad' ? '' : ' hidden') + '>' +
+      '<div class="glass-panel pros-section-panel">' +
+        '<div class="section-heading">Registrar interacción</div>' +
         '<select id="pg_tipo" class="form-input">' + prosTipos().map(function (t) { return '<option value="' + t.slug + '">' + esc(t.label) + '</option>'; }).join('') + '</select>' +
         '<select id="pg_res" class="form-input" style="margin-top:10px;"><option value="">Resultado (opcional)…</option>' +
           INTER_RESULTADOS.map(function (r) { return '<option value="' + r.id + '">' + esc(r.label) + '</option>'; }).join('') + '</select>' +
@@ -526,11 +577,23 @@ export function prosGestionar(p, editarDatos) {
         '<div id="pg_pend" class="files-grid" style="margin-top:8px;"></div>' +
         '<button class="btn btn-primary btn-small" id="pg_addint" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Agregar al historial</button>' +
       '</div>' +
-      '<div class="glass-panel" style="padding:20px;">' +
-        '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:12px;">Historial</div>' +
+      '<div class="glass-panel pros-section-panel">' +
+        '<div class="section-heading">Historial</div>' +
         '<div id="pg_timeline">' + loadingHtml() + '</div>' +
       '</div>' +
     '</div>';
+
+  document.querySelectorAll('#prosBody [data-gt]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = this.getAttribute('data-gt');
+      if (t === PROS.gestionTab) return;
+      PROS.gestionTab = t;
+      document.querySelectorAll('#prosBody [data-gt]').forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-gt') === t); });
+      el('pg_act_panel').hidden = t !== 'actividad';
+      el('pg_panel_datos').hidden = t !== 'datos';
+      document.querySelector('#prosBody .pros-gest-grid').hidden = t !== 'actividad';
+    });
+  });
 
   el('pg_back').addEventListener('click', function () {
     if (PROS.from === 'kanban') { PROS.from = null; PROS.sel = null; return viewCrmTablero(); }
@@ -560,19 +623,14 @@ export function prosGestionar(p, editarDatos) {
       .catch(function (err) { showAlert(err.message, 'error'); p.owner_id = prev; el('pg_owner').value = prev || ''; });
   });
 
-  // ---- datos del prospecto: bloqueados salvo que se pulse "Modificar" ----
-  function bloquearCampos(b) {
-    el('pg_datos').querySelectorAll('input, select, textarea').forEach(function (f) { f.disabled = b; });
-  }
+  // ---- datos del prospecto: resumen de solo lectura salvo que se pulse "Modificar" ----
   if (!editarDatos) {
-    bloquearCampos(true);
     el('pg_editdatos').addEventListener('click', function () { prosGestionar(p, true); });
   } else {
     var onSectorChange = function () {
       // re-dibuja la grilla con el sector nuevo (datalist de cargos) preservando lo tipeado
       var vals = prosFormCollect('pg_f_');
       el('pg_datos').innerHTML = prosFormFieldsHTML('pg_f_', Object.assign({}, p, vals, { sector_id: el('pg_f_sector').value }));
-      bloquearCampos(false);
       el('pg_f_sector').addEventListener('change', onSectorChange);
     };
     el('pg_f_sector').addEventListener('change', onSectorChange);
@@ -740,8 +798,12 @@ export function renderActividades(p) {
   function pintar(acts) {
     var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     var pend = acts.filter(function (a) { return !a.hecha; });
-    var banner = pend.length === 0
-      ? '<div class="act-banner"><i class="fa-solid fa-circle-exclamation"></i> Este prospecto no tiene ninguna actividad programada.</div>' : '';
+    // Banner: solo uno de los dos casos, nunca junto con la lista repitiendo el
+    // mismo mensaje — "sin ninguna actividad" cuando no hay nada cargado, o un
+    // aviso neutro de "todo al día" cuando hay historial pero nada pendiente.
+    var banner = acts.length === 0
+      ? '<div class="act-banner"><i class="fa-solid fa-circle-exclamation"></i> Este prospecto no tiene ninguna actividad programada.</div>'
+      : (pend.length === 0 ? '<div class="act-banner act-banner-ok"><i class="fa-solid fa-circle-check"></i> Todas las actividades están completadas.</div>' : '');
     var lista = acts.map(function (a) {
       var d = parseDateLocal(a.deadline);
       var venc = !a.hecha && d && d < hoy;
@@ -752,19 +814,23 @@ export function renderActividades(p) {
           '<span class="act-date">' + (a.deadline ? fmtDate(a.deadline) : 'sin fecha') + (venc ? ' · vencida' : '') + '</span></span>' +
         '<button class="act-del" data-del="' + a.id + '" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>' +
       '</div>';
-    }).join('') || '<p class="text-gray text-xs" style="margin:4px 0 8px;">Sin actividades.</p>';
+    }).join('');
 
     box.innerHTML =
-      '<div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">Actividades ' +
-        (pend.length ? '<span class="text-gray text-xs">(' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + ')</span>' : '') + '</div>' +
+      '<div class="pros-section-headrow"><div class="section-heading">Actividades pendientes</div></div>' +
       banner +
-      '<div class="act-list">' + lista + '</div>' +
+      (lista ? '<div class="act-list">' + lista + '</div>' : '') +
       '<form id="act_form" class="act-form">' +
         '<select id="act_tipo" class="form-input">' + tipos.map(function (t) { return '<option value="' + t + '">' + esc(ACT_LABEL[t] || t) + '</option>'; }).join('') + '</select>' +
         '<input id="act_titulo" class="form-input" placeholder="Detalle (opcional)">' +
         '<input type="date" id="act_deadline" class="form-input" required title="Fecha límite">' +
         '<button class="btn btn-primary btn-small" type="submit"><i class="fa-solid fa-plus"></i></button>' +
       '</form>';
+
+    // Mantiene al día el badge de la pestaña "Actividades" (puede estar
+    // desactualizado si vino del listado) sin esperar a un re-render completo.
+    var badge = el('pg_act_badge');
+    if (badge) { badge.hidden = !pend.length; badge.textContent = pend.length; }
 
     box.querySelectorAll('[data-done]').forEach(function (b) {
       b.addEventListener('click', function () {
