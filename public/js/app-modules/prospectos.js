@@ -101,34 +101,45 @@ export function sectorSelectHtml(id, sel) {
 // type: 'sector' (usa sectorSelectHtml), 'cargo' (input + <datalist> de
 // cargos sugeridos del sector), 'select' (opts fijas en f.opciones),
 // 'fase' (opciones de FASES_SOP), 'date', 'email', o texto plano por defecto.
-// "Notas" queda fuera de este array: ocupa el ancho completo del form y se
-// arma aparte en prosFormFieldsHTML.
+// group: agrupa visualmente los campos en prosFormFieldsHTML (ver PROS_GRUPOS
+// para el heading de cada uno) — deben venir contiguos por grupo, que es como
+// están listados abajo. icon: clase Font Awesome mostrada como prefijo del
+// campo. "Notas" queda fuera de este array: ocupa el ancho completo del form
+// y se arma aparte en prosFormFieldsHTML.
+export var PROS_GRUPOS = {
+  empresa: '🏢 Empresa',
+  contacto: '👤 Contacto',
+  seguimiento: '🎯 Seguimiento comercial'
+};
 export var PROS_CAMPOS = [
-  { suf: 'sector', key: 'sector_id', label: 'Sector', type: 'sector' },
-  { suf: 'empresa', key: 'empresa', label: 'Empresa', required: true },
-  { suf: 'ruc', key: 'ruc', label: 'RUC' },
-  { suf: 'web', key: 'web', label: 'Página web', placeholder: 'https://...' },
-  { suf: 'cn', key: 'contacto_nombre', label: 'Contacto — nombre' },
-  { suf: 'ca', key: 'contacto_apellido', label: 'Contacto — apellido' },
-  { suf: 'cargo', key: 'cargo', label: 'Cargo', type: 'cargo' },
-  { suf: 'email', key: 'email', label: 'Email corporativo', type: 'email' },
-  { suf: 'tel', key: 'telefono', label: 'Teléfono / extensión' },
-  { suf: 'li', key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...' },
-  { suf: 'fuente', key: 'fuente', label: 'Fuente', type: 'select', opciones: FUENTES },
-  { suf: 'pilar', key: 'pilar', label: 'Pilar', type: 'select', opciones: PILARES },
-  { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase' },
-  { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date' },
-  { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX' },
-  { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido' }
+  { suf: 'sector', key: 'sector_id', label: 'Sector', type: 'sector', group: 'empresa', icon: 'fa-solid fa-industry' },
+  { suf: 'empresa', key: 'empresa', label: 'Empresa', required: true, group: 'empresa', icon: 'fa-solid fa-building' },
+  { suf: 'ruc', key: 'ruc', label: 'RUC', placeholder: '13 dígitos', group: 'empresa', icon: 'fa-solid fa-id-card' },
+  { suf: 'web', key: 'web', label: 'Página web', placeholder: 'https://...', group: 'empresa', icon: 'fa-solid fa-globe' },
+  { suf: 'cn', key: 'contacto_nombre', label: 'Contacto — nombre', group: 'contacto', icon: 'fa-solid fa-user' },
+  { suf: 'ca', key: 'contacto_apellido', label: 'Contacto — apellido', group: 'contacto', icon: 'fa-solid fa-user' },
+  { suf: 'cargo', key: 'cargo', label: 'Cargo', type: 'cargo', group: 'contacto', icon: 'fa-solid fa-briefcase' },
+  { suf: 'email', key: 'email', label: 'Email corporativo', type: 'email', group: 'contacto', icon: 'fa-solid fa-envelope' },
+  { suf: 'tel', key: 'telefono', label: 'Teléfono / extensión', placeholder: 'Ej: 099 123 4567', group: 'contacto', icon: 'fa-solid fa-phone' },
+  { suf: 'li', key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...', group: 'contacto', icon: 'fa-brands fa-linkedin' },
+  { suf: 'fuente', key: 'fuente', label: 'Fuente', type: 'select', opciones: FUENTES, group: 'seguimiento', icon: 'fa-solid fa-signal' },
+  { suf: 'pilar', key: 'pilar', label: 'Pilar', type: 'select', opciones: PILARES, group: 'seguimiento', icon: 'fa-solid fa-chess-rook' },
+  { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase', group: 'seguimiento', icon: 'fa-solid fa-route' },
+  { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date', group: 'seguimiento', icon: 'fa-solid fa-calendar-days' },
+  { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX', group: 'seguimiento', icon: 'fa-solid fa-phone-volume' },
+  { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido', placeholder: 'Ej: Mañanas 9-12h', group: 'seguimiento', icon: 'fa-solid fa-clock' }
 ];
-// Arma la grilla de campos + el textarea de Notas. prefix es "px_" (alta) o
-// "pg_f_" (edición); d es el objeto de datos del prospecto (o {} en alta sin
-// prellenar). Sector no lleva asterisco de obligatorio: ni el backend
-// (columna nullable) ni este formulario lo validan como tal.
+// Arma las secciones de campos (agrupadas por PROS_GRUPOS) + el textarea de
+// Notas. prefix es "px_" (alta) o "pg_f_" (edición); d es el objeto de datos
+// del prospecto (o {} en alta sin prellenar). Sector no lleva asterisco de
+// obligatorio: ni el backend (columna nullable) ni este formulario lo validan
+// como tal.
 export function prosFormFieldsHTML(prefix, d) {
   d = d || {};
   var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
-  var campos = PROS_CAMPOS.map(function (f) {
+  var html = '';
+  var grupoActual = null;
+  PROS_CAMPOS.forEach(function (f) {
     var id = prefix + f.suf;
     var control;
     if (f.type === 'sector') {
@@ -148,16 +159,26 @@ export function prosFormFieldsHTML(prefix, d) {
       control = '<input type="date" id="' + id + '" class="form-input" value="' + esc(v.slice ? v.slice(0, 10) : '') + '">';
     } else {
       var typeAttr = f.type === 'email' ? ' type="email"' : '';
-      var reqAttr = f.required ? ' required' : '';
+      // Sin atributo HTML "required": la validación la hace el submit handler
+      // (showAlert + prosMarcarErrorEmpresa) para mostrar un error inline
+      // consistente con el resto de la app en vez del tooltip nativo del navegador.
       var ph = f.placeholder ? ' placeholder="' + f.placeholder + '"' : '';
-      control = '<input id="' + id + '"' + typeAttr + ' class="form-input"' + ph + reqAttr + ' value="' + esc(d[f.key] || '') + '">';
+      control = '<input id="' + id + '"' + typeAttr + ' class="form-input"' + ph + ' value="' + esc(d[f.key] || '') + '">';
     }
+    if (f.icon) control = '<div class="field-icon"><i class="' + f.icon + '"></i>' + control + '</div>';
     var reqMark = f.required ? ' <span class="form-required-marker">*</span>' : '';
-    return '<div class="form-group"><label for="' + id + '">' + f.label + reqMark + '</label>' + control + '</div>';
-  }).join('');
+    var campoHtml = '<div class="form-group"><label for="' + id + '">' + f.label + reqMark + '</label>' + control + '</div>';
+    if (f.group !== grupoActual) {
+      if (grupoActual !== null) html += '</div></div>';
+      html += '<div class="pros-form-section"><div class="pros-form-section-head">' + PROS_GRUPOS[f.group] + '</div><div class="pros-form-section-grid">';
+      grupoActual = f.group;
+    }
+    html += campoHtml;
+  });
+  if (grupoActual !== null) html += '</div></div>';
   var notasId = prefix + 'notas';
-  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">' + campos + '</div>' +
-    '<div class="form-group" style="margin-top:12px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
+  return html +
+    '<div class="form-group" style="margin-top:4px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
 }
 // Lee del DOM los valores cargados por prosFormFieldsHTML(prefix, ...) y arma
 // el objeto a enviar al backend. Mismo prefix usado al generar el HTML.
@@ -173,6 +194,28 @@ export function prosFormCollect(prefix) {
     fecha_fase: g('fecha') || null, extension_pbx: g('ext').trim(), horario_preferido: g('hora').trim(),
     notas: g('notas').trim()
   };
+}
+// Marca el campo "empresa" con error inline (borde rojo + mensaje bajo el
+// label) y hace foco+scroll hacia él. Se usa junto al showAlert() existente
+// en el alta (prosRegistrar) y en "Guardar datos" (prosGestionar) cuando
+// falta ese campo obligatorio. prefix: "px_" o "pg_f_".
+function prosMarcarErrorEmpresa(prefix) {
+  var input = el(prefix + 'empresa');
+  input.classList.add('error');
+  var grp = input.closest('.form-group');
+  if (!grp.querySelector('.error-message')) {
+    var msg = document.createElement('span');
+    msg.className = 'error-message';
+    msg.textContent = 'El nombre de la empresa es obligatorio.';
+    grp.appendChild(msg);
+  }
+  input.focus();
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  input.addEventListener('input', function limpiar() {
+    input.classList.remove('error');
+    var m = grp.querySelector('.error-message'); if (m) m.remove();
+    input.removeEventListener('input', limpiar);
+  });
 }
 
 export function prosGuia() {
@@ -231,26 +274,30 @@ export function prosRegistrar(pre) {
   var d = pre || { sector_id: PROS.sectorId || '' };
   var s = sectorById(d.sector_id);
 
-  var intel = s
-    ? '<div class="glass-panel pros-intel">' +
-        '<div class="section-heading" style="text-align:left;font-size:12px;margin-bottom:10px;">' + esc(s.icono + ' ' + s.nombre) + '</div>' +
-        '<p class="text-xs"><strong>Decisor:</strong> ' + esc(s.decisor) + '</p>' +
-        '<p class="text-xs" style="margin-top:6px;"><strong>Pilar a vender:</strong> <span class="text-accent">' + esc(s.pilar) + '</span></p>' +
-        '<p class="text-xs" style="margin-top:8px;"><strong>Cargos (clic para usar):</strong></p>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">' +
-          s.cargosLinkedIn.map(function (c) { return '<button type="button" class="mini-chip" data-cargo="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
-        '<p class="text-xs" style="margin-top:10px;"><strong>Script:</strong></p>' +
-        '<blockquote class="pros-script" style="font-size:11.5px;margin-top:4px;">' + esc(s.script) + '</blockquote>' +
-        '<button type="button" class="btn btn-secondary btn-small" id="px_copyscript" style="margin-top:6px;">📋 Copiar script</button>' +
-      '</div>'
-    : '';
+  var intel = '<div class="glass-panel pros-intel">' + (s
+    ? '<div class="section-heading" style="text-align:left;font-size:12px;margin-bottom:10px;">' + esc(s.icono + ' ' + s.nombre) + '</div>' +
+      '<p class="text-xs"><strong>Decisor:</strong> ' + esc(s.decisor) + '</p>' +
+      '<p class="text-xs" style="margin-top:6px;"><strong>Pilar a vender:</strong> <span class="text-accent">' + esc(s.pilar) + '</span></p>' +
+      '<p class="text-xs" style="margin-top:8px;"><strong>Cargos (clic para usar):</strong></p>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">' +
+        s.cargosLinkedIn.map(function (c) { return '<button type="button" class="mini-chip" data-cargo="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
+      '<p class="text-xs" style="margin-top:10px;"><strong>Script:</strong></p>' +
+      '<blockquote class="pros-script" style="font-size:11.5px;margin-top:4px;">' + esc(s.script) + '</blockquote>' +
+      '<button type="button" class="btn btn-secondary btn-small" id="px_copyscript" style="margin-top:6px;">📋 Copiar script</button>'
+    : '<div class="pros-intel-empty"><i class="fa-solid fa-lightbulb"></i>Elegí un sector para ver información de inteligencia comercial: decisor, pilar recomendado, cargos objetivo y script de abordaje.</div>'
+  ) + '</div>';
 
   el('prosBody').innerHTML =
     '<button class="btn btn-secondary btn-small" id="px_back" style="margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Volver a la lista</button>' +
     '<div class="pros-form-wrap">' +
-    '<div class="glass-panel" style="padding:26px;"><div class="section-heading" style="text-align:left;margin-bottom:16px;">Nuevo prospecto</div><form id="prosForm">' +
+    '<div class="glass-panel" style="padding:26px;">' +
+      '<div class="section-heading" style="text-align:left;margin-bottom:4px;">Nuevo prospecto</div>' +
+      '<p class="text-gray text-xs" style="margin-bottom:18px;">Completá los datos que tengas — podés dejar campos vacíos y completarlos después desde la ficha del prospecto.</p>' +
+      '<form id="prosForm">' +
       prosFormFieldsHTML('px_', d) +
-      '<button type="submit" class="btn btn-primary" id="px_save">💾 Guardar prospecto</button>' +
+      '<div style="margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.07);">' +
+        '<button type="submit" class="btn btn-primary" id="px_save"><i class="fa-solid fa-floppy-disk"></i> Guardar prospecto</button>' +
+      '</div>' +
     '</form></div>' + intel + '</div>';
 
   el('px_back').addEventListener('click', function () { PROS.tab = 'gestion'; prosRender(); });
@@ -266,13 +313,13 @@ export function prosRegistrar(pre) {
   el('prosForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var b = prosFormCollect('px_');
-    if (!b.empresa) { showAlert('El nombre de la empresa es obligatorio.', 'warning'); return; }
+    if (!b.empresa) { showAlert('El nombre de la empresa es obligatorio.', 'warning'); prosMarcarErrorEmpresa('px_'); return; }
     var btn = el('px_save'); btn.disabled = true; btn.textContent = 'Guardando...';
     API.request('/api/prospectos', { method: 'POST', body: JSON.stringify(b) })
       .then(function (r) {
         showAlert('Prospecto guardado.', 'success');
         PROS.tab = 'gestion'; PROS.sel = (r.prospecto || {}).id || null; viewProspectos();
-      }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.textContent = '💾 Guardar prospecto'; });
+      }).catch(function (err) { showAlert(err.message, 'error'); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar prospecto'; });
   });
 }
 
@@ -497,7 +544,7 @@ export function prosGestionar(p, editarDatos) {
     el('pg_savedatos').addEventListener('click', function () {
       var sd = this;
       var b = prosFormCollect('pg_f_');
-      if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); return; }
+      if (!b.empresa) { showAlert('La empresa es obligatoria.', 'warning'); prosMarcarErrorEmpresa('pg_f_'); return; }
       sd.disabled = true; sd.textContent = 'Guardando...';
       API.request('/api/prospectos/' + p.id, { method: 'PUT', body: JSON.stringify(b) })
         .then(function (r) {
