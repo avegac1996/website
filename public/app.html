@@ -472,7 +472,7 @@
         '<div class="glass-panel" style="padding:28px;max-width:520px;margin-bottom:22px;">' +
           '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Foto de perfil</div>' +
           '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">' +
-            '<div id="cfgPhoto" style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:28px;">' + avatarHtml(me.name, me.photo) + '</div>' +
+            '<div id="cfgPhoto" style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover));display:flex;align-items:center;justify-content:center;color:var(--color-white);font-weight:800;font-size:28px;">' + avatarHtml(me.name, me.photo) + '</div>' +
             '<div>' +
               '<input type="file" id="cfg_file" accept="image/png,image/jpeg,image/webp" style="display:none;">' +
               '<button class="btn btn-secondary btn-small" id="cfg_pick"><i class="fa-solid fa-upload"></i> Subir foto</button> ' +
@@ -553,7 +553,7 @@
         el('view').innerHTML =
           '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-              '<h2 style="color:#fff;font-size:18px;font-weight:700;"><i class="fa-solid fa-paper-plane" style="color:var(--color-accent);margin-right:8px;"></i>Nueva solicitud</h2>' +
+              '<h2 style="color:var(--color-white);font-size:18px;font-weight:700;"><i class="fa-solid fa-paper-plane" style="color:var(--color-accent);margin-right:8px;"></i>Nueva solicitud</h2>' +
               '<button class="btn btn-secondary btn-small" id="hrToggle">Crear solicitud</button>' +
             '</div>' +
             '<form id="hrForm" style="display:none;margin-top:18px;max-width:560px;">' +
@@ -627,7 +627,7 @@
               ? '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-success btn-small" data-ap="' + h.id + '">Aprobar</button>' +
                 '<button class="btn btn-error btn-small" data-rj="' + h.id + '">Rechazar</button></div>' : '';
             return '<div class="glass-panel" style="padding:18px;margin-bottom:12px;">' +
-              '<div style="color:#fff;font-weight:700;">' + esc(hrLabel(h.type)) + (rango ? ' <span class="text-gray text-sm">' + rango + '</span>' : '') + '</div>' +
+              '<div style="color:var(--color-white);font-weight:700;">' + esc(hrLabel(h.type)) + (rango ? ' <span class="text-gray text-sm">' + rango + '</span>' : '') + '</div>' +
               '<div class="text-gray text-sm" style="margin-top:6px;">' + esc(h.user_name) + ' (' + esc(h.user_email) + ')' + (h.user_position ? ' &middot; ' + esc(h.user_position) : '') + '</div>' +
               (h.details ? '<div class="text-sm" style="margin-top:4px;">' + esc(h.details) + '</div>' : '') +
               '<div class="text-gray text-xs" style="margin-top:4px;">' + fmtDate(h.created_at) + '</div>' + actions + '</div>';
@@ -914,7 +914,7 @@
         (projects.map(function (pr) {
           var ms = (memByProj[pr.id] || []).map(function (m) { return esc(m.name); }).join(', ') || '<span class="text-gray">sin miembros</span>';
           return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);">' +
-            '<div><div style="color:#fff;font-weight:600;font-size:14px;">' + esc(pr.nombre) + '</div><div class="text-gray text-xs">' + ms + '</div></div>' +
+            '<div><div style="color:var(--color-white);font-weight:600;font-size:14px;">' + esc(pr.nombre) + '</div><div class="text-gray text-xs">' + ms + '</div></div>' +
             '<button class="btn btn-secondary btn-small" data-pj-edit="' + pr.id + '">Editar</button></div>';
         }).join('') || '<p class="text-gray text-center" style="padding:20px 0;">Aún no hay proyectos.</p>') + '</div>';
 
@@ -1697,7 +1697,7 @@
         var card = function (title, inner) { return '<div class="glass-panel" style="padding:18px;"><div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">' + title + '</div>' + inner + '</div>'; };
         var scriptPers = personalizarScript(s.script, PROS.sc.vend, PROS.sc.cont, PROS.sc.emp);
         html +=
-          '<h2 style="color:#fff;font-size:20px;font-weight:800;margin-bottom:14px;">' + esc(s.icono + ' ' + s.nombre) + '</h2>' +
+          '<h2 style="color:var(--color-white);font-size:20px;font-weight:800;margin-bottom:14px;">' + esc(s.icono + ' ' + s.nombre) + '</h2>' +
           '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">' +
             card('🏢 Cuentas objetivo', tags(s.cuentas)) +
             card('😣 Dolor principal', '<p class="text-sm">' + esc(s.dolor) + '</p>') +
@@ -1830,7 +1830,7 @@
       var patrones = PATRONES_EMAIL.map(function (p) { return '<span class="badge badge-secondary" style="font-family:monospace;font-weight:500;">' + esc(p) + '</span>'; }).join(' ');
       var ejemplos = EJEMPLOS_EMAIL.map(function (e) { return '<tr><td>' + esc(e.empresa) + '</td><td style="font-family:monospace;">' + esc(e.patron) + '</td></tr>'; }).join('');
       el('prosBody').innerHTML =
-        '<h2 style="color:#fff;font-size:18px;font-weight:700;margin-bottom:6px;">SOP de Inteligencia e Investigación de Contactos</h2>' +
+        '<h2 style="color:var(--color-white);font-size:18px;font-weight:700;margin-bottom:6px;">SOP de Inteligencia e Investigación de Contactos</h2>' +
         '<p class="text-gray text-sm mb-3">Procedimiento para encontrar nombres, cargos y correos de decisores B2B en Ecuador, validando la información antes del primer contacto.</p>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:18px;">' + fases + '</div>' +
         '<div class="glass-panel" style="padding:18px;margin-bottom:14px;"><div class="section-heading" style="text-align:left;font-size:13px;margin-bottom:10px;">📧 Patrones de correo corporativo ecuatoriano</div>' +
@@ -1864,7 +1864,7 @@
       var rows = list.map(function (p) {
         var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
         return '<tr data-id="' + p.id + '" style="cursor:pointer;">' +
-          '<td style="color:#fff;font-weight:600;">' + esc(p.empresa) + (p.task_id ? ' <i class="fa-solid fa-list-check" title="Tiene tarea en el tablero" style="color:var(--color-accent);font-size:11px;"></i>' : '') + '</td>' +
+          '<td style="color:var(--color-white);font-weight:600;">' + esc(p.empresa) + (p.task_id ? ' <i class="fa-solid fa-list-check" title="Tiene tarea en el tablero" style="color:var(--color-accent);font-size:11px;"></i>' : '') + '</td>' +
           '<td>' + esc(contacto || '—') + (p.cargo ? '<div class="text-gray text-xs">' + esc(p.cargo) + '</div>' : '') + '</td>' +
           '<td>' + prosEstadoChip(p.estado) + '</td>' +
           '<td>' + (p.owner_nombre ? esc(p.owner_nombre) : '<span class="text-gray">Sin asignar</span>') + '</td>' +
@@ -1985,7 +1985,7 @@
                 '<span class="mini-chip">PROSPECTO</span>' +
                 (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
               '</div>' +
-              '<h2 style="color:#fff;font-size:20px;font-weight:800;margin:6px 0 0;">' + esc(p.empresa) + '</h2>' +
+              '<h2 style="color:var(--color-white);font-size:20px;font-weight:800;margin:6px 0 0;">' + esc(p.empresa) + '</h2>' +
               '<div class="text-gray text-sm" style="margin-top:4px;">' + esc(s ? s.icono + ' ' + s.nombre : (p.sector_nombre || 'Sin sector')) +
                 (contacto ? ' · ' + esc(contacto) : '') + (p.cargo ? ' (' + esc(p.cargo) + ')' : '') + '</div>' +
               (links ? '<div class="pill-row" style="margin-top:10px;">' + links + '</div>' : '') +
@@ -2179,7 +2179,7 @@
           if (p.task_id && p.task_created_at) {
             eventos.push('<div class="tl-item">' +
               '<span class="tl-icon" style="background:rgba(255,107,0,.15);"><i class="fa-solid fa-list-check"></i></span>' +
-              '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:#fff;">Convertido en tarea</strong>' +
+              '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:var(--color-white);">Convertido en tarea</strong>' +
                 ' <span class="text-gray">— ' + fmtRel(p.task_created_at) + '</span></div>' +
                 '<div class="text-sm" style="margin-top:3px;">' + esc(p.task_titulo || ('Tarea #' + p.task_id)) +
                 (p.task_estado ? ' · <span class="text-accent">' + esc(p.task_estado) + '</span>' : '') + '</div></div></div>');
@@ -2198,7 +2198,7 @@
             eventos.push('<div class="tl-item">' +
               '<span class="tl-icon"><i class="' + (ti.icono || 'fa-solid fa-note-sticky') + '"></i></span>' +
               '<div style="flex:1;">' +
-                '<div style="font-size:12px;"><strong style="color:#fff;">' + esc(ti.label) + '</strong>' +
+                '<div style="font-size:12px;"><strong style="color:var(--color-white);">' + esc(ti.label) + '</strong>' +
                   (it.resultado ? ' · <span class="text-accent">' + esc(INTER_RES[it.resultado] || it.resultado) + '</span>' : '') +
                   ' <span class="text-gray">— ' + fmtRel(it.created_at) + (it.usuario ? ' · ' + esc(it.usuario) : '') + '</span></div>' +
                 (it.nota ? '<div class="text-sm" style="margin-top:3px;white-space:pre-wrap;">' + esc(it.nota) + '</div>' : '') +
@@ -2211,7 +2211,7 @@
           // evento: creado como prospecto (siempre el más antiguo, al final)
           eventos.push('<div class="tl-item">' +
             '<span class="tl-icon" style="background:rgba(148,163,184,.15);"><i class="fa-solid fa-flag"></i></span>' +
-            '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:#fff;">Registrado como prospecto</strong>' +
+            '<div style="flex:1;"><div style="font-size:12px;"><strong style="color:var(--color-white);">Registrado como prospecto</strong>' +
               ' <span class="text-gray">— ' + fmtRel(p.ts || p.created_at) + '</span></div></div></div>');
 
           tl.innerHTML = eventos.join('');
@@ -3144,7 +3144,7 @@
         el('view').innerHTML = '<div class="glass-panel" style="padding:24px;"><div id="notifWrap" style="display:flex;flex-direction:column;gap:10px;">' +
           (list.map(function (n) {
             return '<div class="notification-item ' + (n.is_read ? '' : 'unread') + '" data-id="' + n.id + '">' +
-              '<div class="notif-content"><h4 style="color:#fff;font-size:14px;margin:0 0 4px;">' + esc(n.title) + '</h4>' +
+              '<div class="notif-content"><h4 style="color:var(--color-white);font-size:14px;margin:0 0 4px;">' + esc(n.title) + '</h4>' +
               '<p style="color:var(--color-text);font-size:13px;margin:0;">' + esc(n.message) + '</p>' +
               '<div class="notif-time">' + fmtDateTime(n.created_at) + '</div></div></div>';
           }).join('') || '<p class="text-gray text-center" style="padding:28px 0;">Sin notificaciones.</p>') +
@@ -3178,7 +3178,7 @@
               ? '<div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-success btn-small" data-approve="' + rq.id + '">Aprobar</button>' +
                 '<button class="btn btn-error btn-small" data-reject="' + rq.id + '">Rechazar</button></div>' : '';
             return '<div class="glass-panel" style="padding:18px;margin-bottom:12px;">' +
-              '<div style="color:#fff;font-weight:700;">' + esc(rq.project_description) + '</div>' +
+              '<div style="color:var(--color-white);font-weight:700;">' + esc(rq.project_description) + '</div>' +
               '<div class="text-gray text-sm" style="margin-top:6px;">' + esc(rq.user_name) + ' (' + esc(rq.user_email) + ')' +
               (rq.user_company ? ' &middot; ' + esc(rq.user_company) : '') + '</div>' +
               '<div class="text-sm" style="margin-top:4px;">Créditos: <strong class="text-accent">' + (rq.requested_credits || 0).toLocaleString() + '</strong>' +
@@ -3212,7 +3212,7 @@
       var toggleCls = inactive ? 'btn-success' : 'btn-error';
       var toggleTxt = inactive ? 'Activar' : 'Desactivar';
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:10px;' + (inactive ? 'opacity:0.6;' : '') + '">' +
-        '<div style="flex:1;min-width:200px;"><div style="color:#fff;font-weight:600;font-size:14px;">' + esc(u.name) + badge + offBadge + pend + '</div>' +
+        '<div style="flex:1;min-width:200px;"><div style="color:var(--color-white);font-weight:600;font-size:14px;">' + esc(u.name) + badge + offBadge + pend + '</div>' +
         '<div class="text-gray text-xs">' + esc(u.email) + (u.position ? ' | ' + esc(u.position) : '') + ' | ' + esc(u.company || 'Sin empresa') + ' | ' + (u.account_type === 'colaborador' ? 'Colaborador' : 'Cliente') + '</div></div>' +
         '<div style="text-align:right;">' +
           '<div style="color:var(--color-accent);font-weight:700;font-size:16px;">' + (u.credits || 0).toLocaleString() +
@@ -3309,7 +3309,7 @@
         var block = function (title, icon, arr) {
           return '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
-            '<h2 style="color:#fff;font-size:18px;font-weight:700;"><i class="fa-solid ' + icon + '" style="color:var(--color-accent);margin-right:8px;"></i>' + title + '</h2>' +
+            '<h2 style="color:var(--color-white);font-size:18px;font-weight:700;"><i class="fa-solid ' + icon + '" style="color:var(--color-accent);margin-right:8px;"></i>' + title + '</h2>' +
             '<span class="badge badge-secondary">' + arr.length + '</span></div>' +
             '<div style="display:flex;flex-direction:column;gap:10px;">' +
             (arr.map(userCard).join('') || '<p class="text-gray text-center" style="padding:24px 0;">Sin usuarios.</p>') + '</div></div>';
@@ -3318,7 +3318,7 @@
         var form =
           '<div class="glass-panel" style="padding:24px;margin-bottom:22px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-              '<h2 style="color:#fff;font-size:18px;font-weight:700;"><i class="fa-solid fa-user-plus" style="color:var(--color-accent);margin-right:8px;"></i>Crear usuario</h2>' +
+              '<h2 style="color:var(--color-white);font-size:18px;font-weight:700;"><i class="fa-solid fa-user-plus" style="color:var(--color-accent);margin-right:8px;"></i>Crear usuario</h2>' +
               '<button class="btn btn-secondary btn-small" id="nuToggle">Nuevo usuario</button>' +
             '</div>' +
             '<form id="nuForm" style="display:none;margin-top:18px;">' +
@@ -3420,7 +3420,7 @@
           '<div class="glass-panel" style="padding:28px;max-width:520px;margin-bottom:22px;">' +
             '<div class="section-heading" style="text-align:left;margin-bottom:16px;">Mi foto</div>' +
             '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">' +
-              '<div id="cfgPhoto" style="width:76px;height:76px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:24px;">' + avatarHtml(me.name, me.photo) + '</div>' +
+              '<div id="cfgPhoto" style="width:76px;height:76px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-hover));display:flex;align-items:center;justify-content:center;color:var(--color-white);font-weight:800;font-size:24px;">' + avatarHtml(me.name, me.photo) + '</div>' +
               '<div><input type="file" id="cfg_file" accept="image/png,image/jpeg,image/webp" style="display:none;">' +
                 '<button class="btn btn-secondary btn-small" id="cfg_pick"><i class="fa-solid fa-upload"></i> Subir foto</button> ' +
                 (me.photo ? '<button class="btn btn-error btn-small" id="cfg_rmphoto">Quitar</button>' : '') +

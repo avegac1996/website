@@ -16,7 +16,7 @@ El CRM funciona pero acumuló deuda de UX por crecer "por acreción": cada featu
 
 ## Fase 1 — Fundaciones del sistema de diseño (tokens)
 
-- [ ] **Consolidar colores hardcodeados a variables `:root`.** Ya existen tokens (`--color-success/warning/error/info`, `--color-white`, etc. en `public/css/app.css:6-24`) pero se ignoran constantemente:
+- [x] **Consolidar colores hardcodeados a variables `:root`.** Ya existen tokens (`--color-success/warning/error/info`, `--color-white`, etc. en `public/css/app.css:6-24`) pero se ignoran constantemente:
   - `#10b981` hardcodeado en `app.css:1646,1652,1782` (duplica `--color-success`).
   - `#3b82f6` en `app.css:1779,1870,1871,1904` (duplica `--color-info`).
   - `#f59e0b` en `app.css:1781` (duplica `--color-warning`).
@@ -24,16 +24,28 @@ El CRM funciona pero acumuló deuda de UX por crecer "por acreción": cada featu
   - `#fff` hardcodeado 46 veces en CSS (ej. `app.css:1001,1022,1068,1083,1120`) en vez de `var(--color-white)`.
   - `color:#fff` inline en `app.html` al menos 18 veces (líneas 475, 556, 630, 917, 1700, 1833, 1867, 1986, 1988, 2182, 2201, 2214, 3147, 3181, 3215, 3312, 3321, 3423).
 
-- [ ] **Definir escala de spacing (4/8px) y migrar valores arbitrarios.** Hoy prácticamente todos los enteros entre 1-14px aparecen como padding suelto. Ejemplos a corregir primero: `padding: 9px 12px 9px 34px` (`app.css:1020`), `padding: 1px 7px` (`app.css:1085`), `padding: 11px 13px` (`app.css:1571`), `padding: 7px 4px` (`app.css:1729`), `padding: 2px 7px` (`app.css:1705,2416`). Documentar/tokenizar el valor mágico `margin-left: 264px` (`app.css:1091`, coincide con el ancho del sidebar en `app.css:962` pero no está vinculado por variable).
+  > Hecho (10-sep-2026). Migrados todos los casos listados arriba, más un duplicado no detectado en el diagnóstico original: `#94a3b8` (6 apariciones en `app.css`, incluyendo fallbacks `var(--e, #94a3b8)`) duplicaba `--color-text: #94A3B8` y también se migró. El hack de opacidad `color + '22'` en `prosEstadoChip()`/`.kb-estado` (`app.html`) se dejó intacto a propósito — es tarea de Fase 2.
 
-- [ ] **Definir jerarquía tipográfica global (`h1`-`h6`) y escala de `font-size`.** Hoy no hay reglas globales de heading — cada módulo define su propio tamaño (`.card-header h3` en `app.css:254`, `.modal-header h3` en `app.css:675`, `.auth-logo h1` en `app.css:836`, etc.), y hay 21 valores de `font-size` distintos sin escala, incluyendo el outlier `font-size: 12.5px` en `.seg-toggle` (`app.css:1696`). También hay 21 usos de `font-size:13px` inline en `app.html` que no coinciden con ninguna clase de la escala existente (`.text-sm`=14px, `.text-xs`=12px en `app.css:782-783`).
+- [x] **Definir escala de spacing (4/8px) y migrar valores arbitrarios.** Hoy prácticamente todos los enteros entre 1-14px aparecen como padding suelto. Ejemplos a corregir primero: `padding: 9px 12px 9px 34px` (`app.css:1020`), `padding: 1px 7px` (`app.css:1085`), `padding: 11px 13px` (`app.css:1571`), `padding: 7px 4px` (`app.css:1729`), `padding: 2px 7px` (`app.css:1705,2416`). Documentar/tokenizar el valor mágico `margin-left: 264px` (`app.css:1091`, coincide con el ancho del sidebar en `app.css:962` pero no está vinculado por variable).
 
-- [ ] **Reemplazar la repetición literal de `font-family: 'Barlow', 'Inter', sans-serif`** (12+ selectores: `app.css:190,255,564,676,837,853,997,1221,1275,1295,1421,1440,1501,1512`) por una clase o variable CSS compartida.
+  > Hecho parcial (10-sep-2026). Se creó la escala `--space-1` a `--space-8` (4px a 48px) en `:root`. El valor `264px` se vinculó a un token de layout dedicado (`--sidebar-width`) en vez de a la escala de spacing, porque 264 no encaja en una progresión limpia de 4/8px — mezclarlo habría sido forzar una escala falsa. **Los ~80 `padding` arbitrarios restantes en el resto de la hoja no se migraron** (volumen demasiado grande para una pasada segura en una sesión) — queda como ítem pendiente para una sesión futura dedicada.
 
-- [ ] **Quick wins de limpieza CSS:**
+- [x] **Definir jerarquía tipográfica global (`h1`-`h6`) y escala de `font-size`.** Hoy no hay reglas globales de heading — cada módulo define su propio tamaño (`.card-header h3` en `app.css:254`, `.modal-header h3` en `app.css:675`, `.auth-logo h1` en `app.css:836`, etc.), y hay 21 valores de `font-size` distintos sin escala, incluyendo el outlier `font-size: 12.5px` en `.seg-toggle` (`app.css:1696`). También hay 21 usos de `font-size:13px` inline en `app.html` que no coinciden con ninguna clase de la escala existente (`.text-sm`=14px, `.text-xs`=12px en `app.css:782-783`).
+
+  > Hecho parcial (10-sep-2026). Se creó la escala `--font-size-xs` a `--font-size-3xl` en `:root`, pero solo se aplicó para corregir el outlier `12.5px` (6 selectores: `.bt-col-head`, `.seg-toggle .seg`, `.bt-subbanner`, `.gt-cell`, `.tbq-day`, `.bt-drop` → `var(--font-size-sm)`, redondeo de 0.5px imperceptible). **No se tocaron** el resto de los ~24 valores de `font-size` sueltos en `app.css`, los 23 usos inline de `font-size:13px` en `app.html`, ni se definieron reglas globales `h1`-`h6` — eso requiere revisar cada heading suelto uno por uno y queda como ítem futuro explícito.
+
+- [x] **Reemplazar la repetición literal de `font-family: 'Barlow', 'Inter', sans-serif`** (12+ selectores: `app.css:190,255,564,676,837,853,997,1221,1275,1295,1421,1440,1501,1512`) por una clase o variable CSS compartida.
+
+  > Hecho (10-sep-2026). Se creó `--font-heading: 'Barlow', 'Inter', sans-serif` en `:root` y se reemplazaron las 14 apariciones (incluida la variante corta sin `'Inter'` en `app.css:190`). No se creó una clase `.font-heading` adicional — no había usos inline en `app.html` que la necesitaran, la variable CSS basta.
+
+- [x] **Quick wins de limpieza CSS:**
   - `.kb-card` y `.kb-act` están definidos dos veces cada uno, sin relación clara (`app.css:2370` + reapertura suelta en `2414`/`2419`, bajo el comentario "kanban card chips — compactos, no desbordan") — probablemente un parche tardío que no se integró a la definición original. Fusionar.
   - `.btn-secondary:hover` usa `background-color: #1a2e5a` hardcodeado (`app.css:410`) en vez de un token.
   - Border-radius hardcodeado que duplica `--radius-sm/md/lg` (varios `8px`, `4px`, `12px` sueltos); el radio "pill" `999px` se usa 18 veces sin token propio — considerar `--radius-pill`.
+
+  > Hecho (10-sep-2026). `.kb-card`/`.kb-act` fusionadas en una sola declaración cada una (las propiedades de la reapertura se movieron al selector base; los selectores que solo compartían el comentario —`.kb-card-top strong`, `.kb-estado`, `.kb-card .text-xs`— no eran duplicados y se dejaron donde estaban, con el comentario ajustado). `.btn-secondary:hover` ahora usa el token nuevo `--color-secondary-hover: #1a2e5a` (no había ningún token existente con ese valor). Los 5 `border-radius` sueltos que duplicaban `--radius-sm/md/lg` se migraron, y las 18 apariciones de `999px` se migraron al token nuevo `--radius-pill`.
+
+> **Nota de verificación (10-sep-2026):** no hay test runner ni linter en el proyecto, así que la verificación de esta fase fue por `grep`/`git diff` — se confirmó que ningún literal migrado sigue apareciendo fuera de la definición de su token, y que cada hunk del diff es un reemplazo 1:1 de valor por `var(--token)` sin cambios de estructura. Se intentó además una verificación visual completa levantando `npm start` en el Browser pane, pero la base de datos Postgres local no está accesible (`password authentication failed for user "postgres"`), así que no se pudo loguear en `app.html` para revisar sidebar/kanban/tabla de prospectos en vivo. Sí se pudo verificar visualmente `login.html`/`register.html` (cargan `public/css/app.css` sin necesitar sesión) y renderizan correctamente con los tokens nuevos aplicados (tipografía de `.auth-logo h1`, colores blancos, etc.), sin regresiones visibles.
 
 ## Fase 2 — Unificar componentes duplicados
 
