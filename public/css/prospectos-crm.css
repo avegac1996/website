@@ -43,6 +43,13 @@
 }
 .pros-form-section-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; }
 
+/* Sección "Datos opcionales" (campos de bajo uso posterior): mismo layout de
+   arriba pero colapsable, para no competir con los campos de valor inmediato. */
+.pros-form-section-collapsible > summary { cursor: pointer; list-style: none; }
+.pros-form-section-collapsible > summary::-webkit-details-marker { display: none; }
+.pros-form-section-collapsible > summary::after { content: '▸'; float: right; }
+.pros-form-section-collapsible[open] > summary::after { content: '▾'; }
+
 .field-icon { position: relative; }
 .field-icon > i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-gray); font-size: 13px; pointer-events: none; }
 .field-icon .form-input { padding-left: 38px; }

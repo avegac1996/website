@@ -31,7 +31,7 @@ router.get('/:id/interacciones', async (req, res) => {
   }
 });
 
-// POST /api/prospectos/:id/interacciones   body: { tipo, resultado, nota, files:[{nombre,data}], proxima_gestion, proxima_gestion_nota }
+// POST /api/prospectos/:id/interacciones   body: { tipo, resultado, nota, files:[{nombre,data}] }
 router.post('/:id/interacciones', async (req, res) => {
   try {
     const cur = (await db.query('SELECT id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
@@ -66,14 +66,7 @@ router.post('/:id/interacciones', async (req, res) => {
       row.files.push(fr);
     }
 
-    // fija la próxima gestión si vino en el mismo formulario
-    const pg = /^\d{4}-\d{2}-\d{2}$/.test(req.body.proxima_gestion || '') ? req.body.proxima_gestion : null;
-    if (pg || req.body.proxima_gestion === '') {
-      await db.query('UPDATE prospectos SET proxima_gestion = $1, proxima_gestion_nota = $2 WHERE id = $3',
-        [pg, req.body.proxima_gestion_nota ? String(req.body.proxima_gestion_nota).slice(0, 200) : null, req.params.id]);
-    }
-
-    res.status(201).json({ interaccion: row, proxima_gestion: pg });
+    res.status(201).json({ interaccion: row });
   } catch (err) {
     console.error('Error creando interacción:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -109,19 +102,13 @@ router.delete('/:id/interacciones/:iid/files/:fid', async (req, res) => {
   }
 });
 
-// PATCH /api/prospectos/:id/proxima-gestion  { proxima_gestion, nota }
-router.patch('/:id/proxima-gestion', async (req, res) => {
-  try {
-    const cur = (await db.query('SELECT id FROM prospectos WHERE id = $1', [req.params.id])).rows[0];
-    if (!cur) return res.status(404).json({ error: 'Prospecto no encontrado' });
-    const pg = /^\d{4}-\d{2}-\d{2}$/.test(req.body.proxima_gestion || '') ? req.body.proxima_gestion : null;
-    const nota = req.body.nota ? String(req.body.nota).slice(0, 200) : null;
-    await db.query('UPDATE prospectos SET proxima_gestion = $1, proxima_gestion_nota = $2 WHERE id = $3', [pg, nota, req.params.id]);
-    res.json({ id: Number(req.params.id), proxima_gestion: pg, proxima_gestion_nota: nota });
-  } catch (err) {
-    console.error('Error en proxima-gestion:', err.message);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
+// Nota: existió acá un endpoint PATCH /:id/proxima-gestion para fijar
+// prospectos.proxima_gestion/proxima_gestion_nota, pero ningún frontend lo
+// llamaba nunca — el seguimiento real de "próxima gestión" se maneja con
+// prospecto_actividades (ver renderActividades en
+// public/js/app-modules/prospectos.js), que sí tiene UI completa y alimenta
+// los badges del kanban y el dashboard. Se retiró para no mantener dos
+// fuentes de verdad del mismo concepto (ver scripts/migrations/ para el
+// DROP COLUMN correspondiente en la base).
 
 module.exports = router;

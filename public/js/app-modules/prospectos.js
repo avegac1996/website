@@ -9,7 +9,7 @@ import { API } from '../api-bridge.js';
 import { el, esc, chipEstado, emptyState, loadingHtml, parseDateLocal, fmtDate, pasteState } from './core.js';
 import { boardState } from './board.js';
 import { ACT_ICONO, ACT_LABEL } from './crmdash.js';
-import { viewCrmTablero } from './crmkanban.js';
+import { viewCrmTablero, prosActChip } from './crmkanban.js';
 
 export var SECTORES = window.SECTORES || [];
 export var PILARES = window.PILARES || ['RPA', 'IA', 'BI', 'Software a la Medida', 'App Móvil Offline'];
@@ -17,7 +17,7 @@ export var FUENTES = window.FUENTES || ['LinkedIn', 'PBX', 'Referido'];
 export var FASES_SOP = window.FASES_SOP || [];
 export var PATRONES_EMAIL = window.PATRONES_EMAIL || [];
 export var EJEMPLOS_EMAIL = window.EJEMPLOS_EMAIL || [];
-export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '' }, sel: null, view: null, from: null, kbq: '' };
+export var PROS = { list: [], meta: {}, tab: 'gestion', sectorId: '', sc: { vend: '', cont: '', emp: '' }, filtro: { sector: '', q: '', estado: '', owner: '', orden: '' }, sel: null, view: null, from: null, kbq: '' };
 export var sectorById = function (id) { return SECTORES.filter(function (s) { return s.id === id; })[0]; };
 
 // estados y tipos vienen del backend (catálogo editable por admin). Fallback por si aún no cargó meta.
@@ -109,12 +109,12 @@ export function sectorSelectHtml(id, sel) {
 export var PROS_GRUPOS = {
   empresa: '🏢 Empresa',
   contacto: '👤 Contacto',
-  seguimiento: '🎯 Seguimiento comercial'
+  seguimiento: '🎯 Seguimiento comercial',
+  avanzado: '⚙️ Datos opcionales'
 };
 export var PROS_CAMPOS = [
   { suf: 'sector', key: 'sector_id', label: 'Sector', type: 'sector', group: 'empresa', icon: 'fa-solid fa-industry' },
   { suf: 'empresa', key: 'empresa', label: 'Empresa', required: true, group: 'empresa', icon: 'fa-solid fa-building' },
-  { suf: 'ruc', key: 'ruc', label: 'RUC', placeholder: '13 dígitos', group: 'empresa', icon: 'fa-solid fa-id-card' },
   { suf: 'web', key: 'web', label: 'Página web', placeholder: 'https://...', group: 'empresa', icon: 'fa-solid fa-globe' },
   { suf: 'cn', key: 'contacto_nombre', label: 'Contacto — nombre', group: 'contacto', icon: 'fa-solid fa-user' },
   { suf: 'ca', key: 'contacto_apellido', label: 'Contacto — apellido', group: 'contacto', icon: 'fa-solid fa-user' },
@@ -124,10 +124,14 @@ export var PROS_CAMPOS = [
   { suf: 'li', key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/...', group: 'contacto', icon: 'fa-brands fa-linkedin' },
   { suf: 'fuente', key: 'fuente', label: 'Fuente', type: 'select', opciones: FUENTES, group: 'seguimiento', icon: 'fa-solid fa-signal' },
   { suf: 'pilar', key: 'pilar', label: 'Pilar', type: 'select', opciones: PILARES, group: 'seguimiento', icon: 'fa-solid fa-chess-rook' },
-  { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase', group: 'seguimiento', icon: 'fa-solid fa-route' },
-  { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date', group: 'seguimiento', icon: 'fa-solid fa-calendar-days' },
-  { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX', group: 'seguimiento', icon: 'fa-solid fa-phone-volume' },
-  { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido', placeholder: 'Ej: Mañanas 9-12h', group: 'seguimiento', icon: 'fa-solid fa-clock' }
+  // Campos de bajo uso posterior (no alimentan ningún dashboard, filtro ni
+  // columna de lista hoy — ver análisis en git log) — se agrupan aparte y se
+  // muestran colapsados por defecto para no competir con los campos de arriba.
+  { suf: 'ruc', key: 'ruc', label: 'RUC', placeholder: '13 dígitos', group: 'avanzado', icon: 'fa-solid fa-id-card' },
+  { suf: 'fase', key: 'fase_sop', label: 'Fase del SOP', type: 'fase', group: 'avanzado', icon: 'fa-solid fa-route' },
+  { suf: 'fecha', key: 'fecha_fase', label: 'Fecha de la fase', type: 'date', group: 'avanzado', icon: 'fa-solid fa-calendar-days' },
+  { suf: 'ext', key: 'extension_pbx', label: 'Extensión PBX', group: 'avanzado', icon: 'fa-solid fa-phone-volume' },
+  { suf: 'hora', key: 'horario_preferido', label: 'Horario preferido', placeholder: 'Ej: Mañanas 9-12h', group: 'avanzado', icon: 'fa-solid fa-clock' }
 ];
 // Arma las secciones de campos (agrupadas por PROS_GRUPOS) + el textarea de
 // Notas. prefix es "px_" (alta) o "pg_f_" (edición); d es el objeto de datos
@@ -139,6 +143,7 @@ export function prosFormFieldsHTML(prefix, d) {
   var opt = function (arr, v) { return arr.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); };
   var html = '';
   var grupoActual = null;
+  var cierreActual = '';
   PROS_CAMPOS.forEach(function (f) {
     var id = prefix + f.suf;
     var control;
@@ -169,13 +174,21 @@ export function prosFormFieldsHTML(prefix, d) {
     var reqMark = f.required ? ' <span class="form-required-marker">*</span>' : '';
     var campoHtml = '<div class="form-group"><label for="' + id + '">' + f.label + reqMark + '</label>' + control + '</div>';
     if (f.group !== grupoActual) {
-      if (grupoActual !== null) html += '</div></div>';
-      html += '<div class="pros-form-section"><div class="pros-form-section-head">' + PROS_GRUPOS[f.group] + '</div><div class="pros-form-section-grid">';
+      if (grupoActual !== null) html += cierreActual;
+      // El grupo "avanzado" (campos de bajo uso posterior) se renderiza
+      // colapsado por defecto con <details>/<summary> en vez del <div> normal.
+      if (f.group === 'avanzado') {
+        html += '<details class="pros-form-section pros-form-section-collapsible"><summary class="pros-form-section-head">' + PROS_GRUPOS[f.group] + '</summary><div class="pros-form-section-grid">';
+        cierreActual = '</div></details>';
+      } else {
+        html += '<div class="pros-form-section"><div class="pros-form-section-head">' + PROS_GRUPOS[f.group] + '</div><div class="pros-form-section-grid">';
+        cierreActual = '</div></div>';
+      }
       grupoActual = f.group;
     }
     html += campoHtml;
   });
-  if (grupoActual !== null) html += '</div></div>';
+  if (grupoActual !== null) html += cierreActual;
   var notasId = prefix + 'notas';
   return html +
     '<div class="form-group" style="margin-top:4px;"><label for="' + notasId + '">Notas</label><textarea id="' + notasId + '" class="form-input" rows="3">' + esc(d.notas || '') + '</textarea></div>';
@@ -362,6 +375,23 @@ export function prosGestion() {
     return true;
   });
 
+  // Orden por urgencia: atrasados primero, luego pendientes por fecha más
+  // próxima, y sin actividad al final — mismo criterio de act_atrasadas/
+  // act_pendientes/act_proxima que ya usa el badge del kanban (prosActChip).
+  if (f.orden === 'urgencia') {
+    var rango = function (p) {
+      if ((p.act_atrasadas || 0) > 0) return 0;
+      if ((p.act_pendientes || 0) > 0) return 1;
+      return 2;
+    };
+    list = list.slice().sort(function (a, b) {
+      var ra = rango(a), rb = rango(b);
+      if (ra !== rb) return ra - rb;
+      if (ra === 1) return (a.act_proxima || '').localeCompare(b.act_proxima || '');
+      return 0;
+    });
+  }
+
   var rows = list.map(function (p) {
     var contacto = ((p.contacto_nombre || '') + ' ' + (p.contacto_apellido || '')).trim();
     return '<tr data-id="' + p.id + '" style="cursor:pointer;">' +
@@ -370,9 +400,10 @@ export function prosGestion() {
       '<td>' + prosEstadoChip(p.estado) + '</td>' +
       '<td>' + (p.owner_nombre ? esc(p.owner_nombre) : '<span class="text-gray">Sin asignar</span>') + '</td>' +
       '<td class="text-gray text-xs">' + fmtRel(p.ultima_gestion) + (p.interacciones ? ' · ' + p.interacciones + ' gest.' : '') + '</td>' +
+      '<td>' + prosActChip(p) + '</td>' +
       '<td style="text-align:right;color:var(--color-gray);"><i class="fa-solid fa-chevron-right"></i></td>' +
     '</tr>';
-  }).join('') || emptyState('Sin prospectos con estos filtros.', { colspan: 6 });
+  }).join('') || emptyState('Sin prospectos con estos filtros.', { colspan: 7 });
 
   var estadoOpts = '<option value="">Todos los estados</option>' + prosEstados().map(function (e) { return '<option value="' + e.slug + '"' + (f.estado === e.slug ? ' selected' : '') + '>' + esc(e.label) + '</option>'; }).join('');
   var ownerOpts = '<option value="">Todos los responsables</option><option value="__none"' + (f.owner === '__none' ? ' selected' : '') + '>Sin asignar</option>' +
@@ -385,12 +416,16 @@ export function prosGestion() {
       '<select id="pr_owner" class="form-input" style="width:auto;min-width:150px;padding:8px 10px;font-size:13px;">' + ownerOpts + '</select>' +
       '<select id="pr_sec" class="form-input" style="width:auto;min-width:140px;padding:8px 10px;font-size:13px;"><option value="">Todos los sectores</option>' +
         secs.map(function (o) { return '<option' + (o === f.sector ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>' +
+      '<select id="pr_orden" class="form-input" style="width:auto;min-width:150px;padding:8px 10px;font-size:13px;">' +
+        '<option value=""' + (f.orden === '' ? ' selected' : '') + '>Más recientes</option>' +
+        '<option value="urgencia"' + (f.orden === 'urgencia' ? ' selected' : '') + '>Urgencia</option>' +
+      '</select>' +
       '<div style="flex:1;"></div>' +
       '<button class="btn btn-secondary btn-small" id="pr_export"><i class="fa-solid fa-download"></i> .txt</button>' +
       '<button class="btn btn-primary btn-small" id="pr_new"><i class="fa-solid fa-plus"></i> Nuevo prospecto</button>' +
     '</div>' +
     '<div class="glass-panel" style="padding:0;overflow:hidden;"><div class="table-container"><table class="table table-pipeline">' +
-      '<thead><tr><th>Empresa</th><th>Contacto</th><th>Estado</th><th>Responsable</th><th>Última gestión</th><th></th></tr></thead>' +
+      '<thead><tr><th>Empresa</th><th>Contacto</th><th>Estado</th><th>Responsable</th><th>Última gestión</th><th>Próximo seguimiento</th><th></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div></div>' +
     '<div class="text-gray text-xs" style="margin-top:8px;">' + list.length + ' de ' + PROS.list.length + ' prospectos · clic en una fila para gestionar</div>';
 
@@ -398,6 +433,7 @@ export function prosGestion() {
   el('pr_estado').addEventListener('change', function () { f.estado = this.value; prosGestion(); });
   el('pr_owner').addEventListener('change', function () { f.owner = this.value; prosGestion(); });
   el('pr_sec').addEventListener('change', function () { f.sector = this.value; prosGestion(); });
+  el('pr_orden').addEventListener('change', function () { f.orden = this.value; prosGestion(); });
   el('pr_new').addEventListener('click', function () { prosRegistrar(null); });
   el('pr_export').addEventListener('click', function () {
     var btn = this; btn.disabled = true;

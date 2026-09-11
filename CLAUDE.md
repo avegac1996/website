@@ -22,6 +22,7 @@ Guía rápida para trabajar en este repo sin tener que re-explorarlo cada vez.
 - `npm run setup` — setup inicial (`scripts/setup.js`).
 - `npm run db:restore` — restaura la BD (`scripts/restore-db.js`).
 - No hay `build`: el frontend se sirve tal cual desde `public/`, sin compilación.
+- **Cambios de esquema en producción**: `scripts/init-db.js` solo sabe crear (`CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`), nunca `DROP` — y el deploy es un `git pull` sin paso de migración automático. Cualquier `DROP`/rename/backfill que tenga que llegar a la base productiva va como un `.sql` nuevo en `scripts/migrations/` (ver el `README.md` de esa carpeta) y se corre a mano con `psql`, nunca solo editando `init-db.js`.
 
 ## Arquitectura ([src/server.js](src/server.js))
 
