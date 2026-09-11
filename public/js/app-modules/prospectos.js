@@ -534,6 +534,7 @@ export function prosGestionar(p, editarDatos) {
           '<div>' +
             '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
               '<span class="mini-chip">PROSPECTO</span>' +
+              (p.task_id ? '<span class="mini-chip" style="background:rgba(255,107,0,.15);color:#ffb27a;">→ TAREA' + (p.task_estado ? ' · ' + esc(p.task_estado) : '') + '</span>' : '') +
             '</div>' +
             '<h2 class="pros-detail-name">' + esc(p.empresa) + '</h2>' +
             (meta ? '<div class="pros-detail-meta">' + meta + '</div>' : '') +
